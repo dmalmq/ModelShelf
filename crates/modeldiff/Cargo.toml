@@ -1,0 +1,9 @@
+[package]
+name = "modeldiff"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+fingerprint.workspace = true
+serde.workspace = true
