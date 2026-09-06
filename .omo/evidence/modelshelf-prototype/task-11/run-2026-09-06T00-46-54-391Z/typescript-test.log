@@ -1,0 +1,21 @@
+
+
+> @modelshelf/model-contracts@1.0.0 test
+> node --test dist/test/*.test.js
+
+✔ valid object-ref parses (0.597158ms)
+✔ valid model-descriptor, semantic-model, render-manifest all parse (1.463161ms)
+✔ format-neutral prepared-scene fixture (no IFC metadata) parses (0.493024ms)
+✔ duplicated GlobalIds remain distinct occurrences (accepted) (0.164759ms)
+✔ every fixtures/invalid/schema/*.json is rejected by schema validation (0.312115ms)
+✔ fixtures/invalid/boundary/semantic-model-duplicate-objectid.json passes schema but fails the boundary check (0.133611ms)
+✔ express-id mapping matches the golden fixture shared with the Python worker (0.36292ms)
+✔ the same express ID in two different revisions maps to different objectIds (0.06924ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 94.07192

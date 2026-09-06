@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "model-v1",
+  "revisionId": "rev-arch-01",
+  "objects": [
+    {
+      "ref": { "revisionId": "rev-arch-01", "objectId": "occ_823c7adb931b5478" },
+      "nativeIds": { "expressId": 1, "globalId": "2N1uYIQ9v8IK2SjULhSkPq" },
+      "classification": "IfcWallStandardCase"
+    },
+    {
+      "ref": { "revisionId": "rev-arch-01", "objectId": "occ_823c7adb931b5478" },
+      "nativeIds": { "expressId": 482, "globalId": "1lm73wLKrCiA0FTgO6z1sd" },
+      "classification": "IfcWallStandardCase"
+    }
+  ]
+}

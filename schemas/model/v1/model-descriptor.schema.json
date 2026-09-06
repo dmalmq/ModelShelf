@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "model-descriptor.schema.json",
+  "title": "ModelDescriptor",
+  "description": "Identity, units, placement, provenance, and artifact availability for one model revision. Carries no ModelShelf project/delivery/pack concepts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "revisionId", "lengthToMetre", "upAxis", "transform", "sourceProvenance", "artifacts"],
+  "properties": {
+    "schemaVersion": { "enum": ["model-v1"] },
+    "revisionId": { "type": "string", "minLength": 1 },
+    "lengthToMetre": {
+      "description": "Multiply a source-file length unit by this factor to get metres.",
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "upAxis": { "enum": ["Y_UP", "Z_UP"] },
+    "transform": { "$ref": "transform.schema.json" },
+    "sourceProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "originalFilename", "contentHash"],
+      "properties": {
+        "format": { "type": "string", "minLength": 1 },
+        "originalFilename": { "type": "string", "minLength": 1 },
+        "contentHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "producedBy": { "type": "string" }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["semantic", "render"],
+      "properties": {
+        "semantic": { "$ref": "semantic-capability.schema.json" },
+        "render": { "$ref": "render-capability.schema.json" }
+      }
+    }
+  }
+}

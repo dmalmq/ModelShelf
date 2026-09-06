@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "transform.schema.json",
+  "title": "Transform",
+  "description": "A rigid transform plus uniform-per-axis scale, applied in translation * rotation * scale order, placing a revision into the shared delivery origin.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["translation", "rotationQuaternion", "scale"],
+  "properties": {
+    "translation": {
+      "description": "[x, y, z] in metres.",
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 3,
+      "maxItems": 3
+    },
+    "rotationQuaternion": {
+      "description": "[x, y, z, w], not required to be pre-normalized by producers.",
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "scale": {
+      "description": "[x, y, z], each strictly positive.",
+      "type": "array",
+      "items": { "type": "number", "exclusiveMinimum": 0 },
+      "minItems": 3,
+      "maxItems": 3
+    }
+  }
+}

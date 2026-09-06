@@ -1,0 +1,183 @@
+[
+  {
+    "id": "01",
+    "file": "01-local-baseline.md",
+    "title": "Restore and verify the local application baseline",
+    "wave": 1,
+    "blockedBy": [],
+    "planCoverage": "1"
+  },
+  {
+    "id": "02",
+    "file": "02-immutable-deliveries.md",
+    "title": "Create deliveries from immutable source-model revisions",
+    "wave": 1,
+    "blockedBy": [
+      "01",
+      "18"
+    ],
+    "planCoverage": "2"
+  },
+  {
+    "id": "03",
+    "file": "03-ifc-worker-contract.md",
+    "title": "Inspect IFC through a verified worker contract",
+    "wave": 1,
+    "blockedBy": [
+      "18"
+    ],
+    "planCoverage": "3, inspect portion"
+  },
+  {
+    "id": "04",
+    "file": "04-queued-ingestion.md",
+    "title": "Process model revisions through durable jobs",
+    "wave": 1,
+    "blockedBy": [
+      "02",
+      "03"
+    ],
+    "planCoverage": "2,3"
+  },
+  {
+    "id": "05",
+    "file": "05-demo-evidence.md",
+    "title": "Prepare reproducible Japanese and synthetic demo evidence",
+    "wave": 1,
+    "blockedBy": [],
+    "planCoverage": "4"
+  },
+  {
+    "id": "06",
+    "file": "06-scoped-ids-runs.md",
+    "title": "Run scoped IDS checks against pinned delivery inputs",
+    "wave": 1,
+    "blockedBy": [
+      "04",
+      "05"
+    ],
+    "planCoverage": "3,4 and first-loop portion of 5"
+  },
+  {
+    "id": "07",
+    "file": "07-combined-viewer.md",
+    "title": "Open a combined delivery in the browser",
+    "wave": 1,
+    "blockedBy": [
+      "04",
+      "05",
+      "18"
+    ],
+    "planCoverage": "5"
+  },
+  {
+    "id": "08",
+    "file": "08-finding-inspection.md",
+    "title": "Inspect a real finding in its model context",
+    "wave": 1,
+    "blockedBy": [
+      "06",
+      "07"
+    ],
+    "planCoverage": "5"
+  },
+  {
+    "id": "09",
+    "file": "09-wave-one-gate.md",
+    "title": "Prove the Wave 1 review loop and viewer performance",
+    "wave": 1,
+    "blockedBy": [
+      "08"
+    ],
+    "planCoverage": "5 and Wave 1 acceptance"
+  },
+  {
+    "id": "10",
+    "file": "10-delivery-shelf.md",
+    "title": "Complete the reviewer delivery shelf",
+    "wave": 2,
+    "blockedBy": [
+      "09"
+    ],
+    "planCoverage": "6"
+  },
+  {
+    "id": "11",
+    "file": "11-priority-review.md",
+    "title": "Complete prioritized findings and pack selection",
+    "wave": 2,
+    "blockedBy": [
+      "10"
+    ],
+    "planCoverage": "7"
+  },
+  {
+    "id": "12",
+    "file": "12-normalized-fingerprints.md",
+    "title": "Compute versioned fingerprints from normalized object state",
+    "wave": 2,
+    "blockedBy": [
+      "09"
+    ],
+    "planCoverage": "8, fingerprint portion"
+  },
+  {
+    "id": "13",
+    "file": "13-model-diff.md",
+    "title": "Compare revisions with explicit match confidence",
+    "wave": 2,
+    "blockedBy": [
+      "12"
+    ],
+    "planCoverage": "8, model comparison portion"
+  },
+  {
+    "id": "14",
+    "file": "14-finding-diff.md",
+    "title": "Compare findings only under compatible checking settings",
+    "wave": 2,
+    "blockedBy": [
+      "11",
+      "13"
+    ],
+    "planCoverage": "8, finding comparison portion"
+  },
+  {
+    "id": "15",
+    "file": "15-comparison-screen.md",
+    "title": "Review model and finding changes visually",
+    "wave": 2,
+    "blockedBy": [
+      "14"
+    ],
+    "planCoverage": "9"
+  },
+  {
+    "id": "16",
+    "file": "16-reproducible-demo.md",
+    "title": "Package and verify the complete local demo",
+    "wave": 2,
+    "blockedBy": [
+      "15"
+    ],
+    "planCoverage": "10"
+  },
+  {
+    "id": "17",
+    "file": "17-completion-audit.md",
+    "title": "Independently audit prototype completion",
+    "wave": 2,
+    "blockedBy": [
+      "16"
+    ],
+    "planCoverage": "F1–F4"
+  },
+  {
+    "id": "18",
+    "file": "18-shared-model-contracts.md",
+    "title": "Publish shared model contracts across Rust, Python, and the browser",
+    "wave": 1,
+    "blockedBy": [],
+    "planCoverage": "11, approved reusable-module amendment"
+  }
+]

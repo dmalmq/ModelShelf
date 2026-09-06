@@ -1,0 +1,20 @@
+[project]
+name = "modelshelf-ifc-worker"
+version = "0.1.0"
+requires-python = ">=3.12,<3.14"
+dependencies = ["ifcopenshell==0.8.5", "ifctester==0.8.5", "pydantic>=2.11,<3", "typer>=0.16,<1"]
+[project.scripts]
+ifc-worker = "ifc_worker.cli:main"
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+[tool.hatch.build.targets.wheel]
+packages = ["src/ifc_worker"]
+[dependency-groups]
+dev = ["pytest>=8,<9", "ruff", "basedpyright"]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+[tool.basedpyright]
+typeCheckingMode = "all"
+[tool.ruff.lint]
+select = ["ALL"]

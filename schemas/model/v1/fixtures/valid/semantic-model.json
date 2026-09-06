@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "model-v1",
+  "revisionId": "rev-arch-01",
+  "objects": [
+    {
+      "ref": { "revisionId": "rev-arch-01", "objectId": "occ_823c7adb931b5478" },
+      "nativeIds": { "expressId": 1, "globalId": "2N1uYIQ9v8IK2SjULhSkPq" },
+      "classification": "IfcWallStandardCase",
+      "name": "Basic Wall:Exterior - 200mm",
+      "storey": "Level 1",
+      "properties": [
+        { "pset": "Pset_WallCommon", "name": "IsExternal", "value": true },
+        { "pset": "Pset_WallCommon", "name": "FireRating", "value": "60" }
+      ]
+    },
+    {
+      "ref": { "revisionId": "rev-arch-01", "objectId": "occ_afa026f8d495334e" },
+      "nativeIds": { "expressId": 482, "globalId": "2N1uYIQ9v8IK2SjULhSkPq" },
+      "classification": "IfcWallStandardCase",
+      "name": "Basic Wall:Exterior - 200mm",
+      "storey": "Level 1",
+      "properties": [
+        { "pset": "Pset_WallCommon", "name": "IsExternal", "value": true }
+      ]
+    },
+    {
+      "ref": { "revisionId": "rev-arch-01", "objectId": "occ_d2ab4477714b5627" },
+      "nativeIds": { "expressId": 999999, "globalId": "1lm73wLKrCiA0FTgO6z1sd" },
+      "classification": "IfcDoor",
+      "name": "Single-Flush:0915 x 2134mm",
+      "storey": "Level 1",
+      "properties": [
+        { "pset": "Pset_DoorCommon", "name": "FireRating", "value": "20" },
+        { "pset": "Pset_DoorCommon", "name": "OverallHeight", "value": 2134.0 }
+      ]
+    }
+  ]
+}

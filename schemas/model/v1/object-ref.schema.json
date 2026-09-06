@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "object-ref.schema.json",
+  "title": "ObjectRef",
+  "description": "An opaque reference to one object occurrence within one model revision. objectId is unique only within its revisionId; consumers must not decode either field.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["revisionId", "objectId"],
+  "properties": {
+    "revisionId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "objectId": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

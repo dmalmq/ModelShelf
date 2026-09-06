@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "model-v1",
+  "revisionId": "rev-synthetic-01",
+  "lengthToMetre": 1.0,
+  "upAxis": "Z_UP",
+  "transform": {
+    "translation": [0.0, 0.0, 0.0],
+    "rotationQuaternion": [0.0, 0.0, 0.0, 1.0],
+    "scale": [1.0, 1.0, 1.0]
+  },
+  "sourceProvenance": {
+    "format": "prepared-scene-v1",
+    "originalFilename": "synthetic-two-blocks.scene.json",
+    "contentHash": "66035cf00d7237d25bb92897277e6cbfc8e2a0fb082f692269a77f0a737fcdad",
+    "producedBy": "modelshelf-contract-fixtures/0.1.0"
+  },
+  "artifacts": {
+    "semantic": { "status": "absent" },
+    "render": {
+      "status": "available",
+      "artifactVersion": "1",
+      "contentHash": "1e1b6c8cc300f14105460342430af0c7b39d3dca92f5280c2483f2e1e85036c8",
+      "format": "prepared-scene-v1",
+      "primitiveCount": 2
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "model-v1",
+  "revisionId": "rev-arch-01",
+  "format": "prepared-scene-v1",
+  "instances": [
+    {
+      "instanceId": "inst-0",
+      "ref": { "revisionId": "rev-arch-01", "objectId": "" }
+    }
+  ]
+}
