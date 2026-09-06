@@ -358,6 +358,7 @@ source = { editable = "." }
 dependencies = [
     { name = "ifcopenshell" },
     { name = "ifctester" },
+    { name = "modelshelf-model-contracts" },
     { name = "pydantic" },
     { name = "typer" },
 ]
@@ -373,6 +374,7 @@ dev = [
 requires-dist = [
     { name = "ifcopenshell", specifier = "==0.8.5" },
     { name = "ifctester", specifier = "==0.8.5" },
+    { name = "modelshelf-model-contracts", directory = "../../packages/model-contracts-py" },
     { name = "pydantic", specifier = ">=2.11,<3" },
     { name = "typer", specifier = ">=0.16,<1" },
 ]
@@ -382,6 +384,23 @@ dev = [
     { name = "basedpyright" },
     { name = "pytest", specifier = ">=8,<9" },
     { name = "ruff" },
+]
+
+[[package]]
+name = "modelshelf-model-contracts"
+version = "1.0.0"
+source = { directory = "../../packages/model-contracts-py" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic", specifier = ">=2.11,<3" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "datamodel-code-generator", specifier = "==0.76.2" },
+    { name = "pytest", specifier = ">=8,<9" },
 ]
 
 [[package]]

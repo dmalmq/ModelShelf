@@ -2,7 +2,7 @@
 name = "modelshelf-ifc-worker"
 version = "0.1.0"
 requires-python = ">=3.12,<3.14"
-dependencies = ["ifcopenshell==0.8.5", "ifctester==0.8.5", "pydantic>=2.11,<3", "typer>=0.16,<1"]
+dependencies = ["ifcopenshell==0.8.5", "ifctester==0.8.5", "pydantic>=2.11,<3", "typer>=0.16,<1", "modelshelf-model-contracts"]
 [project.scripts]
 ifc-worker = "ifc_worker.cli:main"
 [build-system]
@@ -10,11 +10,32 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/ifc_worker"]
+[tool.uv.sources]
+modelshelf-model-contracts = { path = "../../packages/model-contracts-py" }
 [dependency-groups]
 dev = ["pytest>=8,<9", "ruff", "basedpyright"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 [tool.basedpyright]
-typeCheckingMode = "all"
+# "all" (basedpyright's maximally strict preset) is unworkable against IfcOpenShell:
+# its entity_instance.__getattr__ is genuinely dynamic (IFC attribute access is
+# schema-driven at runtime, not statically known), so "all" mode's reportAny and
+# reportUnknownMemberType fire on essentially every ifcopenshell attribute access
+# and method call in this package. "standard" keeps real type-safety (wrong
+# argument types, missing imports, unreachable code) without demanding static
+# knowledge a dynamically-typed C++ binding cannot provide.
+typeCheckingMode = "standard"
+[tool.ruff]
+line-length = 110
 [tool.ruff.lint]
 select = ["ALL"]
+# Rules dropped for reasons specific to this package, not blanket taste:
+# - D*, CPY001: this repo has no docstring/copyright-header convention (see
+#   crates/*, packages/model-contracts-py); module-level "why" docstrings stay,
+#   but a docstring is not required on every function/class/test.
+# - N815: wire-format fields (protocolVersion, jobId, ...) are deliberately
+#   camelCase to match docs/contracts/worker-v1.md and schemas/model/v1 exactly.
+# - T201: this package IS a CLI whose stdout protocol is print()-ed NDJSON.
+# - S101: assert is pytest's actual assertion mechanism in tests/.
+# - COM812: conflicts with the ruff formatter (ruff's own warning).
+ignore = ["D", "CPY001", "N815", "T201", "S101", "COM812"]
