@@ -1,0 +1,14 @@
+--- seed run 1 ---
+seeded tenant=demo-tenant project=demo-project pack=demo-pack (+0 pack version(s))
+--- seed run 2 ---
+seeded tenant=demo-tenant project=demo-project pack=demo-pack (+0 pack version(s))
+--- counts ---
+tenants|1
+projects|1
+packs|1
+--- seed run 3 (with a real IDS pack file) ---
+seeded tenant=demo-tenant project=demo-project pack=demo-pack (+1 pack version(s))
+--- seed run 4 (same pack file again) ---
+seeded tenant=demo-tenant project=demo-project pack=demo-pack (+0 pack version(s))
+--- pack_versions count ---
+demo-pack|1|09372ba29aab6806b40c018c000fb7c9ce0799346aee3502bf7fe67588487115

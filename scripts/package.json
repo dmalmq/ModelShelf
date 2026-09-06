@@ -1,0 +1,9 @@
+{
+  "name": "modelshelf-scripts",
+  "private": true,
+  "description": "Dependencies for repo-root orchestration scripts (scripts/*.mjs). Not published, not a workspace member of apps/web or any package.",
+  "type": "module",
+  "dependencies": {
+    "@apidevtools/json-schema-ref-parser": "16.0.1"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "model-v1",
+  "revisionId": "rev-synthetic-01",
+  "format": "prepared-scene-v1",
+  "instances": [
+    {
+      "instanceId": "inst-0",
+      "ref": { "revisionId": "rev-synthetic-01", "objectId": "synthetic-block-a" },
+      "boundingBox": { "min": [0.0, 0.0, 0.0], "max": [1.0, 1.0, 1.0] }
+    },
+    {
+      "instanceId": "inst-1",
+      "ref": { "revisionId": "rev-synthetic-01", "objectId": "synthetic-block-b" },
+      "boundingBox": { "min": [2.0, 0.0, 0.0], "max": [3.0, 1.0, 1.5] }
+    }
+  ]
+}

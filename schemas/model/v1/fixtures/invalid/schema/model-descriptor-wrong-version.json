@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "model-v2",
+  "revisionId": "rev-arch-01",
+  "lengthToMetre": 0.001,
+  "upAxis": "Z_UP",
+  "transform": {
+    "translation": [12.5, -4.0, 0.0],
+    "rotationQuaternion": [0.0, 0.0, 0.0, 1.0],
+    "scale": [1.0, 1.0, 1.0]
+  },
+  "sourceProvenance": {
+    "format": "IFC4",
+    "originalFilename": "AC20-Institute-Var-2.ifc",
+    "contentHash": "3b5f0a39bb623931d52383372c4397e959ba76f09ad613beb954eab4c6eb46bf",
+    "producedBy": "modelshelf-ifc-worker/0.1.0"
+  },
+  "artifacts": {
+    "semantic": {
+      "status": "available",
+      "artifactVersion": "1",
+      "contentHash": "b6c0205beceb277b177e385da8024fc3eb9b3f4c7c32f1124fcc814ae5982e03",
+      "objectCount": 3
+    },
+    "render": {
+      "status": "available",
+      "artifactVersion": "1",
+      "contentHash": "3ed73f3c000a297c1b22559ce44e19ffd9a45364e1b509a40f514d4f1d917c69",
+      "format": "prepared-scene-v1",
+      "primitiveCount": 3
+    }
+  }
+}

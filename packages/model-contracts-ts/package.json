@@ -1,0 +1,22 @@
+{
+  "name": "@modelshelf/model-contracts",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Generated TypeScript types and boundary validators for ModelShelf's shared model contract (schemas/model/v1). No app, Next.js, React, or Three.js imports.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "generate": "node scripts/generate.mjs",
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test dist/test/*.test.js"
+  },
+  "dependencies": {
+    "ajv": "8.20.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.1",
+    "json-schema-to-typescript": "16.0.0",
+    "typescript": "5.9.3"
+  }
+}

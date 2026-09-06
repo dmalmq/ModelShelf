@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "render-manifest.schema.json",
+  "title": "RenderManifest",
+  "description": "Maps rendered instances in one revision's geometry artifact back to ObjectRef. Loadable independently of the revision's semantic model; a render conversion must not invent or rewrite checking evidence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "revisionId", "format", "instances"],
+  "properties": {
+    "schemaVersion": { "enum": ["model-v1"] },
+    "revisionId": { "type": "string", "minLength": 1 },
+    "format": { "enum": ["prepared-scene-v1"] },
+    "instances": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/instance" }
+    }
+  },
+  "$defs": {
+    "instance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["instanceId", "ref"],
+      "properties": {
+        "instanceId": { "type": "string", "minLength": 1 },
+        "ref": { "$ref": "object-ref.schema.json" },
+        "boundingBox": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["min", "max"],
+          "properties": {
+            "min": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+            "max": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 }
+          }
+        }
+      }
+    }
+  }
+}

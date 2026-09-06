@@ -1,0 +1,242 @@
+[
+  {
+    "group": "01-sankai",
+    "path": "downloads/01-sankai/bim-data-input-guide-2026.pdf",
+    "url": "https://www.mlit.go.jp/jutakukentiku/content/001994694.pdf",
+    "status": "saved",
+    "retrieved_at": "2026-09-05T03:46:40.969Z",
+    "bytes": 2261928,
+    "sha256": "0192c2243905d06ad913adb01a588dd2094d5b3a40169559df0279e940419b73",
+    "resolved_url": "https://www.mlit.go.jp/jutakukentiku/content/001994694.pdf"
+  },
+  {
+    "group": "01-sankai",
+    "path": "downloads/01-sankai/design-bim-workflow-guidelines-2021.pdf",
+    "url": "https://www.mlit.go.jp/jutakukentiku/content/001429639.pdf",
+    "status": "saved",
+    "retrieved_at": "2026-09-05T03:46:41.346Z",
+    "bytes": 13291974,
+    "sha256": "03b751fa86201237cb79568d58ba993bd6e2a05006b3865ee6b13f40b15b5c9f",
+    "resolved_url": "https://www.mlit.go.jp/jutakukentiku/content/001429639.pdf"
+  },
+  {
+    "group": "01-sankai",
+    "path": "downloads/01-sankai/shared-parameters-and-template.zip",
+    "url": "https://bimgate.jp/wp-content/uploads/2024/05/sekkeisankai_revit_parameter_list.zip",
+    "status": "saved",
+    "retrieved_at": "2026-09-05T03:46:42.828Z",
+    "bytes": 13127568,
+    "sha256": "8881f55101e2c5674e9ab84ef286e9adbb4347f39ec3b3dcf1b2320cab55c643",
+    "resolved_url": "https://bimgate.jp/wp-content/uploads/2024/05/sekkeisankai_revit_parameter_list.zip"
+  },
+  {
+    "group": "01-sankai",
+    "path": "downloads/01-sankai/source.html",
+    "url": "https://bimgate.jp/knowledge/1454/",
+    "status": "saved",
+    "retrieved_at": "2026-09-05T03:46:41.115Z",
+    "bytes": 43241,
+    "sha256": "50028aa3acd254ce06748afecfdbbe31f094d88eff366a944d9bfbbb9081b171",
+    "resolved_url": "https://bimgate.jp/knowledge/1454/"
+  },
+  {
+    "group": "02-mlit-attributes",
+    "path": "downloads/02-mlit-attributes/attributes-v2.pdf",
+    "url": "https://www.mlit.go.jp/jutakukentiku/content/001993096.pdf",
+    "status": "saved",
+    "retrieved_at": "2026-09-05T03:46:43.179Z",
+    "bytes": 4392963,
+    "sha256": "75f54044b1f613423dd1d1eb16cc060f196ebf025a60b376415e25aa61e03c89",
+    "resolved_url": "https://www.mlit.go.jp/jutakukentiku/content/001993096.pdf"
+  },
+  {
+    "group": "02-mlit-attributes",
+    "path": "downloads/02-mlit-attributes/attributes-v2.xlsx",
+    "url": "https://www.mlit.go.jp/jutakukentiku/content/001993929.xlsx",
+    "status": "saved",
+    "retrieved_at": "2026-09-05T03:46:42.915Z",
+    "bytes": 995560,
+    "sha256": "2ee90c855cb5b1a24380e62cdbbd10e41adf91585ac6c4d7d0e914a36fc88444",
+    "resolved_url": "https://www.mlit.go.jp/jutakukentiku/content/001993929.xlsx"
+  },
+  {
+    "group": "02-mlit-attributes",
+    "path": "downloads/02-mlit-attributes/explanation-architecture-v2.pdf",
+    "url": "https://www.mlit.go.jp/jutakukentiku/content/001993098.pdf",
+    "status": "saved",
+    "retrieved_at": "2026-09-05T03:46:43.389Z",
+    "bytes": 3222825,
+    "sha256": "5967789df2e30866ab1ce1f0bbc5179ad0af0cf75773694dfd0575f280fa98a2",
+    "resolved_url": "https://www.mlit.go.jp/jutakukentiku/content/001993098.pdf"
+  },
+  {
+    "group": "02-mlit-attributes",
+    "path": "downloads/02-mlit-attributes/explanation-common-v2.pdf",
+    "url": "https://www.mlit.go.jp/jutakukentiku/content/001993097.pdf",
+    "status": "saved",
+    "retrieved_at": "2026-09-05T03:46:43.040Z",
+    "bytes": 1246230,
+    "sha256": "5a58c7b68ef5d9adaaf64982ca3f9ebaf307c9e87d0fabb78f226cfc615678de",
+    "resolved_url": "https://www.mlit.go.jp/jutakukentiku/content/001993097.pdf"
+  },
+  {
+    "group": "02-mlit-attributes",
+    "path": "downloads/02-mlit-attributes/explanation-mep-v2.pdf",
+    "url": "https://www.mlit.go.jp/jutakukentiku/content/001993101.pdf",
+    "status": "saved",
+    "retrieved_at": "2026-09-05T03:46:43.388Z",
+    "bytes": 2941588,
+    "sha256": "1fda1df261897a4fb88cf6402013c5201d5eee61fa607bcc62540198e25d5053",
+    "resolved_url": "https://www.mlit.go.jp/jutakukentiku/content/001993101.pdf"
+  },
+  {
+    "group": "02-mlit-attributes",
+    "path": "downloads/02-mlit-attributes/explanation-structure-v2.pdf",
+    "url": "https://www.mlit.go.jp/jutakukentiku/content/001993099.pdf",
+    "status": "saved",
+    "retrieved_at": "2026-09-05T03:46:43.518Z",
+    "bytes": 6046309,
+    "sha256": "c1ac927697e841a006e3bd543179ae037b3b9602cdbb16036fb66c9a9cb91168",
+    "resolved_url": "https://www.mlit.go.jp/jutakukentiku/content/001993099.pdf"
+  },
+  {
+    "group": "02-mlit-attributes",
+    "path": "downloads/02-mlit-attributes/glossary-v2.pdf",
+    "url": "https://www.mlit.go.jp/jutakukentiku/content/001993094.pdf",
+    "status": "saved",
+    "retrieved_at": "2026-09-05T03:46:42.975Z",
+    "bytes": 1905915,
+    "sha256": "1ac975324a26c00ba99d2ff429785810387e7d19528002c00ee4c5eec6f9527b",
+    "resolved_url": "https://www.mlit.go.jp/jutakukentiku/content/001993094.pdf"
+  },
+  {
+    "group": "02-mlit-attributes",
+    "path": "downloads/02-mlit-attributes/mlit-usage-terms.html",
+    "url": "https://www.mlit.go.jp/link.html",
+    "status": "saved",
+    "retrieved_at": "2026-09-05T03:46:43.226Z",
+    "bytes": 10457,
+    "sha256": "8d73d659e9fa5f64a24499428e8a8599b160a954cb5ffb2aacac898ab19f200b",
+    "resolved_url": "https://www.mlit.go.jp/link.html"
+  },
+  {
+    "group": "02-mlit-attributes",
+    "path": "downloads/02-mlit-attributes/overview-v2.pdf",
+    "url": "https://www.mlit.go.jp/jutakukentiku/content/001993093.pdf",
+    "status": "saved",
+    "retrieved_at": "2026-09-05T03:46:43.075Z",
+    "bytes": 5775005,
+    "sha256": "402283ec27117c35b70c58fc0db307029e43183c3dca48caec50543f5a216099",
+    "resolved_url": "https://www.mlit.go.jp/jutakukentiku/content/001993093.pdf"
+  },
+  {
+    "group": "02-mlit-attributes",
+    "path": "downloads/02-mlit-attributes/source.html",
+    "url": "https://www.mlit.go.jp/jutakukentiku/kenchikuBIMsuishinkaigi.html",
+    "status": "saved",
+    "retrieved_at": "2026-09-05T03:46:40.751Z",
+    "bytes": 26141,
+    "sha256": "e3291853d5df6534d5bbedec4b720854525b45aaeddb9a300f735a48e933d0d1",
+    "resolved_url": "https://www.mlit.go.jp/jutakukentiku/kenchikuBIMsuishinkaigi.html"
+  },
+  {
+    "group": "03-blcj-mapping",
+    "path": "downloads/03-blcj-mapping/MEP_appended_doc.pdf",
+    "url": "https://blcj.or.jp/wp/wp-content/uploads/2024/08/MEP_appended_doc.pdf",
+    "status": "saved",
+    "retrieved_at": "2026-09-05T03:46:43.788Z",
+    "bytes": 1311472,
+    "sha256": "5e9ece7e1bd43fcaa3b334c1d6fbc853730457b339ae477712985cdd213e1a32",
+    "resolved_url": "https://blcj.or.jp/wp/wp-content/uploads/2024/08/MEP_appended_doc.pdf"
+  },
+  {
+    "group": "03-blcj-mapping",
+    "path": "downloads/03-blcj-mapping/source-and-terms.html",
+    "url": "https://blcj.or.jp/archive_index/samplemodel/",
+    "status": "saved",
+    "retrieved_at": "2026-09-05T03:46:43.524Z",
+    "bytes": 80713,
+    "sha256": "52195563468e925ae55eaf521208b6299c60ff09b28ad0e8a1096675a62388e8",
+    "resolved_url": "https://blcj.or.jp/archive_index/samplemodel/"
+  },
+  {
+    "group": "03-blcj-mapping",
+    "path": "downloads/03-blcj-mapping/サンプルモデルパラメータに関する補足説明資料【意匠】.pdf",
+    "url": "https://blcj.or.jp/wp/wp-content/uploads/2026/04/%E3%82%B5%E3%83%B3%E3%83%97%E3%83%AB%E3%83%A2%E3%83%87%E3%83%AB%E3%83%91%E3%83%A9%E3%83%A1%E3%83%BC%E3%82%BF%E3%81%AB%E9%96%A2%E3%81%99%E3%82%8B%E8%A3%9C%E8%B6%B3%E8%AA%AC%E6%98%8E%E8%B3%87%E6%96%99%E3%80%90%E6%84%8F%E5%8C%A0%E3%80%91.pdf",
+    "status": "saved",
+    "retrieved_at": "2026-09-05T03:46:43.723Z",
+    "bytes": 92258,
+    "sha256": "d709f4515788ed42f536986f8f70d1b3ce1a798a79bd65ce7640f89bc2ca045e",
+    "resolved_url": "https://blcj.or.jp/wp/wp-content/uploads/2026/04/%E3%82%B5%E3%83%B3%E3%83%97%E3%83%AB%E3%83%A2%E3%83%87%E3%83%AB%E3%83%91%E3%83%A9%E3%83%A1%E3%83%BC%E3%82%BF%E3%81%AB%E9%96%A2%E3%81%99%E3%82%8B%E8%A3%9C%E8%B6%B3%E8%AA%AC%E6%98%8E%E8%B3%87%E6%96%99%E3%80%90%E6%84%8F%E5%8C%A0%E3%80%91.pdf"
+  },
+  {
+    "group": "03-blcj-mapping",
+    "path": "downloads/03-blcj-mapping/ソフトウェアごとの用語読み替え表【意匠】.pdf",
+    "url": "https://blcj.or.jp/wp/wp-content/uploads/2026/04/%E3%82%BD%E3%83%95%E3%83%88%E3%82%A6%E3%82%A7%E3%82%A2%E3%81%94%E3%81%A8%E3%81%AE%E7%94%A8%E8%AA%9E%E8%AA%AD%E3%81%BF%E6%9B%BF%E3%81%88%E8%A1%A8%E3%80%90%E6%84%8F%E5%8C%A0%E3%80%91.pdf",
+    "status": "saved",
+    "retrieved_at": "2026-09-05T03:46:43.648Z",
+    "bytes": 186538,
+    "sha256": "3a1a93b129c09e6df489413e4f84bbab0a0753b294ef9b9258a58e509f22ec8e",
+    "resolved_url": "https://blcj.or.jp/wp/wp-content/uploads/2026/04/%E3%82%BD%E3%83%95%E3%83%88%E3%82%A6%E3%82%A7%E3%82%A2%E3%81%94%E3%81%A8%E3%81%AE%E7%94%A8%E8%AA%9E%E8%AA%AD%E3%81%BF%E6%9B%BF%E3%81%88%E8%A1%A8%E3%80%90%E6%84%8F%E5%8C%A0%E3%80%91.pdf"
+  },
+  {
+    "group": "03-blcj-mapping",
+    "path": "downloads/03-blcj-mapping/ソフトウェアごとの用語読み替え表【設備】.pdf",
+    "url": "https://blcj.or.jp/wp/wp-content/uploads/2026/04/%E3%82%BD%E3%83%95%E3%83%88%E3%82%A6%E3%82%A7%E3%82%A2%E3%81%94%E3%81%A8%E3%81%AE%E7%94%A8%E8%AA%9E%E8%AA%AD%E3%81%BF%E6%9B%BF%E3%81%88%E8%A1%A8%E3%80%90%E8%A8%AD%E5%82%99%E3%80%91.pdf",
+    "status": "saved",
+    "retrieved_at": "2026-09-05T03:46:43.698Z",
+    "bytes": 214262,
+    "sha256": "facb019051c084cd0416c38537c634420d9e83e104f2277aeecdcdaf8cbaca74",
+    "resolved_url": "https://blcj.or.jp/wp/wp-content/uploads/2026/04/%E3%82%BD%E3%83%95%E3%83%88%E3%82%A6%E3%82%A7%E3%82%A2%E3%81%94%E3%81%A8%E3%81%AE%E7%94%A8%E8%AA%9E%E8%AA%AD%E3%81%BF%E6%9B%BF%E3%81%88%E8%A1%A8%E3%80%90%E8%A8%AD%E5%82%99%E3%80%91.pdf"
+  },
+  {
+    "group": "04-buildingsmart-ids",
+    "path": "downloads/04-buildingsmart-ids/ids-repository.zip",
+    "url": "https://codeload.github.com/buildingSMART/IDS/zip/refs/heads/development",
+    "status": "saved",
+    "retrieved_at": "2026-09-05T03:46:49.475Z",
+    "bytes": 85321206,
+    "sha256": "5fe51d5447ccf6833c3f62176a11d4723fc6b5f389aecdd22445f28ce730f07f",
+    "resolved_url": "https://codeload.github.com/buildingSMART/IDS/zip/refs/heads/development"
+  },
+  {
+    "group": "05-ishigaki",
+    "path": "downloads/05-ishigaki/dataset-card.md",
+    "url": "https://huggingface.co/datasets/ONESTRUCTION/Ishigaki-IDS-Bench/raw/main/README.md",
+    "status": "saved",
+    "retrieved_at": "2026-09-05T03:46:49.760Z",
+    "bytes": 1786,
+    "sha256": "3cbfea9a4be83a2a528bdc56dac1bae9a6f6474854de1b98eade5e3ef8c81ae8",
+    "resolved_url": "https://huggingface.co/datasets/ONESTRUCTION/Ishigaki-IDS-Bench/raw/main/README.md"
+  },
+  {
+    "group": "05-ishigaki",
+    "path": "downloads/05-ishigaki/paper.pdf",
+    "url": "https://arxiv.org/pdf/2605.22079",
+    "status": "saved",
+    "retrieved_at": "2026-09-05T03:46:50.077Z",
+    "bytes": 5378466,
+    "sha256": "5110c673d9b5937941f210e3a163b2561000b1e3441b6fea9455c668d7e1c492",
+    "resolved_url": "https://arxiv.org/pdf/2605.22079"
+  },
+  {
+    "group": "05-ishigaki",
+    "path": "downloads/05-ishigaki/test.jsonl",
+    "url": "https://huggingface.co/datasets/ONESTRUCTION/Ishigaki-IDS-Bench/resolve/main/data/test.jsonl",
+    "status": "saved",
+    "retrieved_at": "2026-09-05T03:46:49.942Z",
+    "bytes": 854789,
+    "sha256": "38b734582e29ca0af7ddbd174f8b6ec01a36bd9b79d5c63b0335612f3524f831",
+    "resolved_url": "https://huggingface.co/api/resolve-cache/datasets/ONESTRUCTION/Ishigaki-IDS-Bench/168e45a0486dc1d419b03e8b6818580973e31ce6/data%2Ftest.jsonl?%2Fdatasets%2FONESTRUCTION%2FIshigaki-IDS-Bench%2Fresolve%2Fmain%2Fdata%2Ftest.jsonl=&etag=%22dd3bb3969ee3a18b67b7884ee8f88f578891cfdd%22"
+  },
+  {
+    "group": "06-bsj-civil",
+    "path": "downloads/06-bsj-civil/bsj-ids-repository.zip",
+    "url": "https://codeload.github.com/buildingSMART-Japan/bSJ_IDS/zip/refs/heads/main",
+    "status": "saved",
+    "retrieved_at": "2026-09-05T03:46:51.396Z",
+    "bytes": 17366541,
+    "sha256": "a6aad96cdc2330073f0bff3d54af208ee48bb1a96c08742e9860f495997568c8",
+    "resolved_url": "https://codeload.github.com/buildingSMART-Japan/bSJ_IDS/zip/refs/heads/main"
+  }
+]

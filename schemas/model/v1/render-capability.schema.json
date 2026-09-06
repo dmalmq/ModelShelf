@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "render-capability.schema.json",
+  "title": "RenderCapability",
+  "description": "Whether a revision's render artifact is available, deliberately absent, unsupported by the source format, or failed to produce. These four states are mutually exclusive by construction: a payload can satisfy at most one branch. Geometric emptiness (absent), an unsupported conversion, and a processing failure are distinguishable states, not folded into one.",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "artifactVersion", "contentHash", "format", "primitiveCount"],
+      "properties": {
+        "status": { "const": "available" },
+        "artifactVersion": { "type": "string", "minLength": 1 },
+        "contentHash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "format": { "enum": ["prepared-scene-v1"] },
+        "primitiveCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": { "const": "absent" }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason"],
+      "properties": {
+        "status": { "const": "unsupported" },
+        "reason": { "type": "string", "minLength": 1 }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "error"],
+      "properties": {
+        "status": { "const": "failed" },
+        "error": { "type": "string", "minLength": 1 }
+      }
+    }
+  ]
+}

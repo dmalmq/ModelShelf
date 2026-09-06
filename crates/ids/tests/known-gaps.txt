@@ -1,0 +1,35 @@
+# Known conformance gaps against the official buildingSMART IDS test corpus.
+# Format: <facet>/<file> - reason
+# The harness fails if a listed case starts conforming, so this file cannot rot into an
+# alibi. Current rate is printed by `cargo test -p ids -- --nocapture`.
+#
+# None of these gaps make the engine claim a pass it cannot justify: each one is either a
+# missing schema-derived detail (reported as review-incomplete) or an over-permissive
+# aggregate rule, both recorded in docs/limitations.md.
+
+attribute/pass-integers_follow_the_same_rules_as_numbers.ids - IfcStairFlight.NumberOfRisers is spelled NumberOfRiser in the IFC4 schema tables; the corpus uses the IFC4X3 spelling, which this reader has no tables for, so the attribute is reported unreadable instead of guessed
+
+classification/fail-both_system_and_value_must_match__all__not_any__if_specified_2_2.ids - system and value are matched per reference but a value match is accepted from any reference that passed the system filter; tightening this needs per-reference pairing
+
+entity/pass-in_ifc2x3_a_user_defined_airterminal_predefined_type_resolves_via_the_type_mapping_table_1_2.ids - IFC2x3 occurrence-to-type mapping table (IfcAirTerminalType -> IfcAirTerminal) is not implemented
+entity/pass-in_ifc2x3_an_airterminal_can_be_checked_by_name_via_the_type_mapping_table_1_2.ids - same IFC2x3 type mapping table
+entity/pass-in_ifc2x3_an_airterminal_predefined_type_resolves_via_the_type_mapping_table_1_2.ids - same IFC2x3 type mapping table
+entity/pass-in_ifc2x3_there_must_be_an_airterminal_per_the_type_mapping_table_1_2.ids - same IFC2x3 type mapping table
+
+entity/pass-userdefined_predefined_types_may_be_specified.ids - requiring the literal USERDEFINED cannot be distinguished from requiring the user label once the label has been resolved
+
+ids/pass-optional_specifications_may_still_pass_if_nothing_is_applicable.ids - an optional specification with nothing applicable is reported as NotApplicable rather than Pass, because the scorecard needs that distinction; the harness treats it as a non-failure
+
+material/pass-any_profile_category_in_a_profile_set_will_pass_a_value_check.ids - IfcMaterialProfile.Category is read from the profile, not propagated from the referenced IfcMaterial category
+
+property/fail-all_matching_property_sets_must_satisfy_requirements_2_3.ids - property-set name restrictions match any satisfying set rather than requiring every matching set to satisfy
+property/fail-any_matching_value_in_a_bounded_property_will_pass_4_4.ids - a plain value is checked against the bounded range, which accepts a value inside the range even when the corpus expects an exact-value match
+property/pass-any_matching_value_in_a_table_property_will_pass_2_3.ids - table properties expose defining and defined values without per-column data types
+property/pass-material_properties_are_supported_under_ifc2x3_via_extendedmaterialproperties.ids - material property sets are not propagated from a material to the objects made of it
+property/pass-material_properties_are_supported_under_ifc4_via_ifcmaterialproperties.ids - material property sets are not propagated from a material to the objects made of it
+property/pass-predefined_properties_are_supported_but_discouraged_1_2.ids - predefined property sets expose values but not their declared enumeration data types, so a dataType requirement cannot be verified
+
+tolerance/pass-comparison_tolerance_for_floating_point_negative_high_number_lower_bound.ids - boundary value sits one floating-point step outside the computed tolerance envelope
+tolerance/pass-comparison_tolerance_for_floating_point_negative_high_number_upper_bound.ids - boundary value sits one floating-point step outside the computed tolerance envelope
+tolerance/pass-comparison_tolerance_for_floating_point_negative_one_lower_bound.ids - boundary value sits one floating-point step outside the computed tolerance envelope
+tolerance/pass-comparison_tolerance_for_floating_point_one_upper_bound.ids - boundary value sits one floating-point step outside the computed tolerance envelope

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "model-v1",
+  "revisionId": "rev-arch-01",
+  "format": "prepared-scene-v1",
+  "instances": [
+    {
+      "instanceId": "inst-0",
+      "ref": { "revisionId": "rev-arch-01", "objectId": "occ_823c7adb931b5478" },
+      "boundingBox": { "min": [0.0, 0.0, 0.0], "max": [5.0, 0.2, 3.0] }
+    },
+    {
+      "instanceId": "inst-1",
+      "ref": { "revisionId": "rev-arch-01", "objectId": "occ_afa026f8d495334e" },
+      "boundingBox": { "min": [5.0, 0.0, 0.0], "max": [10.0, 0.2, 3.0] }
+    },
+    {
+      "instanceId": "inst-2",
+      "ref": { "revisionId": "rev-arch-01", "objectId": "occ_d2ab4477714b5627" },
+      "boundingBox": { "min": [2.0, 0.0, 0.0], "max": [2.9, 0.2, 2.134] }
+    }
+  ]
+}

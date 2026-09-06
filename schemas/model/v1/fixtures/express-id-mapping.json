@@ -1,0 +1,10 @@
+{
+  "algorithm": "objectId = \"occ_\" + sha256(f\"{revisionId}:{expressId}\").hexdigest()[:16]",
+  "cases": [
+    { "revisionId": "rev-arch-01", "expressId": 1, "objectId": "occ_823c7adb931b5478" },
+    { "revisionId": "rev-arch-01", "expressId": 482, "objectId": "occ_afa026f8d495334e" },
+    { "revisionId": "rev-arch-01", "expressId": 999999, "objectId": "occ_d2ab4477714b5627" },
+    { "revisionId": "rev-struct-07", "expressId": 1, "objectId": "occ_193d6ed78f1bfe5b" },
+    { "revisionId": "rev-struct-07", "expressId": 482, "objectId": "occ_5bce3f686db15a7e" }
+  ]
+}

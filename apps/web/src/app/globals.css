@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme {
+  /* Dark-neutral inspection-console surface with a single accent. Severity and
+     change-kind colours intentionally live ONLY in src/lib/palette.ts and are
+     applied inline — never through theme tokens — so there is one source. */
+  --color-surface: #0b0b0d;
+  --color-panel: #131316;
+  --color-panel-raised: #1a1a1f;
+  --color-edge: #26262c;
+  --color-edge-strong: #3a3a42;
+  --color-ink: #e4e4e7;
+  --color-ink-dim: #a1a1aa;
+  --color-ink-faint: #71717a;
+  --color-accent: #2dd4bf;
+  --color-accent-dim: #134e4a;
+  --color-danger: #f87171;
+  --font-mono: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+/* Quiet, consistent focus ring for keyboard navigation. */
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 1px;
+  border-radius: 2px;
+}
+
+/* Thin scrollbars suit the dense two-pane layouts. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-edge-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-edge-strong);
+  border-radius: 4px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
