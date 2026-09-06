@@ -1,0 +1,12 @@
+/target
+node_modules
+.next
+out
+/data
+/.local
+/samples/ifc/*.ifc
+/samples/ifc/*.ifczip
+.env*.local
+*.tsbuildinfo
+next-env.d.ts
+.DS_Store
