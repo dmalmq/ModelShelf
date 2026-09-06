@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from ifc_worker.protocol import Request
 
 VALID_INSPECT_REQUEST = {
-    "protocolVersion": 1,
+    "protocolVersion": 2,
     "jobId": "job-1",
     "operation": "inspect",
     "model": {"path": "/data/a.ifc", "sha256": "0" * 64, "revisionId": "revision-1"},

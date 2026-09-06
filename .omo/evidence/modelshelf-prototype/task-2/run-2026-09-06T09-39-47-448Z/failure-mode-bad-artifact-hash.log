@@ -1,0 +1,2 @@
+[2m2026-09-06T09:39:48.736348Z[0m [32m INFO[0m [2mmodelshelf_checker[0m[2m:[0m modelshelf-checker listening [3maddr[0m[2m=[0m127.0.0.1:36769
+[2m2026-09-06T09:39:48.967694Z[0m [33m WARN[0m [2mmodelshelf_checker::jobs[0m[2m:[0m ingestion job failed [3mjob_id[0m[2m=[0m"540a5ad8-0311-43ec-b22c-be7e0e2f114a" [3merror[0m[2m=[0mobjects artifact content hash does not match the manifest

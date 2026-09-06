@@ -4,16 +4,19 @@
 //!   modelshelf-checker serve [--port 8787] [--data-dir ./data]
 //!   modelshelf-checker seed  [--data-dir ./data] [--packs-dir packs] [--samples-dir samples/ifc]
 //!
-//! Contract: docs/contracts/http-api.md + services/checker/migrations/0001_init.sql.
+//! Contract: docs/contracts/http-api.md + services/checker/migrations/*.sql.
 
 mod db;
 mod diff;
 mod dto;
 mod error;
 mod ids_meta;
+mod jobs;
+mod migrate_v2;
 mod routes;
 mod run;
 mod seed;
+mod sources;
 mod state;
 mod upload;
 
@@ -50,6 +53,7 @@ fn main() {
         "serve" => {
             let mut port: u16 = 8787;
             let mut data_dir = PathBuf::from("./data");
+            let mut worker_command = jobs::DEFAULT_WORKER_COMMAND.to_owned();
             let mut rest = &args[1..];
             while let Some((flag, tail)) = rest.split_first() {
                 match flag.as_str() {
@@ -72,13 +76,21 @@ fn main() {
                         data_dir = PathBuf::from(value);
                         rest = t2;
                     }
+                    "--worker-command" => {
+                        let Some((value, t2)) = tail.split_first() else {
+                            eprintln!("--worker-command needs a value");
+                            usage_and_exit(2);
+                        };
+                        worker_command = value.clone();
+                        rest = t2;
+                    }
                     other => {
                         eprintln!("unknown flag: {other}");
                         usage_and_exit(2);
                     }
                 }
             }
-            rt.block_on(serve(port, data_dir))
+            rt.block_on(serve(port, data_dir, worker_command))
         }
         "seed" => {
             let mut data_dir = PathBuf::from("./data");
@@ -121,7 +133,7 @@ fn print_usage() {
         "modelshelf-checker\n\
          \n\
          USAGE:\n\
-         \x20 modelshelf-checker serve [--port 8787] [--data-dir ./data]\n\
+         \x20 modelshelf-checker serve [--port 8787] [--data-dir ./data] [--worker-command <template>]\n\
          \x20 modelshelf-checker seed  [--data-dir ./data] [--packs-dir packs] [--samples-dir samples/ifc]"
     );
 }
@@ -133,20 +145,24 @@ fn usage_and_exit(code: i32) -> ! {
 
 pub fn build_router(state: AppState) -> axum::Router {
     routes::router()
+        // axum's Multipart extractor enforces its own 2 MiB default independently of
+        // RequestBodyLimitLayer below; a real IFC upload is routinely larger than that.
+        .layer(axum::extract::DefaultBodyLimit::max(MAX_BODY_BYTES))
         .layer(RequestBodyLimitLayer::new(MAX_BODY_BYTES))
         .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http())
         .with_state(state)
 }
 
-async fn serve(port: u16, data_dir: PathBuf) -> i32 {
+async fn serve(port: u16, data_dir: PathBuf, worker_command: String) -> i32 {
     let state = match AppState::open(&data_dir).await {
-        Ok(state) => state,
+        Ok(state) => state.with_worker_command(worker_command),
         Err(err) => {
             eprintln!("failed to open data dir {}: {err:#}", data_dir.display());
             return 1;
         }
     };
+    jobs::spawn_worker(state.clone());
     let app = build_router(state);
     let addr = SocketAddr::from(([127, 0, 0, 1], port));
     let listener = match tokio::net::TcpListener::bind(addr).await {

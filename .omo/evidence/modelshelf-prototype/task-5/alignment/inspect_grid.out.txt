@@ -1,0 +1,64 @@
+
+=== architecture ===
+grid count: 6
+grid placement: <error> could not broadcast input array from shape (4,) into shape (3,)
+  U axes (first 8 tags): ['X1', 'X2', 'X3']
+  V axes (first 8 tags): ['Y1', 'Y2', 'Y3', 'Y4']
+grid placement: <error> could not broadcast input array from shape (4,) into shape (3,)
+  U axes (first 8 tags): ['X1', 'X2', 'X3']
+  V axes (first 8 tags): ['Y1', 'Y2', 'Y3', 'Y4']
+grid placement: <error> could not broadcast input array from shape (4,) into shape (3,)
+  U axes (first 8 tags): ['X1', 'X2', 'X3']
+  V axes (first 8 tags): ['Y1', 'Y2', 'Y3', 'Y4']
+grid placement: <error> could not broadcast input array from shape (4,) into shape (3,)
+  U axes (first 8 tags): ['X1', 'X2', 'X3']
+  V axes (first 8 tags): ['Y1', 'Y2', 'Y3', 'Y4']
+grid placement: <error> could not broadcast input array from shape (4,) into shape (3,)
+  U axes (first 8 tags): ['X1', 'X2', 'X3']
+  V axes (first 8 tags): ['Y1', 'Y2', 'Y3', 'Y4']
+grid placement: <error> could not broadcast input array from shape (4,) into shape (3,)
+  U axes (first 8 tags): ['X1', 'X2', 'X3']
+  V axes (first 8 tags): ['Y1', 'Y2', 'Y3', 'Y4']
+column count: 93
+  column □-400×400×16.0 abs translation: [13000.     0.     0.]
+  column □-400×400×16.0 abs translation: [4200.    0.    0.]
+  column □-400×400×16.0 abs translation: [4200. 6400.    0.]
+  column □-400×400×16.0 abs translation: [13000.  6400.     0.]
+  column □-400×400×16.0 abs translation: [13000. 19200.     0.]
+  column □-400×400×16.0 abs translation: [13000. 12800.     0.]
+  column □-400×400×16.0 abs translation: [ 4200. 12800.     0.]
+  column □-400×400×16.0 abs translation: [ 4200. 19200.     0.]
+
+=== structure ===
+grid count: 6
+grid placement translation: [-1000. -1000.  -100.]
+  U axes (first 8 tags): ['Y0', 'Y1', 'Y1', 'Y1', 'Y1', 'Y1a', 'Y2', 'Y2']
+  V axes (first 8 tags): ['X0', 'X1', 'X1', 'X1', 'X1', 'X1', 'X1a', 'X1a']
+grid placement translation: [-1000. -1000.     0.]
+  U axes (first 8 tags): ['Y0', 'Y1', 'Y1', 'Y1', 'Y1', 'Y1a', 'Y2', 'Y2']
+  V axes (first 8 tags): ['X0', 'X1', 'X1', 'X1', 'X1', 'X1', 'X1a', 'X1a']
+grid placement translation: [-1000. -1000.  4500.]
+  U axes (first 8 tags): ['Y0', 'Y1', 'Y1', 'Y1', 'Y1', 'Y1a', 'Y2', 'Y2']
+  V axes (first 8 tags): ['X0', 'X1', 'X1', 'X1', 'X1', 'X1', 'X1a', 'X1a']
+grid placement translation: [-1000. -1000.  8500.]
+  U axes (first 8 tags): ['Y0', 'Y1', 'Y1', 'Y1', 'Y1', 'Y1a', 'Y2', 'Y2']
+  V axes (first 8 tags): ['X0', 'X1', 'X1', 'X1', 'X1', 'X1', 'X1a', 'X1a']
+grid placement translation: [-1000. -1000. 12500.]
+  U axes (first 8 tags): ['Y0', 'Y1', 'Y1', 'Y1', 'Y1', 'Y1a', 'Y2', 'Y2']
+  V axes (first 8 tags): ['X0', 'X1', 'X1', 'X1', 'X1', 'X1', 'X1a', 'X1a']
+grid placement translation: [-1000. -1000. 15950.]
+  U axes (first 8 tags): ['Y0', 'Y1', 'Y1', 'Y1', 'Y1', 'Y1a', 'Y2', 'Y2']
+  V axes (first 8 tags): ['X0', 'X1', 'X1', 'X1', 'X1', 'X1', 'X1a', 'X1a']
+column count: 71
+  column S_C_Box_roll:1C2:105528 abs translation: [0. 0. 0.]
+  column S_C_Box_roll:2C2:105531 abs translation: [0. 0. 0.]
+  column S_C_Box_roll:3C2:105534 abs translation: [0. 0. 0.]
+  column S_C_Box_roll:1C1:105537 abs translation: [4200.    0.    0.]
+  column S_C_Box_roll:2C1:105540 abs translation: [4200.    0.    0.]
+  column S_C_Box_roll:3C1:105543 abs translation: [4200.    0.    0.]
+  column S_C_Box_roll:1C1:105546 abs translation: [13000.     0.     0.]
+  column S_C_Box_roll:2C1:105548 abs translation: [13000.     0.     0.]
+
+=== mep ===
+grid count: 0
+column count: 0

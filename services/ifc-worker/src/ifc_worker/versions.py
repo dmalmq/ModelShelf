@@ -8,7 +8,7 @@ import ifcopenshell
 import ifctester
 
 WORKER_VERSION = "0.1.0"
-EXTRACTION_VERSION = "inspect-v1"
+EXTRACTION_VERSION = "inspect-v2"
 SCOPE_SEMANTICS_VERSION = "ids-scope-v1"
 
 

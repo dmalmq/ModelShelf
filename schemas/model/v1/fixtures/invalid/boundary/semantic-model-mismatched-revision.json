@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "model-v1",
+  "revisionId": "rev-arch-01",
+  "objects": [
+    {
+      "ref": { "revisionId": "rev-other-01", "objectId": "occ_823c7adb931b5478" },
+      "classification": "IfcWallStandardCase",
+      "properties": [
+        { "pset": "Pset_WallCommon", "name": "IsExternal", "values": [{ "value": true }], "ordered": true, "origin": "occurrence" }
+      ]
+    }
+  ]
+}

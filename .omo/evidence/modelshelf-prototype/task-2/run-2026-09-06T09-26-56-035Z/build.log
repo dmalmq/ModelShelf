@@ -1,0 +1,164 @@
+warning: method `is_product` is never used
+   --> crates/ifc-model/src/lib.rs:730:8
+    |
+432 | impl IfcModel {
+    | ------------- method in this implementation
+...
+730 |     fn is_product(&self, e: &Entity) -> bool {
+    |        ^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `ifc-model` (lib) generated 1 warning
+warning: use of deprecated method `quick_xml::events::attributes::Attribute::<'a>::unescape_value`: use `Self::normalized_value()`
+   --> crates/ids/src/xml.rs:111:14
+    |
+111 |             .unescape_value()
+    |              ^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+
+warning: variable does not need to be mutable
+   --> crates/ids/src/lib.rs:606:9
+    |
+606 |     let mut patterns: Vec<String> = Vec::new();
+    |         ----^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: `ids` (lib) generated 2 warnings (run `cargo fix --lib -p ids` to apply 1 suggestion)
+warning: field `run_id` is never read
+   --> services/checker/src/dto.rs:197:9
+    |
+195 | pub struct RunSpecRow {
+    |            ---------- field in this struct
+196 |     pub id: String,
+197 |     pub run_id: String,
+    |         ^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: fields `run_id` and `sort_index` are never read
+   --> services/checker/src/dto.rs:211:9
+    |
+209 | pub struct FindingRow {
+    |            ---------- fields in this struct
+210 |     pub id: String,
+211 |     pub run_id: String,
+    |         ^^^^^^
+...
+225 |     pub sort_index: i64,
+    |         ^^^^^^^^^^
+
+warning: field `finding_id` is never read
+   --> services/checker/src/dto.rs:230:9
+    |
+229 | pub struct FindingObjectRow {
+    |            ---------------- field in this struct
+230 |     pub finding_id: String,
+    |         ^^^^^^^^^^
+
+warning: function `run_extras` is never used
+   --> services/checker/src/dto.rs:875:14
+    |
+875 | pub async fn run_extras(pool: &sqlx::SqlitePool, run_id: &str) -> Result<(i64, i64), sqlx::Error> {
+    |              ^^^^^^^^^^
+
+warning: function `run_summary_for` is never used
+   --> services/checker/src/dto.rs:893:14
+    |
+893 | pub async fn run_summary_for(pool: &sqlx::SqlitePool, row: &RunRow) -> Result<RunSummary, sqlx::Error> {
+    |              ^^^^^^^^^^^^^^^
+
+warning: function `object_row_json` is never used
+   --> services/checker/src/dto.rs:898:8
+    |
+898 | pub fn object_row_json(row: &ObjectRowDb) -> ObjectRowOut {
+    |        ^^^^^^^^^^^^^^^
+
+warning: function `finding_object_json` is never used
+   --> services/checker/src/dto.rs:921:8
+    |
+921 | pub fn finding_object_json(row: &FindingObjectRow) -> FindingObject {
+    |        ^^^^^^^^^^^^^^^^^^^
+
+warning: function `finding_json` is never used
+   --> services/checker/src/dto.rs:936:8
+    |
+936 | pub fn finding_json(row: &FindingRow, sample_objects: Vec<FindingObject>) -> Finding {
+    |        ^^^^^^^^^^^^
+
+warning: function `spec_row_json` is never used
+   --> services/checker/src/dto.rs:956:8
+    |
+956 | pub fn spec_row_json(row: &RunSpecRow) -> SpecResultRowOut {
+    |        ^^^^^^^^^^^^^
+
+warning: function `facet_kind_name` is never used
+   --> services/checker/src/dto.rs:975:8
+    |
+975 | pub fn facet_kind_name(kind: ids::FacetKind) -> &'static str {
+    |        ^^^^^^^^^^^^^^^
+
+warning: function `outcome_name` is never used
+   --> services/checker/src/dto.rs:986:8
+    |
+986 | pub fn outcome_name(outcome: ids::Outcome) -> &'static str {
+    |        ^^^^^^^^^^^^
+
+warning: function `change_kind_name` is never used
+   --> services/checker/src/dto.rs:995:8
+    |
+995 | pub fn change_kind_name(kind: modeldiff::ChangeKind) -> &'static str {
+    |        ^^^^^^^^^^^^^^^^
+
+warning: function `finding_delta_name` is never used
+    --> services/checker/src/dto.rs:1007:8
+     |
+1007 | pub fn finding_delta_name(delta: modeldiff::FindingDelta) -> &'static str {
+     |        ^^^^^^^^^^^^^^^^^^
+
+warning: function `finding_key` is never used
+    --> services/checker/src/dto.rs:1017:8
+     |
+1017 | pub fn finding_key(spec_key: &str, facet: &str, requirement: &str) -> String {
+     |        ^^^^^^^^^^^
+
+warning: function `make_ids` is never used
+    --> services/checker/src/dto.rs:1027:8
+     |
+1027 | pub fn make_ids(spec_key_count: usize) -> Vec<String> {
+     |        ^^^^^^^^
+
+warning: function `timestamp_now` is never used
+    --> services/checker/src/dto.rs:1031:8
+     |
+1031 | pub fn timestamp_now() -> String {
+     |        ^^^^^^^^^^^^^
+
+warning: field `notes` is never read
+  --> services/checker/src/ids_meta.rs:44:9
+   |
+42 | pub struct PackMetadata {
+   |            ------------ field in this struct
+43 |     #[serde(default)]
+44 |     pub notes: Option<String>,
+   |         ^^^^^
+   |
+   = note: `PackMetadata` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: field `note` is never read
+  --> services/checker/src/ids_meta.rs:61:9
+   |
+55 | pub struct Triage {
+   |            ------ field in this struct
+...
+61 |     pub note: Option<String>,
+   |         ^^^^
+   |
+   = note: `Triage` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: `modelshelf-checker` (bin "modelshelf-checker") generated 18 warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.07s

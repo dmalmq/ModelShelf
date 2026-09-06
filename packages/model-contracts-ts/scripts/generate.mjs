@@ -17,6 +17,7 @@ const ROOTS = [
   ["model-descriptor.schema.json", "model-descriptor.ts"],
   ["semantic-model.schema.json", "semantic-model.ts"],
   ["render-manifest.schema.json", "render-manifest.ts"],
+  ["geometry-chunk.schema.json", "geometry-chunk.ts"],
 ];
 
 async function generateInto(outDir) {

@@ -1,8 +1,11 @@
-//! Shared service state: the SQLite pool and the content-addressed blob store.
+//! Shared service state: the SQLite pool, the content-addressed blob store, and
+//! the ingestion job queue's shared handles.
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use sqlx::SqlitePool;
+use tokio::sync::Notify;
 
 use crate::error::ApiError;
 
@@ -10,13 +13,32 @@ use crate::error::ApiError;
 pub struct AppState {
     pub pool: SqlitePool,
     pub data_dir: PathBuf,
+    /// Shell command template for invoking the IFC worker; `{request}` is
+    /// replaced with the absolute path to that job's request.json. Overridable
+    /// (see `main.rs`'s `--worker-command`) so tests can substitute a fake
+    /// worker that misbehaves in specific, controlled ways.
+    pub worker_command: String,
+    /// Wakes the background job worker (`jobs::spawn_worker`) as soon as a job
+    /// is enqueued or retried, instead of making it poll on a fixed interval.
+    pub job_notify: Arc<Notify>,
 }
 
 impl AppState {
     pub async fn open(data_dir: &Path) -> anyhow::Result<AppState> {
         tokio::fs::create_dir_all(data_dir).await?;
         let pool = crate::db::open(data_dir).await?;
-        Ok(AppState { pool, data_dir: data_dir.to_path_buf() })
+        crate::db::recover_interrupted_jobs(&pool).await?;
+        Ok(AppState {
+            pool,
+            data_dir: data_dir.to_path_buf(),
+            worker_command: crate::jobs::DEFAULT_WORKER_COMMAND.to_owned(),
+            job_notify: Arc::new(Notify::new()),
+        })
+    }
+
+    pub fn with_worker_command(mut self, worker_command: String) -> Self {
+        self.worker_command = worker_command;
+        self
     }
 
     pub fn blob_path(&self, sha256: &str) -> PathBuf {

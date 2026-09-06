@@ -55,7 +55,7 @@ def worker_run() -> type[WorkerRun]:
 
 def write_request(path: Path, **overrides: Any) -> Path:  # noqa: ANN401 - overlays arbitrary JSON-shaped request fields
     payload: dict[str, Any] = {
-        "protocolVersion": 1,
+        "protocolVersion": 2,
         "jobId": "test-job",
         "operation": "inspect",
         "model": {},

@@ -80,3 +80,45 @@ def test_volume_quantity_resolves_to_si(ifc_file: ifcopenshell.file) -> None:
     assert resolved.dimension == "volume"
     assert resolved.original_unit == "m3"
     assert resolved.si_multiplier == pytest.approx(1.0)
+
+
+def test_explicit_metre_property_in_millimetre_project_is_not_scaled_as_mm(tmp_path: Path) -> None:
+    from tests.ifc_fixtures import write_explicit_metre_property_in_millimetre_project
+
+    path = write_explicit_metre_property_in_millimetre_project(tmp_path / "explicit-m.ifc")
+    ifc_file = ifcopenshell.open(str(path))
+    prop = ifc_file.by_type("IfcPropertySingleValue")[0]
+    resolved = resolve_measure_unit(prop.NominalValue.is_a(), prop, ifc_file)
+    assert resolved.dimension == "length"
+    assert resolved.original_unit == "m"
+    assert resolved.si_multiplier == pytest.approx(1.0)
+    assert prop.NominalValue.wrappedValue * resolved.si_multiplier == pytest.approx(2.0)
+
+
+def test_context_dependent_unit_keeps_raw_value_without_invented_si(tmp_path: Path) -> None:
+    from tests.ifc_fixtures import write_context_dependent_unit_property
+
+    path = write_context_dependent_unit_property(tmp_path / "mystery.ifc")
+    ifc_file = ifcopenshell.open(str(path))
+    prop = ifc_file.by_type("IfcPropertySingleValue")[0]
+    resolved = resolve_measure_unit(prop.NominalValue.is_a(), prop, ifc_file)
+    assert resolved.si_multiplier is None
+    assert resolved.dimension is None
+    assert resolved.original_unit is not None
+    assert "mystery" in resolved.original_unit.lower()
+
+
+def test_explicit_square_and_cubic_metres_in_millimetre_project(tmp_path: Path) -> None:
+    from tests.ifc_fixtures import write_explicit_area_and_volume
+
+    path = write_explicit_area_and_volume(tmp_path / "area-vol.ifc")
+    ifc_file = ifcopenshell.open(str(path))
+    by_name = {prop.Name: prop for prop in ifc_file.by_type("IfcPropertySingleValue")}
+    area = resolve_measure_unit(by_name["NetArea"].NominalValue.is_a(), by_name["NetArea"], ifc_file)
+    volume = resolve_measure_unit(by_name["NetVolume"].NominalValue.is_a(), by_name["NetVolume"], ifc_file)
+    assert area.dimension == "area"
+    assert area.si_multiplier == pytest.approx(1.0)
+    assert by_name["NetArea"].NominalValue.wrappedValue * area.si_multiplier == pytest.approx(4.0)
+    assert volume.dimension == "volume"
+    assert volume.si_multiplier == pytest.approx(1.0)
+    assert by_name["NetVolume"].NominalValue.wrappedValue * volume.si_multiplier == pytest.approx(8.0)

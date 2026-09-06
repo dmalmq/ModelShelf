@@ -1,0 +1,2 @@
+2026-09-06T22:13:11.187698Z  INFO modelshelf_checker: modelshelf-checker listening addr=127.0.0.1:45437
+2026-09-06T22:13:11.411050Z  WARN modelshelf_checker::jobs: ingestion job failed job_id="f247592d-7c17-482b-b91b-2b0c4f0f4d52" error=worker reported job id "not-f247592d-7c17-482b-b91b-2b0c4f0f4d52" on line 1, expected "f247592d-7c17-482b-b91b-2b0c4f0f4d52"

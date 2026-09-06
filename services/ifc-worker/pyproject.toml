@@ -39,3 +39,5 @@ select = ["ALL"]
 # - S101: assert is pytest's actual assertion mechanism in tests/.
 # - COM812: conflicts with the ruff formatter (ruff's own warning).
 ignore = ["D", "CPY001", "N815", "T201", "S101", "COM812"]
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["PLR2004", "PLR0915", "PLC0415", "PT018", "TC003", "FBT003", "E501"]

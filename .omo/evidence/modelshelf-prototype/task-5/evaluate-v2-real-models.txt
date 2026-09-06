@@ -1,0 +1,98 @@
+warning: method `is_product` is never used
+   --> crates/ifc-model/src/lib.rs:730:8
+    |
+432 | impl IfcModel {
+    | ------------- method in this implementation
+...
+730 |     fn is_product(&self, e: &Entity) -> bool {
+    |        ^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `ifc-model` (lib) generated 1 warning
+warning: use of deprecated method `quick_xml::events::attributes::Attribute::<'a>::unescape_value`: use `Self::normalized_value()`
+   --> crates/ids/src/xml.rs:111:14
+    |
+111 |             .unescape_value()
+    |              ^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+
+warning: variable does not need to be mutable
+   --> crates/ids/src/lib.rs:606:9
+    |
+606 |     let mut patterns: Vec<String> = Vec::new();
+    |         ----^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: `ids` (lib) generated 2 warnings (run `cargo fix --lib -p ids` to apply 1 suggestion)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.02s
+     Running `target/debug/examples/evaluate_pack packs/demo/blcj-s1000-v2.ids samples/ifc/blcj-s1000-architecture.ifc samples/ifc/blcj-s1000-structure.ifc samples/ifc/blcj-s1000-mep.ifc`
+pack: packs/demo/blcj-s1000-v2.ids (11 specification(s))
+
+== samples/ifc/blcj-s1000-architecture.ifc (2184 products) ==
+  [Fail] Room has a reference code — applicable=60 pass=30 fail=30 incomplete=0
+      e.g. #15058 IFCSPACE Some("") — expected Some("Pset_SpaceCommon.Reference populated"), actual Some("(empty)")
+      e.g. #15170 IFCSPACE Some("") — expected Some("Pset_SpaceCommon.Reference populated"), actual Some("(empty)")
+      e.g. #15205 IFCSPACE Some("") — expected Some("Pset_SpaceCommon.Reference populated"), actual Some("(empty)")
+  [Pass] Room records a net floor area — applicable=60 pass=60 fail=0 incomplete=0
+  [Pass] Room records a ceiling height — applicable=60 pass=60 fail=0 incomplete=0
+  [Fail] Door or window has a schedule reference — applicable=78 pass=74 fail=4 incomplete=0
+      e.g. #769064 IFCWINDOW Some("w600h600_パネル") — expected Some("one of [Pset_DoorCommon, Pset_WindowCommon].Reference"), actual Some("(missing)")
+      e.g. #769229 IFCWINDOW Some("w600h600_パネル") — expected Some("one of [Pset_DoorCommon, Pset_WindowCommon].Reference"), actual Some("(missing)")
+      e.g. #771738 IFCWINDOW Some("w1800h600_パネル") — expected Some("one of [Pset_DoorCommon, Pset_WindowCommon].Reference"), actual Some("(missing)")
+  [Fail] Door or window declares a fire rating — applicable=78 pass=0 fail=78 incomplete=0
+      e.g. #14176 IFCDOOR Some("片開き扉") — expected Some("one of [Pset_DoorCommon, Pset_WindowCommon].FireRating"), actual Some("(missing)")
+      e.g. #14472 IFCDOOR Some("片引き戸") — expected Some("one of [Pset_DoorCommon, Pset_WindowCommon].FireRating"), actual Some("(missing)")
+      e.g. #15556 IFCWINDOW Some("給気横ガラリ") — expected Some("one of [Pset_DoorCommon, Pset_WindowCommon].FireRating"), actual Some("(missing)")
+  [Fail] Structural column is load-bearing — applicable=93 pass=81 fail=12 incomplete=0
+      e.g. #653728 IFCCOLUMN Some("750×825") — expected Some("Pset_ColumnCommon.LoadBearing"), actual Some("(missing)")
+      e.g. #653741 IFCCOLUMN Some("900×900") — expected Some("Pset_ColumnCommon.LoadBearing"), actual Some("(missing)")
+      e.g. #653753 IFCCOLUMN Some("900×900") — expected Some("Pset_ColumnCommon.LoadBearing"), actual Some("(missing)")
+  [Fail] Structural column has a member mark — applicable=93 pass=81 fail=12 incomplete=0
+      e.g. #653728 IFCCOLUMN Some("750×825") — expected Some("Pset_ColumnCommon.Reference"), actual Some("(missing)")
+      e.g. #653741 IFCCOLUMN Some("900×900") — expected Some("Pset_ColumnCommon.Reference"), actual Some("(missing)")
+      e.g. #653753 IFCCOLUMN Some("900×900") — expected Some("Pset_ColumnCommon.Reference"), actual Some("(missing)")
+  [Pass] Structural beam records its span — applicable=205 pass=205 fail=0 incomplete=0
+  [Fail] Structural slab is load-bearing — applicable=27 pass=17 fail=10 incomplete=0
+      e.g. #23685 IFCSLAB Some("") — expected Some("Pset_SlabCommon.LoadBearing"), actual Some("(missing)")
+      e.g. #23699 IFCSLAB Some("") — expected Some("Pset_SlabCommon.LoadBearing"), actual Some("(missing)")
+      e.g. #425696 IFCSLAB Some("") — expected Some("Pset_SlabCommon.LoadBearing"), actual Some("(missing)")
+  [NotApplicable] MEP flow segment records its usage — applicable=0 pass=0 fail=0 incomplete=0
+  [NotApplicable] MEP flow segment records its outer diameter — applicable=0 pass=0 fail=0 incomplete=0
+  totals: pass=608 fail=146 not_applicable=2 incomplete=0
+
+== samples/ifc/blcj-s1000-structure.ifc (322 products) ==
+  [NotApplicable] Room has a reference code — applicable=0 pass=0 fail=0 incomplete=0
+  [NotApplicable] Room records a net floor area — applicable=0 pass=0 fail=0 incomplete=0
+  [NotApplicable] Room records a ceiling height — applicable=0 pass=0 fail=0 incomplete=0
+  [NotApplicable] Door or window has a schedule reference — applicable=0 pass=0 fail=0 incomplete=0
+  [NotApplicable] Door or window declares a fire rating — applicable=0 pass=0 fail=0 incomplete=0
+  [Pass] Structural column is load-bearing — applicable=71 pass=71 fail=0 incomplete=0
+  [Pass] Structural column has a member mark — applicable=71 pass=71 fail=0 incomplete=0
+  [Pass] Structural beam records its span — applicable=158 pass=158 fail=0 incomplete=0
+  [Pass] Structural slab is load-bearing — applicable=76 pass=76 fail=0 incomplete=0
+  [NotApplicable] MEP flow segment records its usage — applicable=0 pass=0 fail=0 incomplete=0
+  [NotApplicable] MEP flow segment records its outer diameter — applicable=0 pass=0 fail=0 incomplete=0
+  totals: pass=376 fail=0 not_applicable=7 incomplete=0
+
+== samples/ifc/blcj-s1000-mep.ifc (3014 products) ==
+  [NotApplicable] Room has a reference code — applicable=0 pass=0 fail=0 incomplete=0
+  [NotApplicable] Room records a net floor area — applicable=0 pass=0 fail=0 incomplete=0
+  [NotApplicable] Room records a ceiling height — applicable=0 pass=0 fail=0 incomplete=0
+  [NotApplicable] Door or window has a schedule reference — applicable=0 pass=0 fail=0 incomplete=0
+  [NotApplicable] Door or window declares a fire rating — applicable=0 pass=0 fail=0 incomplete=0
+  [NotApplicable] Structural column is load-bearing — applicable=0 pass=0 fail=0 incomplete=0
+  [NotApplicable] Structural column has a member mark — applicable=0 pass=0 fail=0 incomplete=0
+  [NotApplicable] Structural beam records its span — applicable=0 pass=0 fail=0 incomplete=0
+  [NotApplicable] Structural slab is load-bearing — applicable=0 pass=0 fail=0 incomplete=0
+  [Pass] MEP flow segment records its usage — applicable=1337 pass=1337 fail=0 incomplete=0
+  [Fail] MEP flow segment records its outer diameter — applicable=1294 pass=1187 fail=107 incomplete=0
+      e.g. #228302 IFCFLOWSEGMENT Some("【ダクト】排煙ダクト 400×300") — expected Some("Rebro_PartsData.外径[mm]"), actual Some("(missing)")
+      e.g. #244874 IFCFLOWSEGMENT Some("【配管】冷媒配管 (Be)9.5φ×19.1φ") — expected Some("Rebro_PartsData.外径[mm]"), actual Some("(missing)")
+      e.g. #245066 IFCFLOWSEGMENT Some("【配管】冷媒配管 (Be)9.5φ×19.1φ") — expected Some("Rebro_PartsData.外径[mm]"), actual Some("(missing)")
+  totals: pass=2524 fail=107 not_applicable=9 incomplete=0
+

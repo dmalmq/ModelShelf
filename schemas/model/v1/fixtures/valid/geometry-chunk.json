@@ -1,0 +1,7 @@
+{
+  "ref": { "revisionId": "rev-arch-01", "objectId": "occ_823c7adb931b5478" },
+  "instanceId": "inst-0",
+  "status": "available",
+  "vertices": [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0],
+  "triangles": [0, 1, 2]
+}

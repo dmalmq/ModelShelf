@@ -1,0 +1,6 @@
+unknown command: definitely-not-a-command
+modelshelf-checker
+
+USAGE:
+  modelshelf-checker serve [--port 8787] [--data-dir ./data] [--worker-command <template>]
+  modelshelf-checker seed  [--data-dir ./data] [--packs-dir packs] [--samples-dir samples/ifc]

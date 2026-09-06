@@ -37,8 +37,11 @@ class Settings(StrictModel):
     geometry: bool = True
 
 
+PROTOCOL_VERSION: Literal[2] = 2
+
+
 class Request(StrictModel):
-    protocolVersion: Literal[1]
+    protocolVersion: Literal[2]
     jobId: str
     operation: Literal["inspect", "validate"]
     model: ModelRef
@@ -55,7 +58,7 @@ class Request(StrictModel):
 
 
 class ProgressEvent(StrictModel):
-    protocolVersion: Literal[1]
+    protocolVersion: Literal[2]
     jobId: str
     event: Literal["progress"] = "progress"
     stage: str
@@ -68,7 +71,7 @@ class ManifestPointer(StrictModel):
 
 
 class ResultEvent(StrictModel):
-    protocolVersion: Literal[1]
+    protocolVersion: Literal[2]
     jobId: str
     event: Literal["result"] = "result"
     manifest: ManifestPointer
@@ -78,11 +81,14 @@ class ArtifactRef(StrictModel):
     path: str
     sha256: str
     size: int
-    recordCount: int
+    recordCount: int | None = None
 
 
 class Artifacts(StrictModel):
-    objects: ArtifactRef
+    descriptor: ArtifactRef
+    semantic: ArtifactRef
+    renderManifest: ArtifactRef | None = None
+    geometry: ArtifactRef | None = None
     outcomes: ArtifactRef
 
 
@@ -95,7 +101,7 @@ class Versions(StrictModel):
 
 
 class Manifest(StrictModel):
-    protocolVersion: Literal[1]
+    protocolVersion: Literal[2]
     jobId: str
     operation: Literal["inspect", "validate"]
     revisionId: str

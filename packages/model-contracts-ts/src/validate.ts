@@ -11,6 +11,7 @@ import type { ObjectRef } from "./generated/object-ref.js";
 import type { ModelDescriptor } from "./generated/model-descriptor.js";
 import type { SemanticModel } from "./generated/semantic-model.js";
 import type { RenderManifest } from "./generated/render-manifest.js";
+import type { GeometryChunk } from "./generated/geometry-chunk.js";
 
 const SCHEMA_DIR = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "schemas", "model", "v1");
 
@@ -22,6 +23,7 @@ const SCHEMA_FILES = [
   "model-descriptor.schema.json",
   "semantic-model.schema.json",
   "render-manifest.schema.json",
+  "geometry-chunk.schema.json",
 ];
 
 const ajv = new Ajv2020({ allErrors: true, strict: true });
@@ -39,6 +41,7 @@ const validateObjectRef = compiled("object-ref.schema.json");
 const validateModelDescriptorSchema = compiled("model-descriptor.schema.json");
 const validateSemanticModelSchema = compiled("semantic-model.schema.json");
 const validateRenderManifestSchema = compiled("render-manifest.schema.json");
+const validateGeometryChunkSchema = compiled("geometry-chunk.schema.json");
 
 export type ValidationResult<T> = { ok: true; value: T } | { ok: false; errors: string[] };
 
@@ -60,6 +63,11 @@ export function parseModelDescriptor(payload: unknown): ValidationResult<ModelDe
 export function parseRenderManifest(payload: unknown): ValidationResult<RenderManifest> {
   if (validateRenderManifestSchema(payload)) return { ok: true, value: payload as RenderManifest };
   return { ok: false, errors: errorsOf(validateRenderManifestSchema) };
+}
+
+export function parseGeometryChunk(payload: unknown): ValidationResult<GeometryChunk> {
+  if (validateGeometryChunkSchema(payload)) return { ok: true, value: payload as GeometryChunk };
+  return { ok: false, errors: errorsOf(validateGeometryChunkSchema) };
 }
 
 /**
@@ -84,6 +92,17 @@ export function parseSemanticModel(payload: unknown): ValidationResult<SemanticM
       };
     }
     seen.set(id, index);
+  }
+  for (let index = 0; index < model.objects.length; index += 1) {
+    const revisionId = model.objects[index].ref.revisionId;
+    if (revisionId !== model.revisionId) {
+      return {
+        ok: false,
+        errors: [
+          `/objects/${index}/ref/revisionId "${revisionId}" does not match /revisionId "${model.revisionId}"`,
+        ],
+      };
+    }
   }
   return { ok: true, value: model };
 }

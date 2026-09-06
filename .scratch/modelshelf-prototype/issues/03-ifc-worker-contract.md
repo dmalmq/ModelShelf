@@ -5,8 +5,8 @@ Parent: ../map.md
 Type: task
 Mode: AFK
 Labels: wayfinder:task, ready-for-agent
-Status: resolved
-Assignee: claude-code-session-013vF1LacyxtZHAHMb3iU6PT
+Status: open
+Assignee: unassigned
 Blocked by: 18
 Wave: 1
 Original plan coverage: 3, inspect portion
@@ -128,3 +128,13 @@ All checks passed!
 - SI normalization covers length/area/volume only, matching the contract; a `NonPositiveScale`-style gap does **not** apply here (unlike the Rust model-contracts crate) since pydantic's own `PositiveFloat`-equivalent isn't in play — there's no analogous typify-style stub gap on the Python side for this ticket's scope.
 - No performance/scale testing was done beyond the one real sample (127 objects, ~2.5MB IFC); a much larger delivery's extraction time and `objects.jsonl` size are unmeasured.
 - Concurrent session note: `.scratch/modelshelf-prototype/issues/18-shared-model-contracts.md` (already resolved by this same session earlier) and `docs/adr/0001-reusable-model-modules.md` were both read as prerequisites; no other concurrent edits were observed in `services/ifc-worker/` or `docs/contracts/worker-v1.md` during this ticket.
+
+## Review corrections — 2026-09-07
+
+Reopened by review. The historical Answer above is retained; completion requires the corrections below. Read [the review through ticket 05](../../../docs/reviews/tickets-01-05.md) and [the earlier follow-up](../../../docs/reviews/tickets-01-03-follow-up.md) for evidence and verification.
+
+- [ ] Fix prefixed area/volume conversion (square/cubic millimetres).
+- [ ] Include SI object placement in independently loadable render artifacts; test world-coordinate alignment without semantic bytes.
+- [ ] Extract IFC2X3 inherited type properties as well as IFC4 properties.
+
+Coordinate shared schema and jobs.rs edits with the owners of related tickets. Append new evidence and close only after these checks pass.

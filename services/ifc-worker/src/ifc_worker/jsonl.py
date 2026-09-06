@@ -24,6 +24,18 @@ class ArtifactInfo(NamedTuple):
     record_count: int
 
 
+def write_json_atomic(path: Path, payload: BaseModel, *, record_count: int) -> ArtifactInfo:
+    tmp_path = path.with_name(f".{path.name}.tmp")
+    tmp_path.write_text(payload.model_dump_json(), encoding="utf-8")
+    tmp_path.replace(path)
+    return ArtifactInfo(
+        path=str(path),
+        sha256=sha256_file(path),
+        size=path.stat().st_size,
+        record_count=record_count,
+    )
+
+
 def write_jsonl_atomic(path: Path, records: Iterable[BaseModel]) -> ArtifactInfo:
     tmp_path = path.with_name(f".{path.name}.tmp")
     record_count = 0

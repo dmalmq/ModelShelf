@@ -1,0 +1,125 @@
+
+=== architecture: samples/ifc/blcj-s1000-architecture.ifc ===
+schema: IFC2X3
+project name: None | description: 
+length unit: MILLIMETRE
+context 'Model': WCS origin=(0.0, 0.0, 0.0) trueNorth=(-0.49085925, 0.87123889)
+context 'Plan': WCS origin=(0.0, 0.0, 0.0) trueNorth=(-0.49085925, 0.87123889)
+site name: 植栽帯
+  RefLatitude: None
+  RefLongitude: None
+  RefElevation: None
+  absolute placement matrix (site):
+  [    0.     0. 12560.] translation
+site name: 植栽帯
+  RefLatitude: None
+  RefLongitude: None
+  RefElevation: None
+  absolute placement matrix (site):
+  [    0.     0. 12560.] translation
+site name: 
+  RefLatitude: None
+  RefLongitude: None
+  RefElevation: None
+  absolute placement matrix (site):
+  [0. 0. 0.] translation
+site name: 歩道
+  RefLatitude: None
+  RefLongitude: None
+  RefElevation: None
+  absolute placement matrix (site):
+  [0. 0. 0.] translation
+site name: 犬走
+  RefLatitude: None
+  RefLongitude: None
+  RefElevation: None
+  absolute placement matrix (site):
+  [0. 0. 0.] translation
+site name: 歩道
+  RefLatitude: None
+  RefLongitude: None
+  RefElevation: None
+  absolute placement matrix (site):
+  [0. 0. 0.] translation
+site name: 前面道路
+  RefLatitude: None
+  RefLongitude: None
+  RefElevation: None
+  absolute placement matrix (site):
+  [0. 0. 0.] translation
+site name: 植栽帯
+  RefLatitude: None
+  RefLongitude: None
+  RefElevation: None
+  absolute placement matrix (site):
+  [0. 0. 0.] translation
+site name: 植栽帯
+  RefLatitude: None
+  RefLongitude: None
+  RefElevation: None
+  absolute placement matrix (site):
+  [0. 0. 0.] translation
+site name: 植栽帯
+  RefLatitude: None
+  RefLongitude: None
+  RefElevation: None
+  absolute placement matrix (site):
+  [0. 0. 0.] translation
+site name: 植栽帯
+  RefLatitude: None
+  RefLongitude: None
+  RefElevation: None
+  absolute placement matrix (site):
+  [0. 0. 0.] translation
+site name: 植栽帯
+  RefLatitude: None
+  RefLongitude: None
+  RefElevation: None
+  absolute placement matrix (site):
+  [0. 0. 0.] translation
+site name: 植栽帯
+  RefLatitude: None
+  RefLongitude: None
+  RefElevation: None
+  absolute placement matrix (site):
+  [0. 0. 0.] translation
+site name: None
+  RefLatitude: None
+  RefLongitude: None
+  RefElevation: None
+building name: GLOOBEサンプルモデル
+  absolute placement translation (building): [ 0.  0. 60.]
+storeys: [('1F', 0.0), ('2F', 4500.0), ('PHR', 15950.0), ('PIT', -2060.0), ('3F', 8500.0), ('PHF', 12500.0)]
+product count: 2184
+
+=== structure: samples/ifc/blcj-s1000-structure.ifc ===
+schema: IFC2X3
+project name:  | description: None
+length unit: MILLIMETRE
+context 'Model': WCS origin=(-1000.0, -1000.0, 0.0) trueNorth=(6.123031769111886e-17, 1.0)
+site name: Default
+  RefLatitude: (42, 24, 53, 508911)
+  RefLongitude: (-71, -15, -29, -58837)
+  RefElevation: 0.0
+  absolute placement matrix (site):
+  [-1000. -1000.     0.] translation
+building name: 
+  absolute placement translation (building): [-1000. -1000.     0.]
+storeys: [('GL', -100.0), ('1FL', 0.0), ('2FL', 4500.0), ('3FL', 8500.0), ('RFL', 12500.0), ('PHRFL', 15950.0)]
+product count: 322
+
+=== mep: samples/ifc/blcj-s1000-mep.ifc ===
+schema: IFC2X3
+project name: Default Project | description: 
+length unit: MILLIMETRE
+context 'Model': WCS origin=(0.0, 0.0, 0.0) trueNorth=(0.0, 1.0)
+site name: Default Site
+  RefLatitude: (24, 28, 0)
+  RefLongitude: (54, 14, 0)
+  RefElevation: 0.0
+  absolute placement matrix (site):
+  [0. 0. 0.] translation
+building name: Default Building
+  absolute placement translation (building): [0. 0. 0.]
+storeys: [('PIT(2)', -2060.0), ('PIT', -2000.0), ('設計GL', -100.0), ('地盤面', -39.0), ('1FL', 0.0), ('2FL', 4500.0), ('3FL', 8500.0), ('RFL', 12500.0), ('PHR', 15950.0), ('最高高さ', 16500.0), ('最高高さ(2)', 16700.0)]
+product count: 3014

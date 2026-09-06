@@ -3,8 +3,8 @@
 //! cross-language run of the same fixtures.
 
 use model_contracts::{
-    check_distinct_object_ids, parse_model_descriptor, parse_object_ref, parse_render_manifest,
-    parse_semantic_model, ModelDescriptorError, SemanticModelError,
+    check_distinct_object_ids, parse_geometry_chunk, parse_model_descriptor, parse_object_ref,
+    parse_render_manifest, parse_semantic_model, ModelDescriptorError, SemanticModelError,
 };
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -77,6 +77,8 @@ fn every_invalid_schema_fixture_is_rejected() {
             parse_model_descriptor(&json).is_err()
         } else if name.starts_with("render-manifest") {
             parse_render_manifest(&json).is_err()
+        } else if name.starts_with("geometry-chunk") {
+            parse_geometry_chunk(&json).is_err()
         } else {
             matches!(parse_semantic_model(&json), Err(SemanticModelError::Schema(_)))
         };
@@ -106,9 +108,25 @@ fn duplicate_objectid_fixture_passes_schema_but_fails_the_boundary_check() {
             .join("semantic-model-duplicate-objectid.json"),
     );
     match parse_semantic_model(&json) {
-        Err(SemanticModelError::Boundary(err)) => {
+        Err(SemanticModelError::DuplicateObjectId(err)) => {
             assert!(err.to_string().contains("duplicates"));
         }
         other => panic!("expected a boundary rejection, got {other:?}"),
+    }
+}
+
+#[test]
+fn mismatched_revision_fixture_passes_schema_but_fails_the_boundary_check() {
+    let json = read(
+        &fixtures_dir()
+            .join("invalid")
+            .join("boundary")
+            .join("semantic-model-mismatched-revision.json"),
+    );
+    match parse_semantic_model(&json) {
+        Err(SemanticModelError::MismatchedRevisionId(err)) => {
+            assert!(err.to_string().contains("does not match"));
+        }
+        other => panic!("expected a mismatched-revision rejection, got {other:?}"),
     }
 }

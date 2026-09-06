@@ -16,11 +16,15 @@ schema validation alone cannot see is ``ObjectRef.objectId`` uniqueness within a
 from .generated import (
     Artifacts,
     BoundingBox,
+    Dimension,
+    GeometryChunk,
     Instance,
     ModelDescriptor,
     NativeIds,
     ObjectRef,
+    Origin,
     Property,
+    PropertyValue,
     RenderCapability1,
     RenderCapability2,
     RenderCapability3,
@@ -33,10 +37,16 @@ from .generated import (
     SemanticModel,
     SemanticObject,
     SourceProvenance,
+    Status,
     Transform,
     UpAxis,
 )
-from .boundary import DuplicateObjectIdError, check_distinct_object_ids
+from .boundary import (
+    DuplicateObjectIdError,
+    MismatchedRevisionIdError,
+    check_distinct_object_ids,
+    check_revision_ids,
+)
 from .express_id_mapping import express_id_to_object_id
 
 # datamodel-codegen names each oneOf branch ClassName1..4 rather than a single
@@ -57,12 +67,19 @@ __all__ = [
     "ModelDescriptor",
     "NativeIds",
     "Property",
+    "PropertyValue",
+    "Origin",
+    "Dimension",
+    "Status",
+    "GeometryChunk",
     "SemanticObject",
     "SemanticModel",
     "BoundingBox",
     "Instance",
     "RenderManifest",
     "DuplicateObjectIdError",
+    "MismatchedRevisionIdError",
     "check_distinct_object_ids",
+    "check_revision_ids",
     "express_id_to_object_id",
 ]

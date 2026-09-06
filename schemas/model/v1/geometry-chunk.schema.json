@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "geometry-chunk.schema.json",
+  "title": "GeometryChunk",
+  "description": "Object-local triangulated geometry for one rendered instance, joined to a SemanticModel object by ObjectRef. Loadable independently of semantic records.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ref", "instanceId", "status"],
+  "properties": {
+    "ref": { "$ref": "object-ref.schema.json" },
+    "instanceId": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["available", "absent", "unsupported"] },
+    "reason": { "type": "string" },
+    "vertices": {
+      "description": "Flat xyz SI object-local coordinates.",
+      "type": "array",
+      "items": { "type": "number" }
+    },
+    "triangles": {
+      "description": "Flat zero-based vertex indices.",
+      "type": "array",
+      "items": { "type": "integer", "minimum": 0 }
+    }
+  }
+}

@@ -1,0 +1,2 @@
+2026-09-06T10:02:26.615832Z  INFO modelshelf_checker: modelshelf-checker listening addr=127.0.0.1:43181
+2026-09-06T10:02:26.860793Z  WARN modelshelf_checker::jobs: ingestion job failed job_id="e6c93d17-3b84-4b65-8d52-320a58c5e1ae" error=semantic artifact content hash does not match the manifest

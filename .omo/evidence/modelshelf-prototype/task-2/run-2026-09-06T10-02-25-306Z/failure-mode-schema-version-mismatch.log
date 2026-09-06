@@ -1,0 +1,2 @@
+2026-09-06T10:02:27.288865Z  INFO modelshelf_checker: modelshelf-checker listening addr=127.0.0.1:46201
+2026-09-06T10:02:27.516263Z  WARN modelshelf_checker::jobs: ingestion job failed job_id="3ca5af75-e556-4400-a40d-b2fa901252f0" error=worker protocol version mismatch on line 1: expected 2, got 3

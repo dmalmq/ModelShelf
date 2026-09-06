@@ -56,7 +56,7 @@ def test_malformed_ifc_is_rejected(tmp_path: Path) -> None:
 
 def test_missing_required_field_is_rejected(tmp_path: Path) -> None:
     request_path = tmp_path / "request.json"
-    request_path.write_text(json.dumps({"protocolVersion": 1, "jobId": "job"}), encoding="utf-8")
+    request_path.write_text(json.dumps({"protocolVersion": 2, "jobId": "job"}), encoding="utf-8")
     run = run_worker(request_path)
     assert run.returncode != 0
     assert _no_result(run)

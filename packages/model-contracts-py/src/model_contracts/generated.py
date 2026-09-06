@@ -219,13 +219,25 @@ class NativeIds(BaseModel):
     globalId: constr(min_length=1) | None = None
 
 
-class Property(BaseModel):
+class Origin(Enum):
+    occurrence = 'occurrence'
+    type = 'type'
+
+
+class Dimension(Enum):
+    length = 'length'
+    area = 'area'
+    volume = 'volume'
+
+
+class PropertyValue(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    pset: constr(min_length=1)
-    name: constr(min_length=1)
     value: str | float | bool | None
+    originalUnit: str | None = None
+    siValue: float | None = None
+    dimension: Dimension | None = None
 
 
 class BoundingBox(BaseModel):
@@ -259,6 +271,46 @@ class RenderManifest(BaseModel):
     instances: list[Instance]
 
 
+class Status(Enum):
+    available = 'available'
+    absent = 'absent'
+    unsupported = 'unsupported'
+
+
+class GeometryChunk(BaseModel):
+    """
+    Object-local triangulated geometry for one rendered instance, joined to a SemanticModel object by ObjectRef. Loadable independently of semantic records.
+    """
+
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    ref: ObjectRef
+    instanceId: constr(min_length=1)
+    status: Status
+    reason: str | None = None
+    vertices: list[float] | None = Field(
+        None, description='Flat xyz SI object-local coordinates.'
+    )
+    triangles: list[conint(ge=0)] | None = Field(
+        None, description='Flat zero-based vertex indices.'
+    )
+
+
+class Property(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    pset: constr(min_length=1)
+    name: constr(min_length=1)
+    values: list[PropertyValue] = Field(
+        ...,
+        description='One entry per stored value. List-valued IFC properties keep authoring order; unordered IFC sets set ordered=false.',
+    )
+    ordered: bool
+    origin: Origin
+
+
 class SemanticObject(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -268,6 +320,12 @@ class SemanticObject(BaseModel):
     classification: constr(min_length=1)
     name: str | None = None
     storey: str | None = None
+    placement: list[float] | None = Field(
+        None,
+        description='Row-major 3x4 project-frame transform. Translations are metres. Omitted when the source placement cannot be interpreted.',
+        max_length=12,
+        min_length=12,
+    )
     properties: list[Property] | None = None
 
 

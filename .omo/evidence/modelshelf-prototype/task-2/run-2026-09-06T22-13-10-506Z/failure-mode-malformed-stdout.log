@@ -1,0 +1,2 @@
+2026-09-06T22:13:10.667702Z  INFO modelshelf_checker: modelshelf-checker listening addr=127.0.0.1:46051
+2026-09-06T22:13:10.776811Z  WARN modelshelf_checker::jobs: ingestion job failed job_id="7d9693a0-fe9f-4286-8d25-ff64444a7332" error=malformed NDJSON on line 2: EOF while parsing an object at line 1 column 40

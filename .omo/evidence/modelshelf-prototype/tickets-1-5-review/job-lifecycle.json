@@ -1,0 +1,7 @@
+{
+  "before": "running",
+  "seedExit": 0,
+  "after": "failed",
+  "error": "interrupted: the service restarted while this job was running",
+  "workerSurvivesCheckerKill": true
+}

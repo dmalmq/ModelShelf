@@ -9,7 +9,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from model_contracts import express_id_to_object_id
+from model_contracts import (
+    GeometryChunk,
+    ModelDescriptor,
+    SemanticModel,
+    check_distinct_object_ids,
+    check_revision_ids,
+    express_id_to_object_id,
+)
 
 from ifc_worker.hashing import sha256_file
 from tests.conftest import run_worker, write_request
@@ -45,47 +52,68 @@ def test_inspect_real_file_end_to_end(tmp_path: Path, real_sample_path: Path) ->
     assert manifest["modelSha256"] == model_sha256
     assert manifest["idsSha256"] is None
 
-    objects_ref = manifest["artifacts"]["objects"]
-    objects_path = Path(objects_ref["path"])
-    assert sha256_file(objects_path) == objects_ref["sha256"]
-    assert objects_path.stat().st_size == objects_ref["size"]
-    lines = objects_path.read_text(encoding="utf-8").splitlines()
-    assert len(lines) == objects_ref["recordCount"]
-    assert objects_ref["recordCount"] == EXPECTED_PRODUCT_COUNT
+    semantic_ref = manifest["artifacts"]["semantic"]
+    semantic_path = Path(semantic_ref["path"])
+    assert sha256_file(semantic_path) == semantic_ref["sha256"]
+    assert semantic_path.stat().st_size == semantic_ref["size"]
+    semantic_payload = json.loads(semantic_path.read_text(encoding="utf-8"))
+    semantic = SemanticModel.model_validate(semantic_payload)
+    check_distinct_object_ids(semantic)
+    check_revision_ids(semantic)
+    assert semantic_ref["recordCount"] == EXPECTED_PRODUCT_COUNT
+    assert len(semantic.objects) == EXPECTED_PRODUCT_COUNT
+
+    descriptor = ModelDescriptor.model_validate(
+        json.loads(Path(manifest["artifacts"]["descriptor"]["path"]).read_text(encoding="utf-8"))
+    )
+    assert descriptor.revisionId == "rev-fzk-haus-01"
+    assert descriptor.artifacts.semantic.status == "available"
+
+    geometry_ref = manifest["artifacts"]["geometry"]
+    geometry_path = Path(geometry_ref["path"])
+    chunks = [
+        GeometryChunk.model_validate(json.loads(line))
+        for line in geometry_path.read_text(encoding="utf-8").splitlines()
+        if line
+    ]
+    assert len(chunks) == geometry_ref["recordCount"]
 
     outcomes_ref = manifest["artifacts"]["outcomes"]
     assert outcomes_ref["recordCount"] == 0
     assert outcomes_ref["size"] == 0
 
-    records = [json.loads(line) for line in lines]
-    walls = [r for r in records if r["type"] == "IfcWallStandardCase"]
+    walls = [obj for obj in semantic.objects if obj.classification == "IfcWallStandardCase"]
     assert walls, "sample is expected to contain walls"
-    wall = next(w for w in walls if w["globalId"] == "2XPyKWY018sA1ygZKgQPtU")
-    assert wall["revisionId"] == "rev-fzk-haus-01"
-    assert wall["ref"] == {
-        "revisionId": "rev-fzk-haus-01",
-        "objectId": express_id_to_object_id("rev-fzk-haus-01", wall["expressId"]),
-    }
-    assert wall["storey"] == "Erdgeschoss"
-    assert wall["placement"] is not None
-    assert len(wall["placement"]) == EXPECTED_PLACEMENT_NUMBERS
-    assert wall["geometry"]["status"] == "available"
-    assert len(wall["geometry"]["vertices"]) > 0
-    assert len(wall["geometry"]["triangles"]) > 0
+    wall = next(w for w in walls if w.nativeIds and w.nativeIds.globalId == "2XPyKWY018sA1ygZKgQPtU")
+    native = wall.nativeIds
+    assert native is not None and native.expressId is not None
+    assert wall.ref.revisionId == "rev-fzk-haus-01"
+    assert wall.ref.objectId == express_id_to_object_id("rev-fzk-haus-01", native.expressId)
+    assert wall.storey == "Erdgeschoss"
+    assert wall.placement is not None
+    assert len(wall.placement) == EXPECTED_PLACEMENT_NUMBERS
 
-    length_props = [p for p in wall["properties"] if p["path"] == "BaseQuantities.Length"]
+    wall_chunk = next(c for c in chunks if c.ref.objectId == wall.ref.objectId)
+    assert wall_chunk.status.value == "available"
+    assert wall_chunk.vertices
+    assert wall_chunk.triangles
+
+    length_props = [p for p in wall.properties or [] if p.pset == "BaseQuantities" and p.name == "Length"]
     assert length_props, "expected a BaseQuantities.Length quantity on this wall"
     length_prop = length_props[0]
-    assert length_prop["dimension"] == "length"
-    assert length_prop["originalUnit"] == "m"
-    assert length_prop["siValue"] == length_prop["value"]  # project is already in metres
+    length_value = length_prop.values[0]
+    assert length_value.dimension is not None
+    assert length_value.dimension.value == "length"
+    assert length_prop.values[0].originalUnit == "m"
+    assert length_prop.values[0].siValue == length_prop.values[0].value
 
-    # A duplicated GlobalId reused for a different express ID would be a producer
-    # bug; express IDs (not GlobalIds) are this record shape's real identity.
-    express_ids = [r["expressId"] for r in records]
+    express_ids = [obj.nativeIds.expressId for obj in semantic.objects if obj.nativeIds]
     assert len(set(express_ids)) == len(express_ids)
-    object_ids = [r["ref"]["objectId"] for r in records]
+    object_ids = [obj.ref.objectId for obj in semantic.objects]
     assert len(set(object_ids)) == len(object_ids)
+
+    # Semantics are independently loadable: the semantic file does not embed geometry bytes.
+    assert "vertices" not in semantic_path.read_text(encoding="utf-8")
 
 
 def test_stdout_is_pure_ndjson_ending_in_exactly_one_result(tmp_path: Path, real_sample_path: Path) -> None:
@@ -103,7 +131,7 @@ def test_stdout_is_pure_ndjson_ending_in_exactly_one_result(tmp_path: Path, real
     result_indices = [i for i, line in enumerate(run.stdout_lines) if line["event"] == "result"]
     assert result_indices == [len(run.stdout_lines) - 1], "exactly one result event, and it must be last"
     for line in run.stdout_lines:
-        assert line["protocolVersion"] == 1
+        assert line["protocolVersion"] == 2
         assert line["jobId"] == "test-job"
 
 
@@ -123,16 +151,25 @@ def test_absent_geometry_object_is_distinguished_from_available(
     assert result is not None
 
     manifest = json.loads(Path(result["manifest"]["path"]).read_text(encoding="utf-8"))
-    objects_path = Path(manifest["artifacts"]["objects"]["path"])
-    records = [json.loads(line) for line in objects_path.read_text(encoding="utf-8").splitlines()]
-
-    storeys = [r for r in records if r["type"] == "IfcBuildingStorey"]
-    assert storeys, "sample is expected to contain building storeys with no geometry"
-    assert all(s["geometry"]["status"] == "absent" for s in storeys)
-    assert all(s["geometry"]["vertices"] is None for s in storeys)
-
-    walls = [r for r in records if r["type"] == "IfcWallStandardCase"]
-    assert all(w["geometry"]["status"] == "available" for w in walls)
+    geometry_path = Path(manifest["artifacts"]["geometry"]["path"])
+    chunks = [json.loads(line) for line in geometry_path.read_text(encoding="utf-8").splitlines() if line]
+    semantic = json.loads(Path(manifest["artifacts"]["semantic"]["path"]).read_text(encoding="utf-8"))
+    storey_ids = {
+        obj["ref"]["objectId"]
+        for obj in semantic["objects"]
+        if obj["classification"] == "IfcBuildingStorey"
+    }
+    wall_ids = {
+        obj["ref"]["objectId"]
+        for obj in semantic["objects"]
+        if obj["classification"] == "IfcWallStandardCase"
+    }
+    assert storey_ids, "sample is expected to contain building storeys with no geometry"
+    storey_chunks = [c for c in chunks if c["ref"]["objectId"] in storey_ids]
+    wall_chunks = [c for c in chunks if c["ref"]["objectId"] in wall_ids]
+    assert storey_chunks and all(c["status"] == "absent" for c in storey_chunks)
+    assert all(c.get("vertices") in (None, []) for c in storey_chunks)
+    assert wall_chunks and all(c["status"] == "available" for c in wall_chunks)
 
 
 def test_geometry_disabled_setting_marks_every_object_unsupported(
@@ -152,8 +189,9 @@ def test_geometry_disabled_setting_marks_every_object_unsupported(
     assert result is not None
 
     manifest = json.loads(Path(result["manifest"]["path"]).read_text(encoding="utf-8"))
-    objects_path = Path(manifest["artifacts"]["objects"]["path"])
-    records = [json.loads(line) for line in objects_path.read_text(encoding="utf-8").splitlines()]
-    assert records
-    assert all(r["geometry"]["status"] == "unsupported" for r in records)
-    assert all(r["geometry"]["vertices"] is None for r in records)
+    assert manifest["artifacts"]["geometry"] is None
+    descriptor = json.loads(Path(manifest["artifacts"]["descriptor"]["path"]).read_text(encoding="utf-8"))
+    assert descriptor["artifacts"]["render"]["status"] == "unsupported"
+    semantic = json.loads(Path(manifest["artifacts"]["semantic"]["path"]).read_text(encoding="utf-8"))
+    assert semantic["objects"]
+    SemanticModel.model_validate(semantic)

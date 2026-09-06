@@ -1,0 +1,53 @@
+warning: method `is_product` is never used
+   --> crates/ifc-model/src/lib.rs:730:8
+    |
+432 | impl IfcModel {
+    | ------------- method in this implementation
+...
+730 |     fn is_product(&self, e: &Entity) -> bool {
+    |        ^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `ifc-model` (lib) generated 1 warning
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.02s
+     Running `target/debug/examples/diff_fixtures packs/demo/fixtures/base.ifc packs/demo/fixtures/head.ifc`
+base objects: 141, head objects: 141
+summary: added=3 removed=3 unchanged=129 moved=3 shape_changed=3 properties_changed=3 mixed=0 uncertain_matches=4
+
+-- moved (3) --
+  Moved-0 [0BYY6XwEr11fxkC7yD9Mr0] notes=[]
+  Moved-1 [07IAoKuU9EbPBS_LHrQaSm] notes=[]
+  Moved-2 [38kuiITef8FPNDx6ieuR20] notes=[]
+
+-- added (3) --
+  Added-0 [235YV6euv9Ov41vHReaxGt] notes=[]
+  Added-1 [0RNi9y1RHDMvlh2MstKmk9] notes=[]
+  Added-2 [2Smhz1Tb1A_PyCJrt$az_K] notes=[]
+
+-- shape_changed (3) --
+  ShapeChange-0 [1bJxiI235EkQpgbANyYozs] notes=[]
+  ShapeChange-1 [2BpZB4Z_HDFx8GtBrF0QPq] notes=[]
+  ShapeChange-2 [1sdo1pPxPEnQv7f8sU5v9b] notes=[]
+
+-- unchanged (129) --
+   [(none)] notes=[]
+  1F [0Yb5k4XJbF0QQVDNGvo3ak] notes=[]
+  Demo Building [3$AQmr_4nER8sbm7sRFwmO] notes=[]
+  Demo Site [1gqwan4JXCjBgsfvjVUXOA] notes=[]
+  Duplicate-A [238sbp13H1HugR0QJcKFnG] notes=["duplicate GlobalId in base revision", "duplicate GlobalId in head revision"]
+  Duplicate-B [238sbp13H1HugR0QJcKFnG] notes=["duplicate GlobalId in base revision", "duplicate GlobalId in head revision"]
+  Rotated-0 [2WJXX_ATvAgeVZOi2f_xHv] notes=["sub-threshold displacement 0.000000 m (threshold 0.001000 m)"]
+  Rotated-1 [1bXFRMdvb2ofpzMnBPqdlQ] notes=["sub-threshold displacement 0.000000 m (threshold 0.001000 m)"]
+  Rotated-2 [3E7Rh8jST4KxFHNYF1mIFy] notes=["sub-threshold displacement 0.000000 m (threshold 0.001000 m)"]
+  ... plus 120 Repeat-* object(s)
+
+-- properties_changed (3) --
+  PropChange-0 [1cN5G$tJ53qABUrLDiUEzF] notes=[]
+  PropChange-1 [36ndn7wa1ADe3pupccrpQI] notes=[]
+  PropChange-2 [3DG53nVMn88gfhkCYNEODT] notes=[]
+
+-- removed (3) --
+  Removed-0 [2xEnNzN3j2HQqowycWQ6hQ] notes=[]
+  Removed-1 [0uJnFJBaDCbuNUK32LZOdE] notes=[]
+  Removed-2 [2cckfUK_f9WfAhUpyI3JPw] notes=[]

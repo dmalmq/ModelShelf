@@ -38,6 +38,8 @@ export interface Delivery {
   label: string;
   deliveryDate: string | null;
   createdAt: string;
+  /** Null while a draft (membership may still change); set once membership is frozen forever. */
+  finalizedAt: string | null;
   modelCount: number;
   productCount: number;
 }
@@ -46,6 +48,8 @@ export interface ModelInfo {
   id: string;
   deliveryId: string;
   discipline: Discipline;
+  sourceModelId: string;
+  sourceModelName: string;
   filename: string;
   contentSha256: string;
   byteSize: number;
@@ -56,6 +60,62 @@ export interface ModelInfo {
   parseMs: number | null;
   uploadedAt: string;
   originatingSystem: string | null;
+}
+
+/** schemas/model/v1 ObjectRef: opaque, unique only within revisionId. */
+export interface ObjectRef {
+  revisionId: string;
+  objectId: string;
+}
+
+/** A persistent, named, project-owned input (e.g. "Architecture East"); discipline
+ * is metadata for filtering, never part of its identity — two source models may
+ * share a discipline. */
+export interface SourceModel {
+  id: string;
+  projectId: string;
+  name: string;
+  discipline: Discipline;
+  createdAt: string;
+  revisions: ModelRevisionSummary[];
+}
+
+/** One immutable upload belonging to exactly one source model, independent of any
+ * delivery until POST /api/deliveries/:deliveryId/members adds it as a member. */
+export interface ModelRevisionSummary {
+  id: string;
+  sourceModelId: string;
+  filename: string;
+  contentSha256: string;
+  byteSize: number;
+  schemaLabel: string;
+  entityCount: number;
+  productCount: number;
+  uploadedAt: string;
+  /** "incomplete" for a revision data-migrated from the pre-source-model schema,
+   * whose source-model identity was synthesized rather than authored. */
+  provenance: "complete" | "incomplete";
+}
+
+export type IngestionJobStatus = "queued" | "running" | "completed" | "failed";
+
+/** Returned by `POST /api/source-models/:id/revisions` (202) and
+ * `GET`/`POST retry` `/api/jobs/:jobId`. The revision does not exist — and never
+ * appears in `SourceModel.revisions` — until `status` is `"completed"` and
+ * `modelRevisionId` is set; poll this until it reaches a terminal status. */
+export interface IngestionJob {
+  id: string;
+  sourceModelId: string;
+  filename: string;
+  contentSha256: string;
+  byteSize: number;
+  status: IngestionJobStatus;
+  modelRevisionId: string | null;
+  error: string | null;
+  attemptCount: number;
+  createdAt: string;
+  startedAt: string | null;
+  finishedAt: string | null;
 }
 
 export interface DeliverySummary extends Delivery {
@@ -200,6 +260,11 @@ export interface SpecResultRow {
   notes: string[];
 }
 
+export interface RunInputProvenance {
+  status: "complete" | "incomplete";
+  reason: string | null;
+}
+
 export interface RunDetail {
   run: RunSummary;
   models: ModelInfo[];
@@ -207,15 +272,23 @@ export interface RunDetail {
   scorecard: SeverityBand[];
   specs: SpecResultRow[];
   reviewIncomplete: Finding[];
+  /**
+   * Whether `models` are proven inputs of this run. Incomplete means they are
+   * reconstructed from current delivery membership and must not be treated as
+   * verified historical inputs.
+   */
+  inputProvenance: RunInputProvenance;
 }
 
 export interface ObjectRow {
   id: string;
   modelId: string;
+  ref: ObjectRef;
   expressId: number;
   globalId: string | null;
   ifcType: string;
   name: string | null;
+  /** Always null: the worker does not yet extract this (docs/contracts/http-api.md). */
   predefinedType: string | null;
   storey: string | null;
   fingerprints: { properties: string; placement: string; shape: string; combined: string };
@@ -232,9 +305,11 @@ export interface ObjectProperty {
   pset: string;
   name: string;
   value: string | null;
+  /** "length" | "area" | "volume" | null — the worker's dimension, not an IFC measure type name. */
   dataType: string | null;
   unit: string | null;
   numeric: number | null;
+  /** Always false: the worker does not distinguish occurrence- from type-level properties. */
   inherited: boolean;
 }
 
@@ -331,6 +406,25 @@ export interface FindingDiffResponse {
   introduced: number;
   persisting: number;
   changes: FindingChange[];
+}
+
+// ---------------------------------------------------------------------------
+// Request bodies
+// ---------------------------------------------------------------------------
+
+export interface CreateDeliveryBody {
+  label: string;
+  deliveryDate?: string;
+}
+
+export interface CreateSourceModelBody {
+  name: string;
+  discipline: Discipline;
+}
+
+export interface AddDeliveryMemberBody {
+  sourceModelId: string;
+  modelRevisionId: string;
 }
 
 export const SEVERITY_ORDER: Severity[] = ["critical", "high", "medium", "advisory"];

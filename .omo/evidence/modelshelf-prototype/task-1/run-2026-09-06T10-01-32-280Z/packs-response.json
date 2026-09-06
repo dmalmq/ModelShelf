@@ -1,0 +1,21 @@
+[
+  {
+    "id": "demo-pack",
+    "tenantId": "demo-tenant",
+    "name": "Demo Check Pack",
+    "description": null,
+    "createdAt": "2026-09-06T10:01:32.402Z",
+    "versions": [
+      {
+        "id": "7fe1544d-cc1b-4240-9c62-75fec40b970c",
+        "packId": "demo-pack",
+        "packName": "Demo Check Pack",
+        "version": 1,
+        "idsSha256": "1b3ce71862dec46ede34c09fa541d7b7d95ee8d9ef3466914308357160c4d811",
+        "notes": "sample.ids",
+        "specCount": 1,
+        "createdAt": "2026-09-06T10:01:32.403Z"
+      }
+    ]
+  }
+]
