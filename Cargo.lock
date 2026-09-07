@@ -993,6 +993,7 @@ dependencies = [
  "hex",
  "ids",
  "ifc-model",
+ "libc",
  "model-contracts",
  "modeldiff",
  "serde",

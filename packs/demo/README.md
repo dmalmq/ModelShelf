@@ -12,8 +12,8 @@ material. Full source-to-property traceability, scope, priority, category,
 and rationale for every check — plus real evaluation results against the real
 models — is in [`checks.md`](checks.md). v2 differs from v1 by exactly one
 explained rule change (also documented there): the MEP outer-diameter check's
-applicability is narrowed to exclude cable-tray segments, which have no
-diameter by design.
+applicability is narrowed to exclude 43 cable-tray segments. v1's 150 failures
+were 62 ducts, 45 pipes, and 43 trays.
 
 Each version's severity/category triage lives beside it as
 `blcj-s1000-v{1,2}.metadata.json` (`services/checker/src/ids_meta.rs`'s

@@ -287,6 +287,15 @@ impl ::std::convert::TryFrom<::std::string::String> for GeometryChunkStatus {
 #[doc = "      \"type\": \"string\","]
 #[doc = "      \"minLength\": 1"]
 #[doc = "    },"]
+#[doc = "    \"placement\": {"]
+#[doc = "      \"description\": \"Object-to-project 3x4 row-major transform in metres, same layout as SemanticObject.placement. Present when placement was converted so a renderer can position object-local vertices without loading SemanticModel. Omitted when the source placement cannot be interpreted.\","]
+#[doc = "      \"type\": \"array\","]
+#[doc = "      \"items\": {"]
+#[doc = "        \"type\": \"number\""]
+#[doc = "      },"]
+#[doc = "      \"maxItems\": 12,"]
+#[doc = "      \"minItems\": 12"]
+#[doc = "    },"]
 #[doc = "    \"ref\": {"]
 #[doc = "      \"$ref\": \"#/$defs/ObjectRef\""]
 #[doc = "    }"]
@@ -306,6 +315,9 @@ pub struct Instance {
     pub bounding_box: ::std::option::Option<InstanceBoundingBox>,
     #[serde(rename = "instanceId")]
     pub instance_id: InstanceInstanceId,
+    #[doc = "Object-to-project 3x4 row-major transform in metres, same layout as SemanticObject.placement. Present when placement was converted so a renderer can position object-local vertices without loading SemanticModel. Omitted when the source placement cannot be interpreted."]
+    #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+    pub placement: ::std::option::Option<[f64; 12usize]>,
     #[serde(rename = "ref")]
     pub ref_: ObjectRef,
 }

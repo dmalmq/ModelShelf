@@ -21,24 +21,26 @@
 //
 // Usage: node scripts/verify-api.mjs --scenario revisions
 //        node scripts/verify-api.mjs --scenario worker-failure
+//        node scripts/verify-api.mjs --scenario checks
 
 import { spawn } from "node:child_process";
-import { mkdtempSync, mkdirSync, readdirSync, writeFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { readFile as readFileAsync } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { BIN_PATH, REPO_ROOT, buildBinary, createChecker, freePort, runCli, stopProcess, waitForHealth } from "./lib/checker-harness.mjs";
 
-const EVIDENCE_DIR = join(REPO_ROOT, ".omo", "evidence", "modelshelf-prototype", "task-2");
 const SAMPLE_IFC = join(REPO_ROOT, "samples", "ifc", "AC20-FZK-Haus.ifc");
 const FAKE_WORKER = join(REPO_ROOT, "scripts", "fixtures", "fake-worker.mjs");
+const FIXTURES_IFC = join(REPO_ROOT, "packs", "demo", "fixtures", "base.ifc");
+const FIXTURES_IDS = join(REPO_ROOT, "packs", "demo", "fixtures.ids");
 
 function requireScenario() {
   const flagIndex = process.argv.indexOf("--scenario");
   const scenario = flagIndex >= 0 ? process.argv[flagIndex + 1] : undefined;
-  if (scenario !== "revisions" && scenario !== "worker-failure") {
-    console.error(`usage: node scripts/verify-api.mjs --scenario revisions|worker-failure (got ${scenario ?? "<none>"})`);
+  if (scenario !== "revisions" && scenario !== "worker-failure" && scenario !== "checks") {
+    console.error(`usage: node scripts/verify-api.mjs --scenario revisions|worker-failure|checks (got ${scenario ?? "<none>"})`);
     process.exit(2);
   }
   return scenario;
@@ -62,8 +64,12 @@ async function api(base, method, path, body) {
 
 /** POSTs the real sample IFC as `filename`; does not wait on the resulting job. */
 async function uploadRaw(base, sourceModelId, filename) {
-  const form = new FormData();
   const bytes = await readFileAsync(SAMPLE_IFC);
+  return uploadBytes(base, sourceModelId, filename, bytes);
+}
+
+async function uploadBytes(base, sourceModelId, filename, bytes) {
+  const form = new FormData();
   form.set("file", new Blob([bytes]), filename);
   const res = await fetch(`${base}/api/source-models/${sourceModelId}/revisions`, { method: "POST", body: form });
   return { status: res.status, json: await res.json() };
@@ -234,6 +240,17 @@ async function runRevisionsScenario(base, dataDir, check, log) {
     Boolean(firstObject?.ref?.revisionId === rev1Id && firstObject?.ref?.objectId?.startsWith("occ_")),
     JSON.stringify(firstObject),
   );
+  const detail = (await api(base, "GET", `/api/objects/${firstObject.id}`)).json;
+  const sampleProp = detail.properties?.[0];
+  check(
+    "object properties round-trip as the shared record (values, ordered, origin)",
+    Array.isArray(detail.properties)
+      && sampleProp
+      && Array.isArray(sampleProp.values)
+      && typeof sampleProp.ordered === "boolean"
+      && (sampleProp.origin === "occurrence" || sampleProp.origin === "type"),
+    JSON.stringify(sampleProp),
+  );
   const fileRes = await fetch(`${base}/api/models/${rev1Id}/file`);
   check("the original uploaded IFC is retrievable byte-for-byte via /file", fileRes.status === 200 && Number(fileRes.headers.get("content-length")) > 0, `status=${fileRes.status}`);
 
@@ -243,9 +260,9 @@ async function runRevisionsScenario(base, dataDir, check, log) {
   log("run-input-provenance.json", run.json);
   const provenance = run.json?.inputProvenance;
   check(
-    "a newly created run reports incomplete input provenance with a stated reason",
-    run.status === 200 && provenance?.status === "incomplete" && typeof provenance?.reason === "string" && provenance.reason.length > 0,
-    JSON.stringify({ status: run.status, provenance }),
+    "a newly created run reports complete input provenance for its pinned models",
+    run.status === 200 && provenance?.status === "complete" && (provenance.reason == null || provenance.reason === ""),
+    JSON.stringify({ status: run.status, provenance, modelCount: run.json?.models?.length }),
   );
 }
 
@@ -298,6 +315,8 @@ const FAILURE_MODES = [
   "bad-artifact-hash",
   "path-escape",
   "schema-version-mismatch",
+  "symlink-escape",
+  "bad-render-schema",
 ];
 
 async function runFailureModes(dataDir, check, log) {
@@ -369,9 +388,31 @@ async function checkRestartRecovery(check, log) {
     }
     check("restart-recovery: the job reaches 'running' before the simulated crash", running, "");
 
+    const pidPath = join(dataDir, "jobs", enqueued.json.id, "attempt-0", "worker.pid");
+    let workerPid = existsSync(pidPath) ? Number(readFileSync(pidPath, "utf8")) : NaN;
+    const pidDeadline = Date.now() + 2000;
+    while (!Number.isInteger(workerPid) && Date.now() < pidDeadline) {
+      await new Promise((r) => setTimeout(r, 50));
+      workerPid = existsSync(pidPath) ? Number(readFileSync(pidPath, "utf8")) : NaN;
+    }
+    check("restart-recovery: hang worker wrote its pid", Number.isInteger(workerPid), pidPath);
+
     server1.child.kill("SIGKILL");
     await new Promise((resolve) => server1.child.once("exit", resolve));
     log("restart-server-1.log", server1.getLog());
+
+    let workerGone = false;
+    const goneDeadline = Date.now() + 2000;
+    while (Date.now() < goneDeadline && Number.isInteger(workerPid)) {
+      try {
+        process.kill(workerPid, 0);
+        await new Promise((r) => setTimeout(r, 50));
+      } catch {
+        workerGone = true;
+        break;
+      }
+    }
+    check("restart-recovery: the old worker process is gone after the checker is killed", workerGone, `pid=${workerPid}`);
 
     // Default worker command: this half proves a *real* recovery, not just a
     // status flip — the retry below actually re-runs the real ifc-worker.
@@ -390,6 +431,12 @@ async function checkRestartRecovery(check, log) {
         "restart-recovery: retrying the recovered job succeeds via the real worker",
         finished.status === "completed" && Boolean(finished.modelRevisionId),
         JSON.stringify(finished),
+      );
+      check(
+        "restart-recovery: retry uses a new attempt directory and keeps the previous attempt",
+        existsSync(join(dataDir, "jobs", enqueued.json.id, "attempt-0"))
+          && existsSync(join(dataDir, "jobs", enqueued.json.id, "attempt-1")),
+        "",
       );
 
       const secondRetry = (await api(server2.base, "POST", `/api/jobs/${enqueued.json.id}/retry`, {})).json;
@@ -415,10 +462,260 @@ async function runWorkerFailureScenario(check, log) {
 
     await runFailureModes(dataDir, check, log);
     await checkConcurrency(dataDir, check, log);
+    await checkParserIndependentPublish(dataDir, check, log);
+    await checkSeedDoesNotRecoverLiveJobs(dataDir, check, log);
+    await checkExclusiveServeLock(dataDir, check, log);
   } finally {
     rmSync(dataDir, { recursive: true, force: true });
   }
   await checkRestartRecovery(check, log);
+}
+
+async function checkParserIndependentPublish(dataDir, check, log) {
+  const server = await startServer(dataDir, fakeWorkerCommand("slow-success"), { FAKE_WORKER_DELAY_MS: "50" });
+  try {
+    const sourceModel = (await api(server.base, "POST", "/api/projects/demo-project/source-models", { name: "Garbage IFC", discipline: "OTHER" })).json;
+    const enqueued = await uploadBytes(server.base, sourceModel.id, "not-ifc.bin", Buffer.from("this is not IFC"));
+    check("garbage upload still enqueues", enqueued.status === 202, JSON.stringify(enqueued));
+    const job = await pollJob(server.base, enqueued.json.id);
+    check(
+      "a successful worker publishes a revision even when the custom parser cannot read the bytes",
+      job.status === "completed" && Boolean(job.modelRevisionId),
+      JSON.stringify(job),
+    );
+  } finally {
+    log("parser-independent.log", server.getLog());
+    await stopProcess(server.child);
+  }
+}
+
+async function checkSeedDoesNotRecoverLiveJobs(dataDir, check, log) {
+  const server = await startServer(dataDir, fakeWorkerCommand("hang"), { FAKE_WORKER_DELAY_MS: "8000" });
+  try {
+    const sourceModel = (await api(server.base, "POST", "/api/projects/demo-project/source-models", { name: "Seed During Job", discipline: "OTHER" })).json;
+    const enqueued = await uploadRaw(server.base, sourceModel.id, "seed-during.ifc");
+    let running = false;
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline && !running) {
+      const job = (await api(server.base, "GET", `/api/jobs/${enqueued.json.id}`)).json;
+      running = job.status === "running";
+      if (!running) await new Promise((r) => setTimeout(r, 50));
+    }
+    check("seed-during-job: job is running", running, "");
+    const seed = runCli(["seed", "--data-dir", dataDir, "--packs-dir", dataDir, "--samples-dir", dataDir]);
+    check("seed-during-job: seed exits 0", seed.status === 0, seed.stderr);
+    const after = (await api(server.base, "GET", `/api/jobs/${enqueued.json.id}`)).json;
+    check(
+      "seed does not mark a live job interrupted",
+      after.status === "running",
+      JSON.stringify(after),
+    );
+  } finally {
+    log("seed-during-job.log", server.getLog());
+    await stopProcess(server.child);
+  }
+}
+
+async function checkExclusiveServeLock(dataDir, check, log) {
+  const server = await startServer(dataDir, fakeWorkerCommand("slow-success"));
+  try {
+    const port = await freePort();
+    const second = spawn(BIN_PATH, ["serve", "--data-dir", dataDir, "--port", String(port)], {
+      cwd: REPO_ROOT,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stderr = "";
+    second.stderr.on("data", (chunk) => (stderr += chunk));
+    const code = await new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        second.kill("SIGKILL");
+        resolve("timeout");
+      }, 4000);
+      second.once("exit", (exitCode) => {
+        clearTimeout(timer);
+        resolve(exitCode);
+      });
+    });
+    check(
+      "a second serve against the same data directory exits instead of recovering live jobs",
+      code !== 0 && code !== "timeout" && /already owns/i.test(stderr),
+      JSON.stringify({ code, stderr }),
+    );
+  } finally {
+    log("exclusive-lock.log", server.getLog());
+    await stopProcess(server.child);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// scenario: checks (ticket 06)
+// ---------------------------------------------------------------------------
+
+async function uploadFileAndAwait(base, sourceModelId, filename, filePath, timeoutMs = 120_000) {
+  const bytes = await readFileAsync(filePath);
+  const enqueued = await uploadBytes(base, sourceModelId, filename, bytes);
+  if (enqueued.status !== 202) return { enqueued, job: null };
+  const job = await pollJob(base, enqueued.json.id, { timeoutMs });
+  return { enqueued, job };
+}
+
+async function pageAllFindingObjects(base, findingId) {
+  const objects = [];
+  let offset = 0;
+  const limit = 100;
+  let total = Infinity;
+  while (offset < total) {
+    const page = (await api(base, "GET", `/api/findings/${findingId}/objects?limit=${limit}&offset=${offset}`)).json;
+    total = page.total;
+    objects.push(...page.objects);
+    offset += limit;
+  }
+  return { total, objects };
+}
+
+async function runChecksScenario(runDir, check, log) {
+  const dataDir = mkdtempSync(join(tmpdir(), "modelshelf-verify-api-checks-"));
+  let server;
+  try {
+    const seed = runCli(["seed", "--data-dir", dataDir, "--packs-dir", dataDir, "--samples-dir", dataDir]);
+    check("seed succeeds", seed.status === 0, seed.stderr);
+
+    server = await startServer(dataDir);
+    const { base } = server;
+
+    const invalidMeta = await api(base, "POST", "/api/packs/demo-pack/versions", {
+      idsXml: await readFileAsync(FIXTURES_IDS, "utf8"),
+      metadata: { defaults: { severity: "urgent" } },
+    });
+    check(
+      "invalid pack metadata is rejected",
+      invalidMeta.status === 400 && invalidMeta.json?.error?.code === "bad_request",
+      JSON.stringify(invalidMeta),
+    );
+
+    const malformedIds = await api(base, "POST", "/api/packs/demo-pack/versions", { idsXml: "<not-ids/>" });
+    check(
+      "malformed IDS is rejected at publication",
+      malformedIds.status === 422 && malformedIds.json?.error?.code === "parse_failed",
+      JSON.stringify(malformedIds),
+    );
+
+    const idsXml = await readFileAsync(FIXTURES_IDS, "utf8");
+    const packVersion = (
+      await api(base, "POST", "/api/packs/demo-pack/versions", {
+        idsXml,
+        metadata: {
+          categories: [{ id: "regulatory", label: "Regulatory" }],
+          defaults: { severity: "high", categoryId: "regulatory" },
+          specs: {
+            "Wall declares a fire rating": {
+              severity: "high",
+              categoryId: "regulatory",
+              disciplines: ["ARCH"],
+            },
+          },
+        },
+      })
+    ).json;
+    check("scoped fixtures pack version is published", Boolean(packVersion?.id), JSON.stringify(packVersion));
+
+    const east = (await api(base, "POST", "/api/projects/demo-project/source-models", { name: "Architecture East", discipline: "ARCH" })).json;
+    const west = (await api(base, "POST", "/api/projects/demo-project/source-models", { name: "Architecture West", discipline: "ARCH" })).json;
+    const mep = (await api(base, "POST", "/api/projects/demo-project/source-models", { name: "Mechanical", discipline: "MEP" })).json;
+
+    const eastRev = await uploadFileAndAwait(base, east.id, "east.ifc", FIXTURES_IFC);
+    const westRev = await uploadFileAndAwait(base, west.id, "west.ifc", FIXTURES_IFC);
+    const mepRev = await uploadFileAndAwait(base, mep.id, "mep.ifc", FIXTURES_IFC);
+    check(
+      "two ARCH revisions and one MEP revision ingest",
+      eastRev.job?.status === "completed" && westRev.job?.status === "completed" && mepRev.job?.status === "completed",
+      JSON.stringify({ east: eastRev.job, west: westRev.job, mep: mepRev.job }),
+    );
+    const eastId = eastRev.job.modelRevisionId;
+    const westId = westRev.job.modelRevisionId;
+    const mepId = mepRev.job.modelRevisionId;
+
+    const delivery = (await api(base, "POST", "/api/projects/demo-project/deliveries", { label: "Scoped drop" })).json;
+    await api(base, "POST", `/api/deliveries/${delivery.id}/members`, { sourceModelId: east.id, modelRevisionId: eastId });
+    await api(base, "POST", `/api/deliveries/${delivery.id}/members`, { sourceModelId: west.id, modelRevisionId: westId });
+    await api(base, "POST", `/api/deliveries/${delivery.id}/members`, { sourceModelId: mep.id, modelRevisionId: mepId });
+    await api(base, "POST", `/api/deliveries/${delivery.id}/finalize`, {});
+
+    const run = await api(base, "POST", "/api/runs", { deliveryId: delivery.id, packVersionId: packVersion.id });
+    log("scoped-run.json", run.json);
+    check(
+      "run completes with pinned complete provenance and three models",
+      run.status === 200 &&
+        run.json?.run?.status === "completed" &&
+        run.json?.inputProvenance?.status === "complete" &&
+        run.json?.models?.length === 3,
+      JSON.stringify({ status: run.status, provenance: run.json?.inputProvenance, models: run.json?.models?.map((m) => m.id) }),
+    );
+    const pinnedIds = new Set(run.json.models.map((m) => m.id));
+    check(
+      "pinned models are the exact delivery members",
+      pinnedIds.has(eastId) && pinnedIds.has(westId) && pinnedIds.has(mepId) && pinnedIds.size === 3,
+      JSON.stringify([...pinnedIds]),
+    );
+
+    const findings = run.json.scorecard?.flatMap((band) => band.categories.flatMap((c) => c.findings)) ?? [];
+    check("the fire-rating rule produces one grouped finding", findings.length >= 1, JSON.stringify(findings.map((f) => ({ title: f.title, objectCount: f.objectCount }))));
+    const finding = findings.find((f) => f.specName === "Wall declares a fire rating") ?? findings[0];
+    check(
+      "two ARCH files contribute 270 affected objects; the excluded MEP file does not",
+      finding?.objectCount === 270 && finding.sampleObjects.length === 25,
+      JSON.stringify({ objectCount: finding?.objectCount, sample: finding?.sampleObjects?.length }),
+    );
+    const sample = finding.sampleObjects[0];
+    check(
+      "finding objects carry the shared ObjectRef used by rendering",
+      Boolean(sample?.ref?.revisionId && sample?.ref?.objectId?.startsWith("occ_")),
+      JSON.stringify(sample),
+    );
+    const sampleModelIds = new Set(finding.sampleObjects.map((o) => o.modelId));
+    check("sample objects only come from ARCH revisions", ![...sampleModelIds].includes(mepId), JSON.stringify([...sampleModelIds]));
+
+    const paged = await pageAllFindingObjects(base, finding.id);
+    const pageModelIds = new Set(paged.objects.map((o) => o.modelId));
+    check(
+      "paging retrieves every affected object beyond the first 25",
+      paged.total === 270 && paged.objects.length === 270,
+      JSON.stringify({ total: paged.total, retrieved: paged.objects.length }),
+    );
+    check(
+      "paged members are the two ARCH revisions only",
+      pageModelIds.size === 2 && pageModelIds.has(eastId) && pageModelIds.has(westId) && !pageModelIds.has(mepId),
+      JSON.stringify([...pageModelIds]),
+    );
+    check(
+      "every paged object has a revision-qualified ref",
+      paged.objects.every((o) => o.ref?.revisionId === o.modelId && typeof o.ref?.objectId === "string" && o.ref.objectId.startsWith("occ_")),
+      JSON.stringify(paged.objects[100]),
+    );
+
+    const beforeRestart = {
+      runId: run.json.run.id,
+      modelIds: run.json.models.map((m) => m.id),
+      hashes: run.json.models.map((m) => m.contentSha256),
+    };
+    await stopProcess(server.child);
+    server = await startServer(dataDir);
+    const after = (await api(server.base, "GET", `/api/runs/${beforeRestart.runId}`)).json;
+    log("run-after-restart.json", after);
+    check(
+      "a run retains its exact input list after restart",
+      after.inputProvenance?.status === "complete" &&
+        JSON.stringify(after.models.map((m) => m.id)) === JSON.stringify(beforeRestart.modelIds) &&
+        JSON.stringify(after.models.map((m) => m.contentSha256)) === JSON.stringify(beforeRestart.hashes),
+      JSON.stringify({ before: beforeRestart, after: after.models?.map((m) => ({ id: m.id, hash: m.contentSha256 })) }),
+    );
+  } finally {
+    if (server) {
+      log("checks-serve.log", server.getLog());
+      await stopProcess(server.child);
+    }
+    rmSync(dataDir, { recursive: true, force: true });
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -426,8 +723,15 @@ async function runWorkerFailureScenario(check, log) {
 async function main() {
   const scenario = requireScenario();
   const { check, failureCount } = createChecker();
-  mkdirSync(EVIDENCE_DIR, { recursive: true });
-  const runDir = join(EVIDENCE_DIR, `run-${new Date().toISOString().replace(/[:.]/g, "-")}`);
+  const evidenceRoot = join(
+    REPO_ROOT,
+    ".omo",
+    "evidence",
+    "modelshelf-prototype",
+    scenario === "checks" ? "task-6" : "task-2",
+  );
+  mkdirSync(evidenceRoot, { recursive: true });
+  const runDir = join(evidenceRoot, `run-${new Date().toISOString().replace(/[:.]/g, "-")}`);
   mkdirSync(runDir, { recursive: true });
   const log = (name, value) =>
     writeFileSync(join(runDir, name), typeof value === "string" ? value : JSON.stringify(value, null, 2));
@@ -436,8 +740,10 @@ async function main() {
 
   if (scenario === "revisions") {
     await runRevisionsScenarioTop(runDir, check, log);
-  } else {
+  } else if (scenario === "worker-failure") {
     await runWorkerFailureScenario(check, log);
+  } else {
+    await runChecksScenario(runDir, check, log);
   }
 
   console.log(`\nevidence written to ${runDir}`);

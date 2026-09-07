@@ -17,7 +17,9 @@ pub const MIGRATION_0003: &str = include_str!("../migrations/0003_jobs.sql");
 pub const MIGRATION_0004: &str = include_str!("../migrations/0004_run_input_provenance.sql");
 pub const MIGRATION_0005: &str =
     include_str!("../migrations/0005_run_input_provenance_default.sql");
-pub const SCHEMA_VERSION: i64 = 5;
+pub const MIGRATION_0006: &str = include_str!("../migrations/0006_object_prop_record.sql");
+pub const MIGRATION_0007: &str = include_str!("../migrations/0007_run_models.sql");
+pub const SCHEMA_VERSION: i64 = 7;
 
 pub async fn open(data_dir: &std::path::Path) -> anyhow::Result<SqlitePool> {
     let pool = connect(data_dir).await?;
@@ -92,6 +94,12 @@ pub(crate) async fn migrate_with_fault(pool: &SqlitePool, fault: MigrationFault)
     }
     if current_version(pool).await? < 5 {
         apply_version_5(pool, fault).await?;
+    }
+    if current_version(pool).await? < 6 {
+        apply_sql_version(pool, 6, MIGRATION_0006).await?;
+    }
+    if current_version(pool).await? < 7 {
+        apply_sql_version(pool, 7, MIGRATION_0007).await?;
     }
     Ok(())
 }

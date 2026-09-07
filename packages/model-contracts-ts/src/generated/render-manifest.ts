@@ -17,6 +17,13 @@ export interface RenderManifest {
 export interface Instance {
   instanceId: string;
   ref: ObjectRef;
+  /**
+   * Object-to-project 3x4 row-major transform in metres, same layout as SemanticObject.placement. Present when placement was converted so a renderer can position object-local vertices without loading SemanticModel. Omitted when the source placement cannot be interpreted.
+   *
+   * @minItems 12
+   * @maxItems 12
+   */
+  placement?: [number, number, number, number, number, number, number, number, number, number, number, number];
   boundingBox?: {
     /**
      * @minItems 3

@@ -5,8 +5,8 @@ Parent: ../map.md
 Type: task
 Mode: AFK
 Labels: wayfinder:task, ready-for-agent
-Status: open
-Assignee: unassigned
+Status: resolved
+Assignee: grok-timingila-ticket-06
 Blocked by: 04, 05
 Wave: 1
 Original plan coverage: 3,4 and first-loop portion of 5
@@ -44,12 +44,12 @@ Other agents may be working in this checkout. Do not revert their edits. A depen
 
 ## Acceptance criteria
 
-- [ ] A finding can be consumed as textual evidence without a renderer, and every referenced object maps to the same shared identity used by rendering.
+- [x] A finding can be consumed as textual evidence without a renderer, and every referenced object maps to the same shared identity used by rendering.
 
-- [ ] The synthetic oracle matches every selected rule; a malformed or unsupported requirement cannot quietly pass.
-- [ ] Required no-match applicability fails, legitimate optional no-match is represented separately, and engine/geometry limitations are incomplete.
-- [ ] Two files in one discipline are evaluated correctly; excluded files do not create spurious missing-object failures.
-- [ ] A run retains its exact input list after restart; a finding affecting over 100 objects can retrieve every member beyond the first 25.
+- [x] The synthetic oracle matches every selected rule; a malformed or unsupported requirement cannot quietly pass.
+- [x] Required no-match applicability fails, legitimate optional no-match is represented separately, and engine/geometry limitations are incomplete.
+- [x] Two files in one discipline are evaluated correctly; excluded files do not create spurious missing-object failures.
+- [x] A run retains its exact input list after restart; a finding affecting over 100 objects can retrieve every member beyond the first 25.
 
 ## Verification
 
@@ -66,3 +66,60 @@ Append an Answer with changes, exact commands/results, evidence links, remaining
 ## Comments
 
 Created from the approved prototype plan on 2026-09-06. No implementation is claimed by ticket creation.
+
+## Answer
+
+IfcTester is the live scorer. A run freezes membership, content hashes, pack IDS digest, specification scope, and engine profile in one transaction, then invokes `ifc-worker --request` with `operation: validate` per pinned model. Findings are grouped by requirement and carry the same `ref: { revisionId, objectId }` as object payloads.
+
+### Behavior
+
+- Worker `validate` hashes the IDS file, opens it with IfcTester, filters `specificationIds`, inspects the model, and writes `outcomes.jsonl`. Required `minOccurs != 0` with zero matches is `failed`. Optional `minOccurs == 0` with zero matches is `not_applicable`. Schema/facet skip (`should_filter_version=True`) is `incomplete`. Invalid IDS XML fails the job (no quiet pass).
+- `POST /api/runs` inserts `runs` + `run_models` with `input_provenance=complete` before evaluation. `GET /api/runs/:id` reads models from that snapshot. Discipline scope is applied before per-file evaluation via `SpecMeta.disciplines`.
+- Pack publication rejects unknown severity/category/discipline and IDS IfcTester cannot parse.
+- Finding objects are paged; the scorecard embeds 25 samples.
+
+### Files
+
+- Worker: `services/ifc-worker/src/ifc_worker/validate.py`, `cli.py`, `records.py`, `jsonl.py`, `inspect.py` (empty GlobalId → null), `tests/test_demo_packs.py`
+- Checker: `migrations/0007_run_models.sql` (schema version 7), `run.rs`, `jobs.rs` (`invoke_worker` shared by inspect and validate), `ids_meta.rs`, `routes.rs`, `seed.rs`, `dto.rs`, `db.rs`
+- Contracts/UI types: `docs/contracts/http-api.md` rule 10, `docs/contracts/worker-v1.md`, `apps/web/src/lib/types.ts` (`FindingObject.ref`)
+- Packs: `packs/demo/blcj-s1000-v{1,2}.metadata.json` gain `disciplines`
+- API harness: `scripts/verify-api.mjs --scenario checks`
+
+### Commands
+
+```
+uv run --locked --project services/ifc-worker pytest services/ifc-worker/tests/test_demo_packs.py
+# 9 passed
+
+PATH="/home/daniel/.cargo/bin:$PATH" cargo test -p modelshelf-checker
+# 14 passed
+
+node scripts/verify-api.mjs --scenario checks
+# 15 named checks passed (invalid metadata, malformed IDS, two ARCH files = 270 objects,
+# MEP excluded, ObjectRefs, paging past 25, snapshot after restart)
+
+node scripts/verify-api.mjs --scenario revisions   # 22 passed, provenance complete
+node scripts/verify-api.mjs --scenario worker-failure  # still green after invoke_worker extract
+```
+
+From the worker project directory the ticket command `pytest tests/test_demo_packs.py` is the same file.
+
+### Evidence
+
+`.omo/evidence/modelshelf-prototype/task-6/run-2026-09-07T02-22-07-883Z`
+
+### Limits
+
+- Validate re-inspects each model with `geometry: false`; it does not reuse the ingest artifacts.
+- `crates/ids` still lists specification names for scope. It does not score.
+- BLCJ specs declare `ifcVersion=IFC2X3`. On an IFC4 file IfcTester skips them as incomplete (schema filter), which is honest but means the BLCJ pack is not a useful scorer for IFC4 samples.
+- Historical runs without `run_models` rows stay `incomplete` and still reconstruct models from current delivery membership.
+- Ticket 07 (combined viewer / ObjectRef selection) is not started.
+
+### Downstream contract
+
+- New runs report `inputProvenance.status: "complete"` and `reason: null`.
+- `FindingObject` includes `ref: { revisionId, objectId }`.
+- Health `engineVersion` / `parserVersion` are `ifctester/0.8.5` and `ifcopenshell/0.8.5`.
+- Schema version is 7.

@@ -55,6 +55,16 @@ def length_scale_to_metre(ifc_file: ifcopenshell.file) -> float | None:
     return None
 
 
+def _si_prefix_exponent(unit: ifcopenshell.entity_instance) -> int:
+    """Milli on a square unit is 1e-3 squared, not 1e-3 once."""
+    unit_type = getattr(unit, "UnitType", None)
+    if unit_type == "AREAUNIT":
+        return 2
+    if unit_type == "VOLUMEUNIT":
+        return 3
+    return 1
+
+
 def si_multiplier_for_unit(unit: ifcopenshell.entity_instance | None) -> float | None:
     """Scale that converts a value in `unit` into SI (m, m2, or m3).
 
@@ -75,7 +85,8 @@ def si_multiplier_for_unit(unit: ifcopenshell.entity_instance | None) -> float |
             scale *= float(conversion_factor.ValueComponent.wrappedValue)
             current = conversion_factor.UnitComponent
         if current.is_a("IfcSIUnit"):
-            return scale * float(util_unit.get_prefix_multiplier(current.Prefix))
+            prefix = float(util_unit.get_prefix_multiplier(current.Prefix))
+            return scale * (prefix ** _si_prefix_exponent(current))
     except Exception:  # noqa: BLE001 - fall back to unsupported rather than invent a scale
         return None
     return None

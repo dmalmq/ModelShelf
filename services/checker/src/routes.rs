@@ -13,7 +13,7 @@ use crate::dto::{
     delivery_json, model_json, pack_version_json, project_json, run_summary,
     AddDeliveryMemberBody, CreateDeliveryBody, CreatePackVersionBody, Delivery, DeliveryDetail,
     DeliveryRow, DeliverySummary, Health, ModelInfo, ModelRevisionRow, ObjectDetail,
-    ObjectFingerprints, ObjectPage, ObjectProperty, ObjectRefOut, ObjectRowDb, ObjectRowOut, Pack,
+    ObjectFingerprints, ObjectPage, ObjectProperty, ObjectPropertyValue, ObjectRefOut, ObjectRowDb, ObjectRowOut, Pack,
     PackRow, PackSpecInfo, PackVersion, PackVersionDetail, PackVersionRow, Project, ProjectDetail,
     ProjectRow, PropRow, RunRow, RunSummary, DELIVERY_SELECT, MODEL_REVISION_SELECT,
     RUN_SUMMARY_SELECT,
@@ -58,8 +58,8 @@ pub fn router() -> Router<AppState> {
 async fn health() -> Json<Health> {
     Json(Health {
         status: "ok",
-        engine_version: ids::ENGINE_VERSION.to_owned(),
-        parser_version: ifc_model::PARSER_VERSION.to_owned(),
+        engine_version: crate::ids_meta::CHECK_ENGINE_VERSION.to_owned(),
+        parser_version: crate::ids_meta::CHECK_PARSER_VERSION.to_owned(),
         schema_version: SCHEMA_VERSION,
     })
 }
@@ -466,7 +466,7 @@ async fn get_object(
     .ok_or_else(|| ApiError::not_found("object"))?;
 
     let props: Vec<PropRow> = sqlx::query_as(
-        "SELECT pset, name, value, data_type, unit, numeric, inherited FROM object_props
+        "SELECT pset, name, value, data_type, unit, numeric, inherited, record_json FROM object_props
           WHERE object_id = ?1 ORDER BY pset, name",
     )
     .bind(&object_id)
@@ -481,19 +481,52 @@ async fn get_object(
     Ok(Json(ObjectDetail {
         row: object_row_json(&row),
         placement,
-        properties: props
-            .into_iter()
-            .map(|p| ObjectProperty {
-                pset: p.pset,
-                name: p.name,
-                value: p.value,
-                data_type: p.data_type,
-                unit: p.unit,
-                numeric: p.numeric,
-                inherited: p.inherited != 0,
-            })
-            .collect(),
+        properties: props.into_iter().map(object_property_from_row).collect(),
     }))
+}
+
+fn object_property_from_row(row: PropRow) -> ObjectProperty {
+    if let Some(json) = row.record_json.as_deref() {
+        if let Ok(property) = serde_json::from_str::<model_contracts::Property>(json) {
+            return ObjectProperty {
+                pset: property.pset.to_string(),
+                name: property.name.to_string(),
+                values: property
+                    .values
+                    .into_iter()
+                    .map(|value| ObjectPropertyValue {
+                        value: match value.value {
+                            model_contracts::PropertyValueValue::String(text) => serde_json::Value::String(text),
+                            model_contracts::PropertyValueValue::Number(number) => serde_json::json!(number),
+                            model_contracts::PropertyValueValue::Boolean(flag) => serde_json::Value::Bool(flag),
+                            model_contracts::PropertyValueValue::Null => serde_json::Value::Null,
+                        },
+                        original_unit: value.original_unit,
+                        si_value: value.si_value,
+                        dimension: value.dimension.map(|dim| dim.to_string()),
+                    })
+                    .collect(),
+                ordered: property.ordered,
+                origin: property.origin.to_string(),
+            };
+        }
+    }
+    ObjectProperty {
+        pset: row.pset,
+        name: row.name,
+        values: vec![ObjectPropertyValue {
+            value: row.value.map(serde_json::Value::String).unwrap_or(serde_json::Value::Null),
+            original_unit: row.unit,
+            si_value: row.numeric,
+            dimension: row.data_type,
+        }],
+        ordered: true,
+        origin: if row.inherited != 0 {
+            "type".to_owned()
+        } else {
+            "occurrence".to_owned()
+        },
+    }
 }
 
 async fn load_packs(state: &AppState, tenant_id: Option<&str>) -> Result<Vec<Pack>, ApiError> {
@@ -554,16 +587,24 @@ async fn create_pack_version(
             .await?
             .ok_or_else(|| ApiError::not_found("pack"))?;
 
-    let parsed = ids::Ids::parse(&body.ids_xml)
-        .map_err(|err| ApiError::parse_failed(format!("not a valid IDS document: {err}")))?;
+    let spec_count = crate::ids_meta::validate_ids_with_ifctester(&body.ids_xml)
+        .map_err(ApiError::parse_failed)?;
+    let metadata_json = match body.metadata.as_ref() {
+        None => None,
+        Some(value) => {
+            let text = value.to_string();
+            crate::ids_meta::PackMetadata::try_parse(Some(&text)).map_err(ApiError::bad_request)?;
+            Some(text)
+        }
+    };
 
     let row = insert_pack_version(
         &state,
         &pack_id,
         &body.ids_xml,
-        body.metadata.as_ref().map(|m| m.to_string()),
+        metadata_json,
         body.notes.clone(),
-        parsed.specifications.len() as i64,
+        spec_count as i64,
     )
     .await?;
     let _ = pack;

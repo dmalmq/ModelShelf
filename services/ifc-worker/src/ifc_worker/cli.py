@@ -20,6 +20,7 @@ from pydantic import ValidationError
 from ifc_worker.hashing import sha256_file
 from ifc_worker.inspect import WorkerInputError, run_inspect
 from ifc_worker.protocol import PROTOCOL_VERSION, ManifestPointer, ProgressEvent, Request, ResultEvent
+from ifc_worker.validate import run_validate
 
 app = typer.Typer(add_completion=False)
 
@@ -38,19 +39,15 @@ def _run(request_path: Path) -> int:
         print(f"invalid request: {exc}", file=sys.stderr)
         return 2
 
-    if parsed.operation == "validate":
-        # docs/contracts/worker-v1.md defines this operation, but IDS checking
-        # (ifctester wiring, outcome scoping) is a separate ticket's scope; failing
-        # loudly here is the honest behavior, not a fabricated "passed" result.
-        print("operation 'validate' is not implemented by this worker build", file=sys.stderr)
-        return 2
-
     def emit_progress(stage: str) -> None:
         event = ProgressEvent(protocolVersion=PROTOCOL_VERSION, jobId=parsed.jobId, stage=stage)
         print(event.model_dump_json(), flush=True)
 
     try:
-        run_inspect(parsed, emit_progress)
+        if parsed.operation == "validate":
+            run_validate(parsed, emit_progress)
+        else:
+            run_inspect(parsed, emit_progress)
     except WorkerInputError as exc:
         print(str(exc), file=sys.stderr)
         return 1

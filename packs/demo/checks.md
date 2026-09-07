@@ -23,7 +23,7 @@ mapping tables alone. Real evaluation results are from
 | 8 | Structural beam records its span | Structure / `IfcBeam` | `Pset_BeamCommon.Span` | 02-mlit-attributes structure explanation | Any `IfcBeam` | Medium | Structural | Span is basic structural-adequacy information every beam schedule carries. | Structure: 158/158 pass. Architecture: 205/205 pass. |
 | 9 | Structural slab is load-bearing | Structure / `IfcSlab` | `Pset_SlabCommon.LoadBearing = true` | 02-mlit-attributes structure explanation | Any `IfcSlab` | High | Structural | Same rationale as check 6, for slabs. | Structure: 76/76 pass. Architecture: 17/27 pass, 10 fail. |
 | 10 | MEP flow segment records its usage | MEP / `IfcFlowSegment` | `Rebro_PartsData.用途` | 02-mlit-attributes MEP explanation; BE-Bridge (Japan's national MEP BIM exchange scheme, promoted by MLIT's 官庁営繕部) property naming | Any `IfcFlowSegment` (pipe, duct, cable tray, or conduit) | Medium | Classification | Usage (potable water / gas / drainage / supply-exhaust air / cabling) is the basic classification every downstream MEP check needs. | MEP: 1337/1337 pass — populated consistently across every flow-segment family (pipes, ducts, cable trays, conduits alike). |
-| 11 | MEP flow segment records its outer diameter | MEP / `IfcFlowSegment` | `Rebro_PartsData.外径[mm]` | Same BE-Bridge/Rebro property family as check 10 | v1: any `IfcFlowSegment`. v2: excludes `Description = 電気.ケーブルラック` (cable tray) | Advisory | Data completeness | Outer diameter is needed for clash/clearance checks against structure and other MEP runs. | v1: 1187/1337 pass, 150 fail — inspection showed every failure was a cable tray (`電気.ケーブルラック`), a rectangular element with no diameter by design. v2 (the explained rule change, see below): narrows applicability to exclude that entity family; 1187/1294 pass, 107 fail — the honest remainder (rectangular ducts and dual-diameter refrigerant pipe pairs, which genuinely lack a single outer-diameter value). |
+| 11 | MEP flow segment records its outer diameter | MEP / `IfcFlowSegment` | `Rebro_PartsData.外径[mm]` | Same BE-Bridge/Rebro property family as check 10 | v1: any `IfcFlowSegment`. v2: excludes `Description = 電気.ケーブルラック` (cable tray) | Advisory | Data completeness | Outer diameter is needed for clash/clearance checks against structure and other MEP runs. | v1: 1187/1337 pass, 150 fail. Those 150 are 62 ducts, 45 pipes, and 43 cable trays, not cable trays alone. v2 excludes only the 43 cable trays (`applicable` 1294, 107 fail). |
 
 `NotApplicable` outcomes (a discipline-specific check run against a model from
 a different discipline, e.g. checks 1–5 against the structure file) are
@@ -36,19 +36,16 @@ rather than a spurious universal fail — see the full evidence file for every
 
 Check 11 above. v1 required `Rebro_PartsData.外径[mm]` on every
 `IfcFlowSegment` unconditionally and failed on 150 of 1337 real instances.
-Inspecting those 150 failures (not assuming — reading the actual
-`Description` attribute of every failing instance) showed all 150 were
-`電気.ケーブルラック` (cable tray) segments: a cable tray is rectangular by
-definition and has no single "diameter." v1 was measuring a structural
-impossibility for that entity family, not a real data gap. v2 narrows the
-check's applicability to exclude `Description = 電気.ケーブルラック` via an
-`<attribute>` facet alongside the `<entity>` facet in one `<applicability>`
-block (confirmed to parse and evaluate correctly:
-`.omo/evidence/modelshelf-prototype/task-5/evaluate-v2-real-models.txt` shows
-`applicable` dropping from 1337 to exactly 1294, i.e. exactly the 43 cable
-trays excluded and nothing else). The 107 remaining v2 failures (rectangular
-ducts and dual-diameter refrigerant pipe pairs) are left as a real, honest
-finding — not further scoped away.
+
+2026-09-07 correction: an earlier writeup said all 150 v1 failures were cable
+trays and that v2 excluded those 150. Independent IfcTester evaluation and IFC
+inspection find 62 ducts, 45 pipes, and 43 cable trays. v2 excludes only
+`Description = 電気.ケーブルラック` (43 trays). Applicable count drops from
+1337 to 1294. The remaining 107 failures are ducts and pipes that still lack a
+single outer-diameter value.
+
+v2 keeps the combined `<entity>` + `<attribute>` applicability. Confirmed in
+`.omo/evidence/modelshelf-prototype/task-5/evaluate-v2-real-models.txt`.
 
 ## Data quality caveats, discovered by inspection
 

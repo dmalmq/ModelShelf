@@ -1,5 +1,8 @@
 //! `ids` — buildingSMART IDS 1.0 parser and evaluator over `ifc-model`.
 //!
+//! Reference/test engine only. Live scorecards come from IfcTester via the
+//! Python worker (ticket 06). Do not add live-scoring features here.
+//!
 //! Honest-scope rules, non-negotiable:
 //! - Entity-facet matching is **non-inheriting** (IDS spec: no automatic inheritance).
 //! - Anything this engine cannot decide becomes `Outcome::ReviewIncomplete` with a

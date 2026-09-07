@@ -5,7 +5,7 @@ Parent: ../map.md
 Type: task
 Mode: AFK
 Labels: wayfinder:task, ready-for-agent
-Status: open
+Status: resolved
 Assignee: unassigned
 Blocked by: 18
 Wave: 1
@@ -65,6 +65,8 @@ Append an Answer with changes, exact commands/results, evidence links, remaining
 ## Comments
 
 Created from the approved prototype plan on 2026-09-06. No implementation is claimed by ticket creation.
+
+2026-09-07: reopened by [tickets-01-05.md](../../../docs/reviews/tickets-01-05.md). SI prefix exponent, render-instance placement, and IFC2X3 type inheritance are implemented in this wave. Remaining: property persistence round-trip at the API (ticket 04).
 
 ## Answer
 
