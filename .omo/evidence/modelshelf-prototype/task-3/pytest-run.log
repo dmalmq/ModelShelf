@@ -1,0 +1,7 @@
+$ uv run --locked --project services/ifc-worker pytest -q   (run from repo root; also collects packages/model-contracts-py's own 14 tests since neither project's pyproject.toml is discoverable from repo root's CWD - see ticket Answer)
+............................................                             [100%]
+44 passed in 14.46s
+
+$ cd services/ifc-worker && uv run --locked pytest -q   (scoped to just this package's own suite)
+..............................
+30 passed in 14.27s

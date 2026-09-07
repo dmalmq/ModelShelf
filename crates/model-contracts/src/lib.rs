@@ -10,16 +10,19 @@
 //! `SemanticModel`, since JSON Schema has no "unique by sub-key" keyword; that
 //! boundary check lives here as a plain function over the deserialized value.
 //!
-//! `ObjectRef` is consumed only opaquely: this crate does not implement or import
-//! the IFC express-ID mapping (that lives in the Python and TypeScript packages,
-//! which produce/read `objectId`; see `schemas/model/v1/README.md`).
+//! `ObjectRef` is mostly consumed opaquely; [`express_id_to_object_id`] exists only
+//! for the Rust side of an IFC adapter that must *produce* one (today: the checker
+//! service's synchronous ingestion path, ahead of the worker/job integration that
+//! will eventually replace it). See `schemas/model/v1/README.md` for the algorithm
+//! and its golden fixture, which the Python and TypeScript packages test against too.
 
 mod generated;
 
 pub use generated::{
-    Instance, InstanceBoundingBox, ModelDescriptor, ModelDescriptorArtifacts,
+    GeometryChunk, Instance, InstanceBoundingBox, ModelDescriptor, ModelDescriptorArtifacts,
     ModelDescriptorSchemaVersion, ModelDescriptorSourceProvenance, ModelDescriptorUpAxis,
-    ObjectRef, Property, PropertyValue, RenderCapability, RenderManifest,
+    ObjectRef, Property, PropertyOrigin, PropertyValue, PropertyValueValue, RenderCapability,
+    RenderManifest,
     RenderManifestSchemaVersion, SemanticCapability, SemanticModel, SemanticModelSchemaVersion,
     SemanticObject, SemanticObjectNativeIds, Transform,
 };
@@ -66,17 +69,51 @@ pub fn check_distinct_object_ids(model: &SemanticModel) -> Result<(), DuplicateO
     Ok(())
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MismatchedRevisionId {
+    pub index: usize,
+    pub object_revision_id: String,
+    pub model_revision_id: String,
+}
+
+impl fmt::Display for MismatchedRevisionId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "objects[{}].ref.revisionId {:?} does not match model revisionId {:?}",
+            self.index, self.object_revision_id, self.model_revision_id
+        )
+    }
+}
+
+impl std::error::Error for MismatchedRevisionId {}
+
+pub fn check_revision_ids(model: &SemanticModel) -> Result<(), MismatchedRevisionId> {
+    for (index, object) in model.objects.iter().enumerate() {
+        if object.ref_.revision_id.as_str() != model.revision_id.as_str() {
+            return Err(MismatchedRevisionId {
+                index,
+                object_revision_id: object.ref_.revision_id.to_string(),
+                model_revision_id: model.revision_id.to_string(),
+            });
+        }
+    }
+    Ok(())
+}
+
 #[derive(Debug)]
 pub enum SemanticModelError {
     Schema(serde_json::Error),
-    Boundary(DuplicateObjectId),
+    DuplicateObjectId(DuplicateObjectId),
+    MismatchedRevisionId(MismatchedRevisionId),
 }
 
 impl fmt::Display for SemanticModelError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             SemanticModelError::Schema(err) => write!(f, "schema: {err}"),
-            SemanticModelError::Boundary(err) => write!(f, "boundary: {err}"),
+            SemanticModelError::DuplicateObjectId(err) => write!(f, "boundary: {err}"),
+            SemanticModelError::MismatchedRevisionId(err) => write!(f, "boundary: {err}"),
         }
     }
 }
@@ -87,7 +124,8 @@ impl std::error::Error for SemanticModelError {}
 /// `Deserialize`, then the [`check_distinct_object_ids`] boundary rule.
 pub fn parse_semantic_model(json: &str) -> Result<SemanticModel, SemanticModelError> {
     let model: SemanticModel = serde_json::from_str(json).map_err(SemanticModelError::Schema)?;
-    check_distinct_object_ids(&model).map_err(SemanticModelError::Boundary)?;
+    check_distinct_object_ids(&model).map_err(SemanticModelError::DuplicateObjectId)?;
+    check_revision_ids(&model).map_err(SemanticModelError::MismatchedRevisionId)?;
     Ok(model)
 }
 
@@ -152,6 +190,50 @@ pub fn parse_render_manifest(json: &str) -> Result<RenderManifest, serde_json::E
     serde_json::from_str(json)
 }
 
+pub fn parse_geometry_chunk(json: &str) -> Result<GeometryChunk, serde_json::Error> {
+    serde_json::from_str(json)
+}
+
 pub fn parse_object_ref(json: &str) -> Result<ObjectRef, serde_json::Error> {
     serde_json::from_str(json)
+}
+
+/// The one deterministic, revision-scoped mapping from an IFC express ID to an
+/// opaque `ObjectRef.objectId` (see `schemas/model/v1/README.md`). `revisionId` is
+/// part of the hash input, not just a namespace prefix, so the same express ID in
+/// two different revisions never produces a comparable-looking `objectId`.
+pub fn express_id_to_object_id(revision_id: &str, express_id: u64) -> String {
+    use sha2::{Digest, Sha256};
+    let mut hasher = Sha256::new();
+    hasher.update(format!("{revision_id}:{express_id}").as_bytes());
+    let digest = hasher.finalize();
+    let hex: String = digest.iter().map(|byte| format!("{byte:02x}")).take(8).collect();
+    format!("occ_{hex}")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn matches_the_golden_fixture_shared_with_python_and_typescript() {
+        let fixture = include_str!("../../../schemas/model/v1/fixtures/express-id-mapping.json");
+        let parsed: serde_json::Value = serde_json::from_str(fixture).expect("valid fixture JSON");
+        let cases = parsed["cases"].as_array().expect("cases array");
+        assert!(!cases.is_empty());
+        for case in cases {
+            let revision_id = case["revisionId"].as_str().expect("revisionId");
+            let express_id = case["expressId"].as_u64().expect("expressId");
+            let expected = case["objectId"].as_str().expect("objectId");
+            assert_eq!(express_id_to_object_id(revision_id, express_id), expected);
+        }
+    }
+
+    #[test]
+    fn same_express_id_in_two_revisions_maps_to_different_object_ids() {
+        assert_ne!(
+            express_id_to_object_id("rev-arch-01", 1),
+            express_id_to_object_id("rev-struct-07", 1),
+        );
+    }
 }

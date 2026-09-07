@@ -29,3 +29,21 @@ def check_distinct_object_ids(model: SemanticModel) -> None:
         if first_index is not None:
             raise DuplicateObjectIdError(object_id, first_index, index)
         seen[object_id] = index
+
+
+class MismatchedRevisionIdError(ValueError):
+    def __init__(self, index: int, object_revision_id: str, model_revision_id: str) -> None:
+        self.index = index
+        self.object_revision_id = object_revision_id
+        self.model_revision_id = model_revision_id
+        super().__init__(
+            f"objects[{index}].ref.revisionId {object_revision_id!r} "
+            f"does not match model revisionId {model_revision_id!r}"
+        )
+
+
+def check_revision_ids(model: SemanticModel) -> None:
+    """Raises MismatchedRevisionIdError if an object points at another revision."""
+    for index, obj in enumerate(model.objects):
+        if obj.ref.revisionId != model.revisionId:
+            raise MismatchedRevisionIdError(index, obj.ref.revisionId, model.revisionId)

@@ -1,0 +1,561 @@
+{
+  "finalizeResults": [
+    {
+      "status": 200,
+      "json": {
+        "delivery": {
+          "id": "5ee7807f-4cd5-4c5d-afbd-08ba1b3e82ac",
+          "projectId": "demo-project",
+          "label": "Race Delivery",
+          "deliveryDate": null,
+          "createdAt": "2026-09-06T09:39:37.138Z",
+          "finalizedAt": "2026-09-06T09:39:37.142Z",
+          "modelCount": 0,
+          "productCount": 0
+        },
+        "models": [],
+        "runs": [],
+        "locked": true
+      }
+    },
+    {
+      "status": 200,
+      "json": {
+        "delivery": {
+          "id": "5ee7807f-4cd5-4c5d-afbd-08ba1b3e82ac",
+          "projectId": "demo-project",
+          "label": "Race Delivery",
+          "deliveryDate": null,
+          "createdAt": "2026-09-06T09:39:37.138Z",
+          "finalizedAt": "2026-09-06T09:39:37.142Z",
+          "modelCount": 0,
+          "productCount": 0
+        },
+        "models": [],
+        "runs": [],
+        "locked": true
+      }
+    },
+    {
+      "status": 200,
+      "json": {
+        "delivery": {
+          "id": "5ee7807f-4cd5-4c5d-afbd-08ba1b3e82ac",
+          "projectId": "demo-project",
+          "label": "Race Delivery",
+          "deliveryDate": null,
+          "createdAt": "2026-09-06T09:39:37.138Z",
+          "finalizedAt": "2026-09-06T09:39:37.142Z",
+          "modelCount": 0,
+          "productCount": 0
+        },
+        "models": [],
+        "runs": [],
+        "locked": true
+      }
+    },
+    {
+      "status": 200,
+      "json": {
+        "delivery": {
+          "id": "5ee7807f-4cd5-4c5d-afbd-08ba1b3e82ac",
+          "projectId": "demo-project",
+          "label": "Race Delivery",
+          "deliveryDate": null,
+          "createdAt": "2026-09-06T09:39:37.138Z",
+          "finalizedAt": "2026-09-06T09:39:37.142Z",
+          "modelCount": 0,
+          "productCount": 0
+        },
+        "models": [],
+        "runs": [],
+        "locked": true
+      }
+    },
+    {
+      "status": 200,
+      "json": {
+        "delivery": {
+          "id": "5ee7807f-4cd5-4c5d-afbd-08ba1b3e82ac",
+          "projectId": "demo-project",
+          "label": "Race Delivery",
+          "deliveryDate": null,
+          "createdAt": "2026-09-06T09:39:37.138Z",
+          "finalizedAt": "2026-09-06T09:39:37.142Z",
+          "modelCount": 0,
+          "productCount": 0
+        },
+        "models": [],
+        "runs": [],
+        "locked": true
+      }
+    },
+    {
+      "status": 200,
+      "json": {
+        "delivery": {
+          "id": "5ee7807f-4cd5-4c5d-afbd-08ba1b3e82ac",
+          "projectId": "demo-project",
+          "label": "Race Delivery",
+          "deliveryDate": null,
+          "createdAt": "2026-09-06T09:39:37.138Z",
+          "finalizedAt": "2026-09-06T09:39:37.142Z",
+          "modelCount": 0,
+          "productCount": 0
+        },
+        "models": [],
+        "runs": [],
+        "locked": true
+      }
+    },
+    {
+      "status": 200,
+      "json": {
+        "delivery": {
+          "id": "5ee7807f-4cd5-4c5d-afbd-08ba1b3e82ac",
+          "projectId": "demo-project",
+          "label": "Race Delivery",
+          "deliveryDate": null,
+          "createdAt": "2026-09-06T09:39:37.138Z",
+          "finalizedAt": "2026-09-06T09:39:37.142Z",
+          "modelCount": 0,
+          "productCount": 0
+        },
+        "models": [],
+        "runs": [],
+        "locked": true
+      }
+    },
+    {
+      "status": 200,
+      "json": {
+        "delivery": {
+          "id": "5ee7807f-4cd5-4c5d-afbd-08ba1b3e82ac",
+          "projectId": "demo-project",
+          "label": "Race Delivery",
+          "deliveryDate": null,
+          "createdAt": "2026-09-06T09:39:37.138Z",
+          "finalizedAt": "2026-09-06T09:39:37.142Z",
+          "modelCount": 0,
+          "productCount": 0
+        },
+        "models": [],
+        "runs": [],
+        "locked": true
+      }
+    },
+    {
+      "status": 200,
+      "json": {
+        "delivery": {
+          "id": "5ee7807f-4cd5-4c5d-afbd-08ba1b3e82ac",
+          "projectId": "demo-project",
+          "label": "Race Delivery",
+          "deliveryDate": null,
+          "createdAt": "2026-09-06T09:39:37.138Z",
+          "finalizedAt": "2026-09-06T09:39:37.142Z",
+          "modelCount": 0,
+          "productCount": 0
+        },
+        "models": [],
+        "runs": [],
+        "locked": true
+      }
+    },
+    {
+      "status": 200,
+      "json": {
+        "delivery": {
+          "id": "5ee7807f-4cd5-4c5d-afbd-08ba1b3e82ac",
+          "projectId": "demo-project",
+          "label": "Race Delivery",
+          "deliveryDate": null,
+          "createdAt": "2026-09-06T09:39:37.138Z",
+          "finalizedAt": "2026-09-06T09:39:37.142Z",
+          "modelCount": 0,
+          "productCount": 0
+        },
+        "models": [],
+        "runs": [],
+        "locked": true
+      }
+    },
+    {
+      "status": 200,
+      "json": {
+        "delivery": {
+          "id": "5ee7807f-4cd5-4c5d-afbd-08ba1b3e82ac",
+          "projectId": "demo-project",
+          "label": "Race Delivery",
+          "deliveryDate": null,
+          "createdAt": "2026-09-06T09:39:37.138Z",
+          "finalizedAt": "2026-09-06T09:39:37.142Z",
+          "modelCount": 0,
+          "productCount": 0
+        },
+        "models": [],
+        "runs": [],
+        "locked": true
+      }
+    },
+    {
+      "status": 200,
+      "json": {
+        "delivery": {
+          "id": "5ee7807f-4cd5-4c5d-afbd-08ba1b3e82ac",
+          "projectId": "demo-project",
+          "label": "Race Delivery",
+          "deliveryDate": null,
+          "createdAt": "2026-09-06T09:39:37.138Z",
+          "finalizedAt": "2026-09-06T09:39:37.142Z",
+          "modelCount": 0,
+          "productCount": 0
+        },
+        "models": [],
+        "runs": [],
+        "locked": true
+      }
+    },
+    {
+      "status": 200,
+      "json": {
+        "delivery": {
+          "id": "5ee7807f-4cd5-4c5d-afbd-08ba1b3e82ac",
+          "projectId": "demo-project",
+          "label": "Race Delivery",
+          "deliveryDate": null,
+          "createdAt": "2026-09-06T09:39:37.138Z",
+          "finalizedAt": "2026-09-06T09:39:37.142Z",
+          "modelCount": 0,
+          "productCount": 0
+        },
+        "models": [],
+        "runs": [],
+        "locked": true
+      }
+    },
+    {
+      "status": 200,
+      "json": {
+        "delivery": {
+          "id": "5ee7807f-4cd5-4c5d-afbd-08ba1b3e82ac",
+          "projectId": "demo-project",
+          "label": "Race Delivery",
+          "deliveryDate": null,
+          "createdAt": "2026-09-06T09:39:37.138Z",
+          "finalizedAt": "2026-09-06T09:39:37.142Z",
+          "modelCount": 0,
+          "productCount": 0
+        },
+        "models": [],
+        "runs": [],
+        "locked": true
+      }
+    },
+    {
+      "status": 200,
+      "json": {
+        "delivery": {
+          "id": "5ee7807f-4cd5-4c5d-afbd-08ba1b3e82ac",
+          "projectId": "demo-project",
+          "label": "Race Delivery",
+          "deliveryDate": null,
+          "createdAt": "2026-09-06T09:39:37.138Z",
+          "finalizedAt": "2026-09-06T09:39:37.142Z",
+          "modelCount": 0,
+          "productCount": 0
+        },
+        "models": [],
+        "runs": [],
+        "locked": true
+      }
+    },
+    {
+      "status": 200,
+      "json": {
+        "delivery": {
+          "id": "5ee7807f-4cd5-4c5d-afbd-08ba1b3e82ac",
+          "projectId": "demo-project",
+          "label": "Race Delivery",
+          "deliveryDate": null,
+          "createdAt": "2026-09-06T09:39:37.138Z",
+          "finalizedAt": "2026-09-06T09:39:37.142Z",
+          "modelCount": 0,
+          "productCount": 0
+        },
+        "models": [],
+        "runs": [],
+        "locked": true
+      }
+    },
+    {
+      "status": 200,
+      "json": {
+        "delivery": {
+          "id": "5ee7807f-4cd5-4c5d-afbd-08ba1b3e82ac",
+          "projectId": "demo-project",
+          "label": "Race Delivery",
+          "deliveryDate": null,
+          "createdAt": "2026-09-06T09:39:37.138Z",
+          "finalizedAt": "2026-09-06T09:39:37.142Z",
+          "modelCount": 0,
+          "productCount": 0
+        },
+        "models": [],
+        "runs": [],
+        "locked": true
+      }
+    },
+    {
+      "status": 200,
+      "json": {
+        "delivery": {
+          "id": "5ee7807f-4cd5-4c5d-afbd-08ba1b3e82ac",
+          "projectId": "demo-project",
+          "label": "Race Delivery",
+          "deliveryDate": null,
+          "createdAt": "2026-09-06T09:39:37.138Z",
+          "finalizedAt": "2026-09-06T09:39:37.142Z",
+          "modelCount": 0,
+          "productCount": 0
+        },
+        "models": [],
+        "runs": [],
+        "locked": true
+      }
+    },
+    {
+      "status": 200,
+      "json": {
+        "delivery": {
+          "id": "5ee7807f-4cd5-4c5d-afbd-08ba1b3e82ac",
+          "projectId": "demo-project",
+          "label": "Race Delivery",
+          "deliveryDate": null,
+          "createdAt": "2026-09-06T09:39:37.138Z",
+          "finalizedAt": "2026-09-06T09:39:37.142Z",
+          "modelCount": 0,
+          "productCount": 0
+        },
+        "models": [],
+        "runs": [],
+        "locked": true
+      }
+    },
+    {
+      "status": 200,
+      "json": {
+        "delivery": {
+          "id": "5ee7807f-4cd5-4c5d-afbd-08ba1b3e82ac",
+          "projectId": "demo-project",
+          "label": "Race Delivery",
+          "deliveryDate": null,
+          "createdAt": "2026-09-06T09:39:37.138Z",
+          "finalizedAt": "2026-09-06T09:39:37.142Z",
+          "modelCount": 0,
+          "productCount": 0
+        },
+        "models": [],
+        "runs": [],
+        "locked": true
+      }
+    }
+  ],
+  "memberResults": [
+    {
+      "status": 409,
+      "json": {
+        "error": {
+          "code": "delivery_locked",
+          "message": "delivery already has a completed run; create a new delivery for a new drop"
+        }
+      }
+    },
+    {
+      "status": 409,
+      "json": {
+        "error": {
+          "code": "delivery_locked",
+          "message": "delivery already has a completed run; create a new delivery for a new drop"
+        }
+      }
+    },
+    {
+      "status": 409,
+      "json": {
+        "error": {
+          "code": "delivery_locked",
+          "message": "delivery already has a completed run; create a new delivery for a new drop"
+        }
+      }
+    },
+    {
+      "status": 409,
+      "json": {
+        "error": {
+          "code": "delivery_locked",
+          "message": "delivery already has a completed run; create a new delivery for a new drop"
+        }
+      }
+    },
+    {
+      "status": 409,
+      "json": {
+        "error": {
+          "code": "delivery_locked",
+          "message": "delivery already has a completed run; create a new delivery for a new drop"
+        }
+      }
+    },
+    {
+      "status": 409,
+      "json": {
+        "error": {
+          "code": "delivery_locked",
+          "message": "delivery already has a completed run; create a new delivery for a new drop"
+        }
+      }
+    },
+    {
+      "status": 409,
+      "json": {
+        "error": {
+          "code": "delivery_locked",
+          "message": "delivery already has a completed run; create a new delivery for a new drop"
+        }
+      }
+    },
+    {
+      "status": 409,
+      "json": {
+        "error": {
+          "code": "delivery_locked",
+          "message": "delivery already has a completed run; create a new delivery for a new drop"
+        }
+      }
+    },
+    {
+      "status": 409,
+      "json": {
+        "error": {
+          "code": "delivery_locked",
+          "message": "delivery already has a completed run; create a new delivery for a new drop"
+        }
+      }
+    },
+    {
+      "status": 409,
+      "json": {
+        "error": {
+          "code": "delivery_locked",
+          "message": "delivery already has a completed run; create a new delivery for a new drop"
+        }
+      }
+    },
+    {
+      "status": 409,
+      "json": {
+        "error": {
+          "code": "delivery_locked",
+          "message": "delivery already has a completed run; create a new delivery for a new drop"
+        }
+      }
+    },
+    {
+      "status": 409,
+      "json": {
+        "error": {
+          "code": "delivery_locked",
+          "message": "delivery already has a completed run; create a new delivery for a new drop"
+        }
+      }
+    },
+    {
+      "status": 409,
+      "json": {
+        "error": {
+          "code": "delivery_locked",
+          "message": "delivery already has a completed run; create a new delivery for a new drop"
+        }
+      }
+    },
+    {
+      "status": 409,
+      "json": {
+        "error": {
+          "code": "delivery_locked",
+          "message": "delivery already has a completed run; create a new delivery for a new drop"
+        }
+      }
+    },
+    {
+      "status": 409,
+      "json": {
+        "error": {
+          "code": "delivery_locked",
+          "message": "delivery already has a completed run; create a new delivery for a new drop"
+        }
+      }
+    },
+    {
+      "status": 409,
+      "json": {
+        "error": {
+          "code": "delivery_locked",
+          "message": "delivery already has a completed run; create a new delivery for a new drop"
+        }
+      }
+    },
+    {
+      "status": 409,
+      "json": {
+        "error": {
+          "code": "delivery_locked",
+          "message": "delivery already has a completed run; create a new delivery for a new drop"
+        }
+      }
+    },
+    {
+      "status": 409,
+      "json": {
+        "error": {
+          "code": "delivery_locked",
+          "message": "delivery already has a completed run; create a new delivery for a new drop"
+        }
+      }
+    },
+    {
+      "status": 409,
+      "json": {
+        "error": {
+          "code": "delivery_locked",
+          "message": "delivery already has a completed run; create a new delivery for a new drop"
+        }
+      }
+    },
+    {
+      "status": 409,
+      "json": {
+        "error": {
+          "code": "delivery_locked",
+          "message": "delivery already has a completed run; create a new delivery for a new drop"
+        }
+      }
+    }
+  ],
+  "finalState": {
+    "delivery": {
+      "id": "5ee7807f-4cd5-4c5d-afbd-08ba1b3e82ac",
+      "projectId": "demo-project",
+      "label": "Race Delivery",
+      "deliveryDate": null,
+      "createdAt": "2026-09-06T09:39:37.138Z",
+      "finalizedAt": "2026-09-06T09:39:37.142Z",
+      "modelCount": 0,
+      "productCount": 0
+    },
+    "models": [],
+    "runs": [],
+    "locked": true
+  }
+}

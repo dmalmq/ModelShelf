@@ -32,6 +32,219 @@ pub mod error {
         }
     }
 }
+#[doc = "Object-local triangulated geometry for one rendered instance, joined to a SemanticModel object by ObjectRef. Loadable independently of semantic records."]
+#[doc = r""]
+#[doc = r" <details><summary>JSON schema</summary>"]
+#[doc = r""]
+#[doc = r" ```json"]
+#[doc = "{"]
+#[doc = "  \"title\": \"GeometryChunk\","]
+#[doc = "  \"description\": \"Object-local triangulated geometry for one rendered instance, joined to a SemanticModel object by ObjectRef. Loadable independently of semantic records.\","]
+#[doc = "  \"type\": \"object\","]
+#[doc = "  \"required\": ["]
+#[doc = "    \"instanceId\","]
+#[doc = "    \"ref\","]
+#[doc = "    \"status\""]
+#[doc = "  ],"]
+#[doc = "  \"properties\": {"]
+#[doc = "    \"instanceId\": {"]
+#[doc = "      \"type\": \"string\","]
+#[doc = "      \"minLength\": 1"]
+#[doc = "    },"]
+#[doc = "    \"reason\": {"]
+#[doc = "      \"type\": \"string\""]
+#[doc = "    },"]
+#[doc = "    \"ref\": {"]
+#[doc = "      \"$ref\": \"#/$defs/ObjectRef\""]
+#[doc = "    },"]
+#[doc = "    \"status\": {"]
+#[doc = "      \"enum\": ["]
+#[doc = "        \"available\","]
+#[doc = "        \"absent\","]
+#[doc = "        \"unsupported\""]
+#[doc = "      ]"]
+#[doc = "    },"]
+#[doc = "    \"triangles\": {"]
+#[doc = "      \"description\": \"Flat zero-based vertex indices.\","]
+#[doc = "      \"type\": \"array\","]
+#[doc = "      \"items\": {"]
+#[doc = "        \"type\": \"integer\","]
+#[doc = "        \"minimum\": 0.0"]
+#[doc = "      }"]
+#[doc = "    },"]
+#[doc = "    \"vertices\": {"]
+#[doc = "      \"description\": \"Flat xyz SI object-local coordinates.\","]
+#[doc = "      \"type\": \"array\","]
+#[doc = "      \"items\": {"]
+#[doc = "        \"type\": \"number\""]
+#[doc = "      }"]
+#[doc = "    }"]
+#[doc = "  },"]
+#[doc = "  \"additionalProperties\": false"]
+#[doc = "}"]
+#[doc = r" ```"]
+#[doc = r" </details>"]
+#[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct GeometryChunk {
+    #[serde(rename = "instanceId")]
+    pub instance_id: GeometryChunkInstanceId,
+    #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+    pub reason: ::std::option::Option<::std::string::String>,
+    #[serde(rename = "ref")]
+    pub ref_: ObjectRef,
+    pub status: GeometryChunkStatus,
+    #[doc = "Flat zero-based vertex indices."]
+    #[serde(default, skip_serializing_if = "::std::vec::Vec::is_empty")]
+    pub triangles: ::std::vec::Vec<u64>,
+    #[doc = "Flat xyz SI object-local coordinates."]
+    #[serde(default, skip_serializing_if = "::std::vec::Vec::is_empty")]
+    pub vertices: ::std::vec::Vec<f64>,
+}
+#[doc = "`GeometryChunkInstanceId`"]
+#[doc = r""]
+#[doc = r" <details><summary>JSON schema</summary>"]
+#[doc = r""]
+#[doc = r" ```json"]
+#[doc = "{"]
+#[doc = "  \"type\": \"string\","]
+#[doc = "  \"minLength\": 1"]
+#[doc = "}"]
+#[doc = r" ```"]
+#[doc = r" </details>"]
+#[derive(:: serde :: Serialize, Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+#[serde(transparent)]
+pub struct GeometryChunkInstanceId(::std::string::String);
+impl ::std::ops::Deref for GeometryChunkInstanceId {
+    type Target = ::std::string::String;
+    fn deref(&self) -> &::std::string::String {
+        &self.0
+    }
+}
+impl ::std::convert::From<GeometryChunkInstanceId> for ::std::string::String {
+    fn from(value: GeometryChunkInstanceId) -> Self {
+        value.0
+    }
+}
+impl ::std::str::FromStr for GeometryChunkInstanceId {
+    type Err = self::error::ConversionError;
+    fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+        if value.chars().count() < 1usize {
+            return Err("shorter than 1 characters".into());
+        }
+        Ok(Self(value.to_string()))
+    }
+}
+impl ::std::convert::TryFrom<&str> for GeometryChunkInstanceId {
+    type Error = self::error::ConversionError;
+    fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+        value.parse()
+    }
+}
+impl ::std::convert::TryFrom<&::std::string::String> for GeometryChunkInstanceId {
+    type Error = self::error::ConversionError;
+    fn try_from(
+        value: &::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
+        value.parse()
+    }
+}
+impl ::std::convert::TryFrom<::std::string::String> for GeometryChunkInstanceId {
+    type Error = self::error::ConversionError;
+    fn try_from(
+        value: ::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
+        value.parse()
+    }
+}
+impl<'de> ::serde::Deserialize<'de> for GeometryChunkInstanceId {
+    fn deserialize<D>(deserializer: D) -> ::std::result::Result<Self, D::Error>
+    where
+        D: ::serde::Deserializer<'de>,
+    {
+        ::std::string::String::deserialize(deserializer)?
+            .parse()
+            .map_err(|e: self::error::ConversionError| {
+                <D::Error as ::serde::de::Error>::custom(e.to_string())
+            })
+    }
+}
+#[doc = "`GeometryChunkStatus`"]
+#[doc = r""]
+#[doc = r" <details><summary>JSON schema</summary>"]
+#[doc = r""]
+#[doc = r" ```json"]
+#[doc = "{"]
+#[doc = "  \"enum\": ["]
+#[doc = "    \"available\","]
+#[doc = "    \"absent\","]
+#[doc = "    \"unsupported\""]
+#[doc = "  ]"]
+#[doc = "}"]
+#[doc = r" ```"]
+#[doc = r" </details>"]
+#[derive(
+    :: serde :: Deserialize,
+    :: serde :: Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd,
+)]
+pub enum GeometryChunkStatus {
+    #[serde(rename = "available")]
+    Available,
+    #[serde(rename = "absent")]
+    Absent,
+    #[serde(rename = "unsupported")]
+    Unsupported,
+}
+impl ::std::fmt::Display for GeometryChunkStatus {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        match *self {
+            Self::Available => f.write_str("available"),
+            Self::Absent => f.write_str("absent"),
+            Self::Unsupported => f.write_str("unsupported"),
+        }
+    }
+}
+impl ::std::str::FromStr for GeometryChunkStatus {
+    type Err = self::error::ConversionError;
+    fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+        match value {
+            "available" => Ok(Self::Available),
+            "absent" => Ok(Self::Absent),
+            "unsupported" => Ok(Self::Unsupported),
+            _ => Err("invalid value".into()),
+        }
+    }
+}
+impl ::std::convert::TryFrom<&str> for GeometryChunkStatus {
+    type Error = self::error::ConversionError;
+    fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+        value.parse()
+    }
+}
+impl ::std::convert::TryFrom<&::std::string::String> for GeometryChunkStatus {
+    type Error = self::error::ConversionError;
+    fn try_from(
+        value: &::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
+        value.parse()
+    }
+}
+impl ::std::convert::TryFrom<::std::string::String> for GeometryChunkStatus {
+    type Error = self::error::ConversionError;
+    fn try_from(
+        value: ::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
+        value.parse()
+    }
+}
 #[doc = "`Instance`"]
 #[doc = r""]
 #[doc = r" <details><summary>JSON schema</summary>"]
@@ -985,33 +1198,35 @@ impl<'de> ::serde::Deserialize<'de> for ObjectRefRevisionId {
 #[doc = "  \"type\": \"object\","]
 #[doc = "  \"required\": ["]
 #[doc = "    \"name\","]
+#[doc = "    \"ordered\","]
+#[doc = "    \"origin\","]
 #[doc = "    \"pset\","]
-#[doc = "    \"value\""]
+#[doc = "    \"values\""]
 #[doc = "  ],"]
 #[doc = "  \"properties\": {"]
 #[doc = "    \"name\": {"]
 #[doc = "      \"type\": \"string\","]
 #[doc = "      \"minLength\": 1"]
 #[doc = "    },"]
+#[doc = "    \"ordered\": {"]
+#[doc = "      \"type\": \"boolean\""]
+#[doc = "    },"]
+#[doc = "    \"origin\": {"]
+#[doc = "      \"enum\": ["]
+#[doc = "        \"occurrence\","]
+#[doc = "        \"type\""]
+#[doc = "      ]"]
+#[doc = "    },"]
 #[doc = "    \"pset\": {"]
 #[doc = "      \"type\": \"string\","]
 #[doc = "      \"minLength\": 1"]
 #[doc = "    },"]
-#[doc = "    \"value\": {"]
-#[doc = "      \"oneOf\": ["]
-#[doc = "        {"]
-#[doc = "          \"type\": \"string\""]
-#[doc = "        },"]
-#[doc = "        {"]
-#[doc = "          \"type\": \"number\""]
-#[doc = "        },"]
-#[doc = "        {"]
-#[doc = "          \"type\": \"boolean\""]
-#[doc = "        },"]
-#[doc = "        {"]
-#[doc = "          \"type\": \"null\""]
-#[doc = "        }"]
-#[doc = "      ]"]
+#[doc = "    \"values\": {"]
+#[doc = "      \"description\": \"One entry per stored value. List-valued IFC properties keep authoring order; unordered IFC sets set ordered=false.\","]
+#[doc = "      \"type\": \"array\","]
+#[doc = "      \"items\": {"]
+#[doc = "        \"$ref\": \"#/$defs/propertyValue\""]
+#[doc = "      }"]
 #[doc = "    }"]
 #[doc = "  },"]
 #[doc = "  \"additionalProperties\": false"]
@@ -1022,8 +1237,11 @@ impl<'de> ::serde::Deserialize<'de> for ObjectRefRevisionId {
 #[serde(deny_unknown_fields)]
 pub struct Property {
     pub name: PropertyName,
+    pub ordered: bool,
+    pub origin: PropertyOrigin,
     pub pset: PropertyPset,
-    pub value: PropertyValue,
+    #[doc = "One entry per stored value. List-valued IFC properties keep authoring order; unordered IFC sets set ordered=false."]
+    pub values: ::std::vec::Vec<PropertyValue>,
 }
 #[doc = "`PropertyName`"]
 #[doc = r""]
@@ -1091,6 +1309,77 @@ impl<'de> ::serde::Deserialize<'de> for PropertyName {
             .map_err(|e: self::error::ConversionError| {
                 <D::Error as ::serde::de::Error>::custom(e.to_string())
             })
+    }
+}
+#[doc = "`PropertyOrigin`"]
+#[doc = r""]
+#[doc = r" <details><summary>JSON schema</summary>"]
+#[doc = r""]
+#[doc = r" ```json"]
+#[doc = "{"]
+#[doc = "  \"enum\": ["]
+#[doc = "    \"occurrence\","]
+#[doc = "    \"type\""]
+#[doc = "  ]"]
+#[doc = "}"]
+#[doc = r" ```"]
+#[doc = r" </details>"]
+#[derive(
+    :: serde :: Deserialize,
+    :: serde :: Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd,
+)]
+pub enum PropertyOrigin {
+    #[serde(rename = "occurrence")]
+    Occurrence,
+    #[serde(rename = "type")]
+    Type,
+}
+impl ::std::fmt::Display for PropertyOrigin {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        match *self {
+            Self::Occurrence => f.write_str("occurrence"),
+            Self::Type => f.write_str("type"),
+        }
+    }
+}
+impl ::std::str::FromStr for PropertyOrigin {
+    type Err = self::error::ConversionError;
+    fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+        match value {
+            "occurrence" => Ok(Self::Occurrence),
+            "type" => Ok(Self::Type),
+            _ => Err("invalid value".into()),
+        }
+    }
+}
+impl ::std::convert::TryFrom<&str> for PropertyOrigin {
+    type Error = self::error::ConversionError;
+    fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+        value.parse()
+    }
+}
+impl ::std::convert::TryFrom<&::std::string::String> for PropertyOrigin {
+    type Error = self::error::ConversionError;
+    fn try_from(
+        value: &::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
+        value.parse()
+    }
+}
+impl ::std::convert::TryFrom<::std::string::String> for PropertyOrigin {
+    type Error = self::error::ConversionError;
+    fn try_from(
+        value: ::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
+        value.parse()
     }
 }
 #[doc = "`PropertyPset`"]
@@ -1167,6 +1456,149 @@ impl<'de> ::serde::Deserialize<'de> for PropertyPset {
 #[doc = r""]
 #[doc = r" ```json"]
 #[doc = "{"]
+#[doc = "  \"type\": \"object\","]
+#[doc = "  \"required\": ["]
+#[doc = "    \"value\""]
+#[doc = "  ],"]
+#[doc = "  \"properties\": {"]
+#[doc = "    \"dimension\": {"]
+#[doc = "      \"enum\": ["]
+#[doc = "        \"length\","]
+#[doc = "        \"area\","]
+#[doc = "        \"volume\""]
+#[doc = "      ]"]
+#[doc = "    },"]
+#[doc = "    \"originalUnit\": {"]
+#[doc = "      \"type\": \"string\""]
+#[doc = "    },"]
+#[doc = "    \"siValue\": {"]
+#[doc = "      \"type\": ["]
+#[doc = "        \"number\","]
+#[doc = "        \"null\""]
+#[doc = "      ]"]
+#[doc = "    },"]
+#[doc = "    \"value\": {"]
+#[doc = "      \"oneOf\": ["]
+#[doc = "        {"]
+#[doc = "          \"type\": \"string\""]
+#[doc = "        },"]
+#[doc = "        {"]
+#[doc = "          \"type\": \"number\""]
+#[doc = "        },"]
+#[doc = "        {"]
+#[doc = "          \"type\": \"boolean\""]
+#[doc = "        },"]
+#[doc = "        {"]
+#[doc = "          \"type\": \"null\""]
+#[doc = "        }"]
+#[doc = "      ]"]
+#[doc = "    }"]
+#[doc = "  },"]
+#[doc = "  \"additionalProperties\": false"]
+#[doc = "}"]
+#[doc = r" ```"]
+#[doc = r" </details>"]
+#[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
+#[serde(deny_unknown_fields)]
+pub struct PropertyValue {
+    #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+    pub dimension: ::std::option::Option<PropertyValueDimension>,
+    #[serde(
+        rename = "originalUnit",
+        default,
+        skip_serializing_if = "::std::option::Option::is_none"
+    )]
+    pub original_unit: ::std::option::Option<::std::string::String>,
+    #[serde(
+        rename = "siValue",
+        default,
+        skip_serializing_if = "::std::option::Option::is_none"
+    )]
+    pub si_value: ::std::option::Option<f64>,
+    pub value: PropertyValueValue,
+}
+#[doc = "`PropertyValueDimension`"]
+#[doc = r""]
+#[doc = r" <details><summary>JSON schema</summary>"]
+#[doc = r""]
+#[doc = r" ```json"]
+#[doc = "{"]
+#[doc = "  \"enum\": ["]
+#[doc = "    \"length\","]
+#[doc = "    \"area\","]
+#[doc = "    \"volume\""]
+#[doc = "  ]"]
+#[doc = "}"]
+#[doc = r" ```"]
+#[doc = r" </details>"]
+#[derive(
+    :: serde :: Deserialize,
+    :: serde :: Serialize,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Hash,
+    Ord,
+    PartialEq,
+    PartialOrd,
+)]
+pub enum PropertyValueDimension {
+    #[serde(rename = "length")]
+    Length,
+    #[serde(rename = "area")]
+    Area,
+    #[serde(rename = "volume")]
+    Volume,
+}
+impl ::std::fmt::Display for PropertyValueDimension {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+        match *self {
+            Self::Length => f.write_str("length"),
+            Self::Area => f.write_str("area"),
+            Self::Volume => f.write_str("volume"),
+        }
+    }
+}
+impl ::std::str::FromStr for PropertyValueDimension {
+    type Err = self::error::ConversionError;
+    fn from_str(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+        match value {
+            "length" => Ok(Self::Length),
+            "area" => Ok(Self::Area),
+            "volume" => Ok(Self::Volume),
+            _ => Err("invalid value".into()),
+        }
+    }
+}
+impl ::std::convert::TryFrom<&str> for PropertyValueDimension {
+    type Error = self::error::ConversionError;
+    fn try_from(value: &str) -> ::std::result::Result<Self, self::error::ConversionError> {
+        value.parse()
+    }
+}
+impl ::std::convert::TryFrom<&::std::string::String> for PropertyValueDimension {
+    type Error = self::error::ConversionError;
+    fn try_from(
+        value: &::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
+        value.parse()
+    }
+}
+impl ::std::convert::TryFrom<::std::string::String> for PropertyValueDimension {
+    type Error = self::error::ConversionError;
+    fn try_from(
+        value: ::std::string::String,
+    ) -> ::std::result::Result<Self, self::error::ConversionError> {
+        value.parse()
+    }
+}
+#[doc = "`PropertyValueValue`"]
+#[doc = r""]
+#[doc = r" <details><summary>JSON schema</summary>"]
+#[doc = r""]
+#[doc = r" ```json"]
+#[doc = "{"]
 #[doc = "  \"oneOf\": ["]
 #[doc = "    {"]
 #[doc = "      \"type\": \"string\""]
@@ -1186,18 +1618,18 @@ impl<'de> ::serde::Deserialize<'de> for PropertyPset {
 #[doc = r" </details>"]
 #[derive(:: serde :: Deserialize, :: serde :: Serialize, Clone, Debug)]
 #[serde(untagged)]
-pub enum PropertyValue {
+pub enum PropertyValueValue {
     String(::std::string::String),
     Number(f64),
     Boolean(bool),
     Null,
 }
-impl ::std::convert::From<f64> for PropertyValue {
+impl ::std::convert::From<f64> for PropertyValueValue {
     fn from(value: f64) -> Self {
         Self::Number(value)
     }
 }
-impl ::std::convert::From<bool> for PropertyValue {
+impl ::std::convert::From<bool> for PropertyValueValue {
     fn from(value: bool) -> Self {
         Self::Boolean(value)
     }
@@ -2495,6 +2927,15 @@ impl ::std::convert::TryFrom<::std::string::String> for SemanticModelSchemaVersi
 #[doc = "      },"]
 #[doc = "      \"additionalProperties\": false"]
 #[doc = "    },"]
+#[doc = "    \"placement\": {"]
+#[doc = "      \"description\": \"Row-major 3x4 project-frame transform. Translations are metres. Omitted when the source placement cannot be interpreted.\","]
+#[doc = "      \"type\": \"array\","]
+#[doc = "      \"items\": {"]
+#[doc = "        \"type\": \"number\""]
+#[doc = "      },"]
+#[doc = "      \"maxItems\": 12,"]
+#[doc = "      \"minItems\": 12"]
+#[doc = "    },"]
 #[doc = "    \"properties\": {"]
 #[doc = "      \"type\": \"array\","]
 #[doc = "      \"items\": {"]
@@ -2524,6 +2965,9 @@ pub struct SemanticObject {
         skip_serializing_if = "::std::option::Option::is_none"
     )]
     pub native_ids: ::std::option::Option<SemanticObjectNativeIds>,
+    #[doc = "Row-major 3x4 project-frame transform. Translations are metres. Omitted when the source placement cannot be interpreted."]
+    #[serde(default, skip_serializing_if = "::std::option::Option::is_none")]
+    pub placement: ::std::option::Option<[f64; 12usize]>,
     #[serde(default, skip_serializing_if = "::std::vec::Vec::is_empty")]
     pub properties: ::std::vec::Vec<Property>,
     #[serde(rename = "ref")]

@@ -39,6 +39,7 @@ const NAME_MAP = {
   "model-descriptor.schema.json": "ModelDescriptor",
   "semantic-model.schema.json": "SemanticModel",
   "render-manifest.schema.json": "RenderManifest",
+  "geometry-chunk.schema.json": "GeometryChunk",
 };
 
 function rewriteCrossFileRefs(node) {

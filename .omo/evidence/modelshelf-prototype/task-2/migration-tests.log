@@ -1,0 +1,12 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running unittests src/main.rs (target/debug/deps/modelshelf_checker-d1c263488a641b3e)
+
+running 5 tests
+test db::tests::migrates_a_fresh_empty_database_to_the_latest_version ... ok
+test db::tests::migrates_populated_v1_data_preserving_old_rows_and_synthesizing_v2_rows ... ok
+test db::tests::objects_foreign_key_targets_model_revisions_and_is_actually_enforced ... ok
+test db::tests::a_failing_migration_rolls_back_completely_and_a_retry_succeeds_without_duplication ... ok
+test db::tests::a_fault_during_object_ref_backfill_also_rolls_back_the_whole_version ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+

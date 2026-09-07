@@ -1,0 +1,11 @@
+[
+  {
+    "id": "demo-project",
+    "tenantId": "demo-tenant",
+    "tenantName": "Demo Tenant",
+    "name": "Demo Project",
+    "createdAt": "2026-09-06T09:40:22.597Z",
+    "deliveryCount": 0,
+    "runCount": 0
+  }
+]

@@ -24,6 +24,8 @@ code; `scripts/verify-model-contracts.mjs` checks that boundary.
   per object, keyed by `ObjectRef`.
 - `render-manifest.schema.json` — `RenderManifest`: rendered-instance-to-`ObjectRef`
   mapping for one revision's geometry artifact.
+- `geometry-chunk.schema.json` — `GeometryChunk`: object-local triangulation for one
+  rendered instance, joined to a semantic object by `ObjectRef`.
 
 `ModelDescriptor`, `SemanticModel`, and `RenderManifest` are independently valid,
 independently transmittable payloads correlated by `revisionId`; a consumer may load
@@ -56,10 +58,11 @@ express ID in two different revisions must not produce a comparable-looking
 `GlobalId`s are carried separately in `SemanticModel.objects[].nativeIds.globalId` and
 may legitimately duplicate across occurrences (e.g. a copy/paste in the source
 authoring tool); `objectId` must never duplicate within one revision even when
-`globalId` does. `fixtures/express-id-mapping.json` is the golden table both the
-Python and TypeScript implementations of this function are tested against
-(`packages/model-contracts-py` and `packages/model-contracts-ts`); Rust only consumes
-`ObjectRef` opaquely and does not implement the mapping.
+`globalId` does. `fixtures/express-id-mapping.json` is the golden table all three
+implementations of this function are tested against: `packages/model-contracts-py`,
+`packages/model-contracts-ts`, and `crates/model-contracts` (`express_id_to_object_id`,
+needed by the checker service's synchronous ingestion path — an interim adapter that
+predates the worker/job integration and will eventually be replaced by it).
 
 ## Fixtures
 

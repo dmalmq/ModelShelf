@@ -1,0 +1,24 @@
+{
+  "categories": [
+    { "id": "identification", "label": "Identification" },
+    { "id": "regulatory", "label": "Regulatory" },
+    { "id": "traceability", "label": "Traceability" },
+    { "id": "structural", "label": "Structural" },
+    { "id": "classification", "label": "Classification" },
+    { "id": "data-completeness", "label": "Data completeness" }
+  ],
+  "defaults": { "severity": "medium", "categoryId": "other" },
+  "specs": {
+    "Room has a reference code": { "severity": "high", "categoryId": "identification" },
+    "Room records a net floor area": { "severity": "high", "categoryId": "regulatory" },
+    "Room records a ceiling height": { "severity": "medium", "categoryId": "regulatory" },
+    "Door or window has a schedule reference": { "severity": "medium", "categoryId": "traceability" },
+    "Door or window declares a fire rating": { "severity": "high", "categoryId": "regulatory" },
+    "Structural column is load-bearing": { "severity": "high", "categoryId": "structural" },
+    "Structural column has a member mark": { "severity": "medium", "categoryId": "traceability" },
+    "Structural beam records its span": { "severity": "medium", "categoryId": "structural" },
+    "Structural slab is load-bearing": { "severity": "high", "categoryId": "structural" },
+    "MEP flow segment records its usage": { "severity": "medium", "categoryId": "classification" },
+    "MEP flow segment records its outer diameter": { "severity": "advisory", "categoryId": "data-completeness" }
+  }
+}

@@ -1,0 +1,5 @@
+model-descriptor: exit=0 ok
+
+semantic-model: exit=1 schema: unknown field `placement`, expected one of `classification`, `name`, `nativeIds`, `properties`, `ref`, `storey` at line 17 column 17
+
+render-manifest: exit=0 ok

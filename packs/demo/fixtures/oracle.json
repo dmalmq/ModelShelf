@@ -1,0 +1,206 @@
+{
+  "objects": {
+    "repeated_failure": {
+      "count": 120,
+      "globalIds": [
+        "3AHgrxvBP6DxQVlvZc$MzQ",
+        "3FmCypFID9TP9bun4xE7hQ",
+        "07MroPjr52DfQFiEhSYXux",
+        "2g8BMAYO18LgKW4goEheZm",
+        "32l1gOwrPCBB3Ah9GDv23X",
+        "2e1FFnSCH9iukRV9x6XkWX",
+        "3MlCGj6pTF68S87CAuTyij",
+        "1YkEIBCcj33Rga37ZzAgHo",
+        "1oY1icSQz9vOEJpmYE7zOb",
+        "03UrVgSSb2owlRGxB8HrEu",
+        "1H6B8M$yP4VvQ8p3e68NN3",
+        "31CDpOwWr80u_BOQ8RnlCU",
+        "29j16dKxH0GhFcVPb$1mc_",
+        "3mulU6RcL5FhQTN3PAy1XR",
+        "2dWLBdj357gBQAEDXgvM42",
+        "1lnHisFn19vOuOjsQE8Tht",
+        "12EeBzaMbDqxMaVi7VLyqw",
+        "2SO_D8cLzECO_bMSEWTOg0",
+        "1i0FNypFv7b9Ooh2Yb3gC5",
+        "1hWYKk19T8IeODLL4VQC_l",
+        "2F$laEigzBMB1_ZDuiwWY4",
+        "30sQSRmY9C3wztcMc6tSzJ",
+        "15_dmzl$jCN9qAMrCifo0P",
+        "3Rmu_AfIT5ivFjFy5gwPgF",
+        "1v7hiQfzn2a98HecoTzTqR",
+        "0UYQaHWGT6jQbj$NhQwDUd",
+        "2GWUUCvDn0p8tn$qRoGof8",
+        "1DV9FEItX1hgkZF6$lyULd",
+        "1OJDcxrkDEzQlUpZw6qXt_",
+        "0qk7LD$P58fQnig4zNFus$",
+        "1KC6UuHOX4KQYC8WgcXWAK",
+        "1kKWt_wzT8Rh7McWvlE_4d",
+        "3JSfbFK6H6rRd5gPh$XeFM",
+        "0JZMOcUebCkhgMTvAryFxm",
+        "10mXFoXIbCsABzy07gRYKk",
+        "0I1bZCSrP0rOlywV5N3ye4",
+        "1K3rlE9uTEtQ17yWcYwewN",
+        "3eUq9C2_58dRLhxRXrAuvw",
+        "0HgpzVc4TB9f6AY414nRFy",
+        "0vk$oB1Zj5MgxS8$2fsAtG",
+        "33_MLTw9f4ThWcdug4WrGG",
+        "1NwFcBMBj5UxTqbV9VJxTx",
+        "1Ndy9YL01CEO4PXZpMFCEr",
+        "16fcVDq0P6JhkD7e1$NY$w",
+        "1en7rnELrFtecxBxsbHNfY",
+        "3ZwQbJxKb2MfDNKxvzHTdp",
+        "04HEOs2nj8rxrYA_lHMG7D",
+        "3lPfTgLwv6GOfrmXFQYoMZ",
+        "2962EZqmL5APbXNgXXlbb$",
+        "3bP68ZJBH14h215MRIKKoY",
+        "2Rh2yLmDP3geJCF7sjSk8b",
+        "2VWiJpIfT4Nw5RZ_X$xlod",
+        "1amb2th$P1afWBbWOvDKcp",
+        "1gmibwAVb9SvCyZYuC7SlY",
+        "1WFFItxeb8LOeH1AR_WrsW",
+        "3T16YKFR96SghcPb$Xl2P7",
+        "2te0xk5w56jBwgdLILckjR",
+        "1rzpk45Z1FuByvlkN1K4r7",
+        "3g$RB6ZID6KwdhbuYy4C4z",
+        "2vLYHS8bz9BQAhKj6oK$Gh",
+        "2cMxavvOrD7e7YVJCsSSej",
+        "2SvidSvPP5GBqIo3clCjB0",
+        "2ZIaKsyTLB4OMMdFl6GoeU",
+        "3BB10Na7TDyuDroHOXSPlL",
+        "2v5v5Gx0P5LgPo3AlevGfF",
+        "3peTM3IV1ANBoRy2f756VY",
+        "2QmPj89v5F1g7weo$tq$YB",
+        "0vbgrbJC1708X7f4HsyPKI",
+        "0QzcXK0Gj7UQI0CrvDrozc",
+        "1cg0gOGNzFa9eTxw2E0zSU",
+        "39AhasInTFmxLRFNtU7d3p",
+        "3$W020DUbFA8wWH4gYWn7g",
+        "0sazkwhyr9Oxit4ufXdOoW",
+        "1E6gm23S1Ba8IFJaii8WDF",
+        "3nAn5Vafj4OBdPdiN2dVtM",
+        "3RdcsZvXDFCwP6YkpeHvL6",
+        "0jZziNkRr90OjeeM68MCoW",
+        "0pYsodGTjCDgLHSHJT5C4W",
+        "2AjDoJ4kz0hQY465PL2UaI",
+        "04Ko4nHQr1xx1qUYZNr3S8",
+        "3dbKXNgzP8uBHKh34bSu18",
+        "1a8fFNJObFo8D$86GUHfjI",
+        "0spV1kMafCyeGDc3SH_Q6z",
+        "25IMKFDeTFtByih2Zs3kmY",
+        "2PiCsVrUXDHf$qD9_A86H2",
+        "3BzRxMgbH8i9Up2jmsd2nJ",
+        "3qn6wqdAH4pf_aUcpK1Ust",
+        "0_5FBoJGb49AVRZU3ERaVz",
+        "13R3tyvJL53wvL72Nte0ib",
+        "0PkFNAtyr36fMSbuH$3dvX",
+        "0c69JK56vCSuhEMynoKmTj",
+        "2t9fAl_GTDKvbbs3WflVQS",
+        "15Bm1hq1r4VOa0WdrwluXv",
+        "05QXIJgeb2tPRTuRQx15j$",
+        "3Hr8hgPGT798xoyPdmc6Up",
+        "3ccG4ja7f2BPK3LoCHUld8",
+        "3g2CRiljrBNeqgZhlY4APb",
+        "05BCOyPbb2bOLJhY$z4O_Y",
+        "12axA9dh13CgzfFF0lNcu6",
+        "170chjqprEwQNXZg7eedup",
+        "3XrupFg9P5fvW_6fM$w9_d",
+        "34CtlYFrv6D9Fb_peqr87b",
+        "3kgp1s3Of87fttuFIyNiOy",
+        "0eSgZzOhHF1uyLxEJjMdjx",
+        "2qKd$yCOr5Shos8MDo55Mv",
+        "3Lo3QlYaLDkQ7fFlOvLqbz",
+        "1i8zrCrF1BGh$jEFLujWOm",
+        "1s51RIGUX7uw9RuIRyCtR$",
+        "1hd99Ua15BsOd_moA4Opdn",
+        "3yPkUdZRz7cfAwEcG2MTWe",
+        "0JTwRqP_5Et8ROGoZ4pG40",
+        "255spt74jEiBSyhNgRtnGr",
+        "3iv2qsvfj0ivVq16Nh$9KS",
+        "1B3RJ17t57XuGCUaUvfOS0",
+        "0h4PNCCq5CZh2xYURF5l9K",
+        "0LIJW8rvX2aB5WL0Pj9vn$",
+        "30V2yzwRrBHeJneUuskPFT",
+        "3wN82c$4r2sBiA$kQTOEki",
+        "1ybo67NeX12OjbRbU9PTI7",
+        "0bzdwwocT7HR4vAuD2CGm4"
+      ],
+      "diffKind": "unchanged",
+      "idsCheck": "Wall declares a fire rating",
+      "idsOutcome": "fail (FireRating not set)",
+      "findingDelta": "persisting",
+      "note": "Same 120 objects, same missing property, in both revisions -> one grouped, persisting finding with 120 affected objects, not 120 separate findings."
+    },
+    "removed": {
+      "globalIds": [
+        "2xEnNzN3j2HQqowycWQ6hQ",
+        "0uJnFJBaDCbuNUK32LZOdE",
+        "2cckfUK_f9WfAhUpyI3JPw"
+      ],
+      "diffKind": "removed"
+    },
+    "added": {
+      "globalIds": [
+        "235YV6euv9Ov41vHReaxGt",
+        "0RNi9y1RHDMvlh2MstKmk9",
+        "2Smhz1Tb1A_PyCJrt$az_K"
+      ],
+      "diffKind": "added"
+    },
+    "property_changed": {
+      "globalIds": [
+        "1cN5G$tJ53qABUrLDiUEzF",
+        "36ndn7wa1ADe3pupccrpQI",
+        "3DG53nVMn88gfhkCYNEODT"
+      ],
+      "diffKind": "properties_changed",
+      "detail": "Pset_WallCommon.FireRating REI30 -> REI60"
+    },
+    "shape_changed": {
+      "globalIds": [
+        "1bJxiI235EkQpgbANyYozs",
+        "2BpZB4Z_HDFx8GtBrF0QPq",
+        "1sdo1pPxPEnQv7f8sU5v9b"
+      ],
+      "diffKind": "shape_changed",
+      "detail": "wall thickness 0.2m -> 0.4m, placement unchanged"
+    },
+    "moved": {
+      "globalIds": [
+        "0BYY6XwEr11fxkC7yD9Mr0",
+        "07IAoKuU9EbPBS_LHrQaSm",
+        "38kuiITef8FPNDx6ieuR20"
+      ],
+      "diffKind": "moved",
+      "detail": "translated +0.5m in Y (500mm >> 1mm move_threshold_m)"
+    },
+    "rotated": {
+      "globalIds": [
+        "2WJXX_ATvAgeVZOi2f_xHv",
+        "1bXFRMdvb2ofpzMnBPqdlQ",
+        "3E7Rh8jST4KxFHNYF1mIFy"
+      ],
+      "diffKind": "unchanged",
+      "note": "DISCOVERED BEHAVIOR (see packs/demo/fixtures/README.md): a pure rotation about the object's own origin has zero origin-to-origin displacement, so modeldiff::classify_pair (crates/modeldiff/src/lib.rs) treats it as a sub-threshold move and reports 'unchanged' with a sub-threshold-displacement note, even though the placement fingerprint did change. Not a bug introduced by this ticket; recorded as a real, verified characteristic of the current engine."
+    },
+    "ambiguous_ids": {
+      "duplicateGlobalId": "238sbp13H1HugR0QJcKFnG",
+      "duplicateNames": [
+        "Duplicate-A",
+        "Duplicate-B"
+      ],
+      "diffKind": "unchanged (paired by express id, not GlobalId, per modeldiff::duplicate_global_ids_pair_by_express_id)",
+      "emptyGlobalIdName": "EmptyGlobalId",
+      "emptyGlobalIdDiffKind": "unchanged (paired by heuristic matching, per modeldiff::heuristic_matches_object_without_global_id)"
+    }
+  },
+  "notes": [
+    "Building this fixture found and fixed a real bug in crates/modeldiff/src/heuristic.rs::origin() (see packs/demo/fixtures/README.md): it read placement array indices [3,7,11] as if the layout were an interleaved row-major 3x4 with a translation column per row, but ifc_model::Transform::to_array12()'s actual, documented layout is three axis vectors then the origin (indices [9,10,11]). This caused real translations to sometimes go undetected and pure rotations to be misreported as moves. Fixed as a prerequisite; crates/modeldiff/tests/diff.rs's placement_at() helper was updated to match the corrected layout, and all 14 pre-existing modeldiff tests still pass.",
+    "Additions/removals must use a shape (block dimensions) unused anywhere else in the fixture, or modeldiff's heuristic matcher (40% shape + 30% placement + 20% properties + 10% name) can score a coincidental match high enough to pair two semantically-unrelated objects as 'the same object, unchanged' instead of reporting a clean add + remove. This generator hit that exact failure during authoring and fixed it by giving Removed-* and Added-* distinct, otherwise-unused dimensions."
+  ],
+  "fixtureSummary": {
+    "basePath": "base.ifc",
+    "headPath": "head.ifc",
+    "totalDistinctTrackedObjects": 142,
+    "generatedBy": "scripts/generate-demo-fixtures.py"
+  }
+}

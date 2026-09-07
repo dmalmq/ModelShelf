@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import {
+  parseGeometryChunk,
   parseModelDescriptor,
   parseObjectRef,
   parseRenderManifest,
@@ -66,7 +67,9 @@ test("every fixtures/invalid/schema/*.json is rejected by schema validation", ()
         ? parseModelDescriptor(payload)
         : file.startsWith("render-manifest")
           ? parseRenderManifest(payload)
-          : parseSemanticModel(payload);
+          : file.startsWith("geometry-chunk")
+            ? parseGeometryChunk(payload)
+            : parseSemanticModel(payload);
     assert.equal(result.ok, false, `expected ${file} to be rejected`);
   }
 });
@@ -75,6 +78,12 @@ test("fixtures/invalid/boundary/semantic-model-duplicate-objectid.json passes sc
   const result = parseSemanticModel(readJson("invalid", "boundary", "semantic-model-duplicate-objectid.json"));
   assert.equal(result.ok, false);
   if (!result.ok) assert.match(result.errors[0], /duplicates/);
+});
+
+test("fixtures/invalid/boundary/semantic-model-mismatched-revision.json passes schema but fails the boundary check", () => {
+  const result = parseSemanticModel(readJson("invalid", "boundary", "semantic-model-mismatched-revision.json"));
+  assert.equal(result.ok, false);
+  if (!result.ok) assert.match(result.errors[0], /does not match/);
 });
 
 test("express-id mapping matches the golden fixture shared with the Python worker", () => {

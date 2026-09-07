@@ -22,6 +22,13 @@ export interface SemanticObject {
   classification: string;
   name?: string;
   storey?: string;
+  /**
+   * Row-major 3x4 project-frame transform. Translations are metres. Omitted when the source placement cannot be interpreted.
+   *
+   * @minItems 12
+   * @maxItems 12
+   */
+  placement?: [number, number, number, number, number, number, number, number, number, number, number, number];
   properties?: Property[];
 }
 /**
@@ -34,5 +41,16 @@ export interface ObjectRef {
 export interface Property {
   pset: string;
   name: string;
+  /**
+   * One entry per stored value. List-valued IFC properties keep authoring order; unordered IFC sets set ordered=false.
+   */
+  values: PropertyValue[];
+  ordered: boolean;
+  origin: "occurrence" | "type";
+}
+export interface PropertyValue {
   value: string | number | boolean | null;
+  originalUnit?: string;
+  siValue?: number | null;
+  dimension?: "length" | "area" | "volume";
 }

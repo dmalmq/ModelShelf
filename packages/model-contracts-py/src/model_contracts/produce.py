@@ -15,11 +15,14 @@ from pathlib import Path
 from .generated import (
     Artifacts,
     BoundingBox,
+    Dimension,
     Instance,
     ModelDescriptor,
     NativeIds,
     ObjectRef,
+    Origin,
     Property,
+    PropertyValue,
     RenderCapability1,
     RenderCapability2,
     RenderManifest,
@@ -87,9 +90,22 @@ def build_semantic_model() -> SemanticModel:
                 classification="IfcWallStandardCase",
                 name="Basic Wall:Exterior - 200mm",
                 storey="Level 1",
+                placement=[1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
                 properties=[
-                    Property(pset="Pset_WallCommon", name="IsExternal", value=True),
-                    Property(pset="Pset_WallCommon", name="FireRating", value="60"),
+                    Property(
+                        pset="Pset_WallCommon",
+                        name="IsExternal",
+                        values=[PropertyValue(value=True)],
+                        ordered=True,
+                        origin=Origin.occurrence,
+                    ),
+                    Property(
+                        pset="Pset_WallCommon",
+                        name="FireRating",
+                        values=[PropertyValue(value="60")],
+                        ordered=True,
+                        origin=Origin.occurrence,
+                    ),
                 ],
             ),
             SemanticObject(
@@ -100,7 +116,15 @@ def build_semantic_model() -> SemanticModel:
                 classification="IfcWallStandardCase",
                 name="Basic Wall:Exterior - 200mm",
                 storey="Level 1",
-                properties=[Property(pset="Pset_WallCommon", name="IsExternal", value=True)],
+                properties=[
+                    Property(
+                        pset="Pset_WallCommon",
+                        name="IsExternal",
+                        values=[PropertyValue(value=True)],
+                        ordered=True,
+                        origin=Origin.type,
+                    )
+                ],
             ),
             SemanticObject(
                 ref=_object_ref(999999),
@@ -109,8 +133,34 @@ def build_semantic_model() -> SemanticModel:
                 name="Single-Flush:0915 x 2134mm",
                 storey="Level 1",
                 properties=[
-                    Property(pset="Pset_DoorCommon", name="FireRating", value="20"),
-                    Property(pset="Pset_DoorCommon", name="OverallHeight", value=2134.0),
+                    Property(
+                        pset="Pset_DoorCommon",
+                        name="FireRating",
+                        values=[PropertyValue(value="20")],
+                        ordered=True,
+                        origin=Origin.occurrence,
+                    ),
+                    Property(
+                        pset="Pset_DoorCommon",
+                        name="OverallHeight",
+                        values=[
+                            PropertyValue(
+                                value=2134.0,
+                                originalUnit="mm",
+                                siValue=2.134,
+                                dimension=Dimension.length,
+                            )
+                        ],
+                        ordered=True,
+                        origin=Origin.occurrence,
+                    ),
+                    Property(
+                        pset="Pset_DoorCommon",
+                        name="Layers",
+                        values=[PropertyValue(value="outer"), PropertyValue(value="inner")],
+                        ordered=True,
+                        origin=Origin.occurrence,
+                    ),
                 ],
             ),
         ],
@@ -194,7 +244,7 @@ def build_prepared_scene_render_manifest() -> RenderManifest:
 
 def _write(path: Path, payload) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(payload.model_dump(mode="json"), indent=2) + "\n")
+    path.write_text(json.dumps(payload.model_dump(mode="json", exclude_unset=True), indent=2) + "\n")
 
 
 def main() -> int:

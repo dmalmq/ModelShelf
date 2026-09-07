@@ -25,9 +25,15 @@ pub const W_NAME: f64 = 0.10;
 /// Displacement at which the placement component grades to zero.
 pub const PLACEMENT_GRADE_RANGE_M: f64 = 1.0;
 
-/// Origin translation components of a row-major 3x4 placement.
+/// Origin translation components. Matches `ifc_model::Transform::to_array12`'s
+/// documented layout `[xx,xy,xz, yx,yy,yz, zx,zy,zz, ox,oy,oz]` — three axis
+/// vectors, then the origin — not an interleaved row-major 3x4 with a
+/// translation column per row. Getting this wrong silently corrupts both move
+/// detection (`classify_pair`) and this module's own placement-based match
+/// scoring for any pair whose rotation differs, since it would read rotation
+/// components as if they were part of the origin.
 fn origin(placement: &[f64; 12]) -> [f64; 3] {
-    [placement[3], placement[7], placement[11]]
+    [placement[9], placement[10], placement[11]]
 }
 
 /// Straight-line distance between two placements' origins.

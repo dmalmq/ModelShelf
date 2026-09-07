@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ids xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://standards.buildingsmart.org/IDS http://standards.buildingsmart.org/IDS/1.0/ids.xsd" xmlns="http://standards.buildingsmart.org/IDS">
+  <info>
+    <title>Synthetic fixture check</title>
+    <description>The one IDS check the self-authored packs/demo/fixtures/{base,head}.ifc pair is built to exercise at scale: its 120 "Repeat-*" walls are identical and unchanged between revisions and all lack this property, so one run groups them into one finding with 120+ affected objects (not 120+ separate findings; most other fixture walls also lack it and add to the same finding — see packs/demo/fixtures/oracle.json for the exact count), persisting unchanged from base to head rather than appearing newly introduced.</description>
+  </info>
+  <specifications>
+    <specification name="Wall declares a fire rating" ifcVersion="IFC4">
+      <applicability minOccurs="0" maxOccurs="unbounded">
+        <entity>
+          <name><simpleValue>IFCWALL</simpleValue></name>
+        </entity>
+      </applicability>
+      <requirements>
+        <property dataType="IFCLABEL">
+          <propertySet><simpleValue>Pset_WallCommon</simpleValue></propertySet>
+          <baseName><simpleValue>FireRating</simpleValue></baseName>
+        </property>
+      </requirements>
+    </specification>
+  </specifications>
+</ids>

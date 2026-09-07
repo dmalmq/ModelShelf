@@ -1,0 +1,2 @@
+[2m2026-09-06T09:44:31.764085Z[0m [32m INFO[0m [2mmodelshelf_checker[0m[2m:[0m modelshelf-checker listening [3maddr[0m[2m=[0m127.0.0.1:32997
+[2m2026-09-06T09:44:31.992704Z[0m [33m WARN[0m [2mmodelshelf_checker::jobs[0m[2m:[0m ingestion job failed [3mjob_id[0m[2m=[0m"ac0c68f3-e00e-4d5e-9452-fc2c027f2571" [3merror[0m[2m=[0mworker exited with exit status: 1: simulated engine failure

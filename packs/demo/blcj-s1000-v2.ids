@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ids xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://standards.buildingsmart.org/IDS http://standards.buildingsmart.org/IDS/1.0/ids.xsd" xmlns="http://standards.buildingsmart.org/IDS">
+  <info>
+    <title>BLCJ S1000 demo pack v2</title>
+    <description>v1 plus one explained rule change: "MEP flow segment records its outer diameter" narrowed to exclude cable-tray-family segments, which structurally have no diameter (see packs/demo/checks.md). See packs/demo/checks.md for full source-to-property traceability and rationale.</description>
+  </info>
+  <specifications>
+    <specification name="Room has a reference code" ifcVersion="IFC2X3">
+      <applicability minOccurs="0" maxOccurs="unbounded">
+        <entity>
+          <name><simpleValue>IFCSPACE</simpleValue></name>
+        </entity>
+      </applicability>
+      <requirements>
+        <property dataType="IFCIDENTIFIER">
+          <propertySet><simpleValue>Pset_SpaceCommon</simpleValue></propertySet>
+          <baseName><simpleValue>Reference</simpleValue></baseName>
+        </property>
+      </requirements>
+    </specification>
+
+    <specification name="Room records a net floor area" ifcVersion="IFC2X3">
+      <applicability minOccurs="0" maxOccurs="unbounded">
+        <entity>
+          <name><simpleValue>IFCSPACE</simpleValue></name>
+        </entity>
+      </applicability>
+      <requirements>
+        <property dataType="IFCAREAMEASURE">
+          <propertySet><simpleValue>BaseQuantities</simpleValue></propertySet>
+          <baseName><simpleValue>NetFloorArea</simpleValue></baseName>
+        </property>
+      </requirements>
+    </specification>
+
+    <specification name="Room records a ceiling height" ifcVersion="IFC2X3">
+      <applicability minOccurs="0" maxOccurs="unbounded">
+        <entity>
+          <name><simpleValue>IFCSPACE</simpleValue></name>
+        </entity>
+      </applicability>
+      <requirements>
+        <property dataType="IFCLENGTHMEASURE">
+          <propertySet><simpleValue>BaseQuantities</simpleValue></propertySet>
+          <baseName><simpleValue>NominalHeight</simpleValue></baseName>
+        </property>
+      </requirements>
+    </specification>
+
+    <specification name="Door or window has a schedule reference" ifcVersion="IFC2X3">
+      <applicability minOccurs="0" maxOccurs="unbounded">
+        <entity>
+          <name>
+            <xs:restriction base="xs:string">
+              <xs:enumeration value="IFCDOOR" />
+              <xs:enumeration value="IFCWINDOW" />
+            </xs:restriction>
+          </name>
+        </entity>
+      </applicability>
+      <requirements>
+        <property dataType="IFCIDENTIFIER">
+          <propertySet>
+            <xs:restriction base="xs:string">
+              <xs:enumeration value="Pset_DoorCommon" />
+              <xs:enumeration value="Pset_WindowCommon" />
+            </xs:restriction>
+          </propertySet>
+          <baseName><simpleValue>Reference</simpleValue></baseName>
+        </property>
+      </requirements>
+    </specification>
+
+    <specification name="Door or window declares a fire rating" ifcVersion="IFC2X3">
+      <applicability minOccurs="0" maxOccurs="unbounded">
+        <entity>
+          <name>
+            <xs:restriction base="xs:string">
+              <xs:enumeration value="IFCDOOR" />
+              <xs:enumeration value="IFCWINDOW" />
+            </xs:restriction>
+          </name>
+        </entity>
+      </applicability>
+      <requirements>
+        <property dataType="IFCLABEL">
+          <propertySet>
+            <xs:restriction base="xs:string">
+              <xs:enumeration value="Pset_DoorCommon" />
+              <xs:enumeration value="Pset_WindowCommon" />
+            </xs:restriction>
+          </propertySet>
+          <baseName><simpleValue>FireRating</simpleValue></baseName>
+        </property>
+      </requirements>
+    </specification>
+
+    <specification name="Structural column is load-bearing" ifcVersion="IFC2X3">
+      <applicability minOccurs="0" maxOccurs="unbounded">
+        <entity>
+          <name><simpleValue>IFCCOLUMN</simpleValue></name>
+        </entity>
+      </applicability>
+      <requirements>
+        <property dataType="IFCBOOLEAN">
+          <propertySet><simpleValue>Pset_ColumnCommon</simpleValue></propertySet>
+          <baseName><simpleValue>LoadBearing</simpleValue></baseName>
+          <value><simpleValue>true</simpleValue></value>
+        </property>
+      </requirements>
+    </specification>
+
+    <specification name="Structural column has a member mark" ifcVersion="IFC2X3">
+      <applicability minOccurs="0" maxOccurs="unbounded">
+        <entity>
+          <name><simpleValue>IFCCOLUMN</simpleValue></name>
+        </entity>
+      </applicability>
+      <requirements>
+        <property dataType="IFCIDENTIFIER">
+          <propertySet><simpleValue>Pset_ColumnCommon</simpleValue></propertySet>
+          <baseName><simpleValue>Reference</simpleValue></baseName>
+        </property>
+      </requirements>
+    </specification>
+
+    <specification name="Structural beam records its span" ifcVersion="IFC2X3">
+      <applicability minOccurs="0" maxOccurs="unbounded">
+        <entity>
+          <name><simpleValue>IFCBEAM</simpleValue></name>
+        </entity>
+      </applicability>
+      <requirements>
+        <property dataType="IFCPOSITIVELENGTHMEASURE">
+          <propertySet><simpleValue>Pset_BeamCommon</simpleValue></propertySet>
+          <baseName><simpleValue>Span</simpleValue></baseName>
+        </property>
+      </requirements>
+    </specification>
+
+    <specification name="Structural slab is load-bearing" ifcVersion="IFC2X3">
+      <applicability minOccurs="0" maxOccurs="unbounded">
+        <entity>
+          <name><simpleValue>IFCSLAB</simpleValue></name>
+        </entity>
+      </applicability>
+      <requirements>
+        <property dataType="IFCBOOLEAN">
+          <propertySet><simpleValue>Pset_SlabCommon</simpleValue></propertySet>
+          <baseName><simpleValue>LoadBearing</simpleValue></baseName>
+          <value><simpleValue>true</simpleValue></value>
+        </property>
+      </requirements>
+    </specification>
+
+    <specification name="MEP flow segment records its usage" ifcVersion="IFC2X3">
+      <applicability minOccurs="0" maxOccurs="unbounded">
+        <entity>
+          <name><simpleValue>IFCFLOWSEGMENT</simpleValue></name>
+        </entity>
+      </applicability>
+      <requirements>
+        <property dataType="IFCTEXT">
+          <propertySet><simpleValue>Rebro_PartsData</simpleValue></propertySet>
+          <baseName><simpleValue>用途</simpleValue></baseName>
+        </property>
+      </requirements>
+    </specification>
+
+    <!-- v1 -> v2 change: v1 required outer diameter on every IFCFLOWSEGMENT and
+         failed on 150/1337 real instances. Inspecting those failures (real data,
+         not assumption) showed every one was a cable-tray-family segment
+         (Description "電気.ケーブルラック") — a rectangular cable tray has no
+         diameter by design, so v1 was measuring a structural impossibility, not
+         a real data gap. v2 narrows applicability to the entity families that
+         genuinely have a diameter (pipe/duct/conduit), matching real inspected
+         data rather than an unconditional assumption. See packs/demo/checks.md. -->
+    <specification name="MEP flow segment records its outer diameter" ifcVersion="IFC2X3">
+      <applicability minOccurs="0" maxOccurs="unbounded">
+        <entity>
+          <name><simpleValue>IFCFLOWSEGMENT</simpleValue></name>
+        </entity>
+        <attribute>
+          <name><simpleValue>Description</simpleValue></name>
+          <value>
+            <xs:restriction base="xs:string">
+              <xs:enumeration value="配管" />
+              <xs:enumeration value="ダクト" />
+              <xs:enumeration value="電気.電線管" />
+            </xs:restriction>
+          </value>
+        </attribute>
+      </applicability>
+      <requirements>
+        <property dataType="IFCTEXT">
+          <propertySet><simpleValue>Rebro_PartsData</simpleValue></propertySet>
+          <baseName><simpleValue>外径[mm]</simpleValue></baseName>
+        </property>
+      </requirements>
+    </specification>
+  </specifications>
+</ids>

@@ -17,7 +17,8 @@ use sqlx::SqlitePool;
 use crate::dto::{
     delivery_json, run_summary, DeliveryRow, DiffSummaryOut, FindingChangeOut,
     FindingDiffResponse, MatchConfidenceOut, ModelDiffResponse, ModelPairDiffOut, ModelRow,
-    ObjectChangeOut, ObjectChangeRefOut, ObjectRowDb, PropertyChangeOut,
+    ObjectChangeOut, ObjectChangeRefOut, ObjectRowDb, PropertyChangeOut, DELIVERY_MODEL_ROW_SELECT,
+    DELIVERY_SELECT,
 };
 use crate::error::ApiError;
 use crate::run::{fetch_run_row, run_counts};
@@ -43,6 +44,12 @@ pub struct RunDiffQuery {
     pub head_run_id: String,
 }
 
+/// Matches base/head models by discipline slot. Known limitation as of the
+/// source-model/revision rework: two source models sharing a discipline in one
+/// delivery are both valid now (docs/contracts/http-api.md), but this still picks
+/// one arbitrary pair per discipline via `.find()` rather than matching by source
+/// model — comparing revisions by `source_model_id` is model-comparison scope
+/// (crates/modeldiff callers), not this ticket's.
 pub async fn diff_models(
     State(state): State<AppState>,
     Query(query): Query<ModelDiffQuery>,
@@ -251,25 +258,23 @@ async fn load_finding_keys(
 }
 
 pub async fn load_delivery(pool: &SqlitePool, id: &str) -> Result<DeliveryRow, ApiError> {
-    sqlx::query_as(
-        "SELECT id, project_id, label, delivery_date, created_at FROM deliveries WHERE id = ?1",
-    )
-    .bind(id)
-    .fetch_optional(pool)
-    .await?
-    .ok_or_else(|| ApiError::not_found("delivery"))
+    sqlx::query_as(&format!("{DELIVERY_SELECT} WHERE id = ?1"))
+        .bind(id)
+        .fetch_optional(pool)
+        .await?
+        .ok_or_else(|| ApiError::not_found("delivery"))
 }
 
+/// The one place "which models are in this delivery" is queried; `run.rs::create_run`
+/// calls this too rather than keeping its own copy. Two source models sharing a
+/// discipline both appear here, one `ModelRow` each — `diff_models` below still
+/// matches by discipline and so still only compares one pair per discipline; see
+/// its doc comment.
 pub async fn load_models(pool: &SqlitePool, delivery_id: &str) -> Result<Vec<ModelRow>, ApiError> {
-    Ok(sqlx::query_as(
-        "SELECT id, delivery_id, discipline, filename, content_sha256, byte_size, schema_label,
-                entity_count, product_count, length_to_metre, storage_path, header_json,
-                parse_ms, uploaded_at
-           FROM models WHERE delivery_id = ?1 ORDER BY discipline",
-    )
-    .bind(delivery_id)
-    .fetch_all(pool)
-    .await?)
+    Ok(sqlx::query_as(&format!("{DELIVERY_MODEL_ROW_SELECT} WHERE dm.delivery_id = ?1 ORDER BY sm.discipline, sm.name"))
+        .bind(delivery_id)
+        .fetch_all(pool)
+        .await?)
 }
 
 /// Rebuild `ObjectSnapshot` values from persisted rows.

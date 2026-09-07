@@ -16,8 +16,9 @@ use sqlx::SqlitePool;
 use crate::db::{new_id, now_iso};
 use crate::dto::{
     model_json, run_summary, severity_rank, CategoryGroup, CreateRunBody, DeliveryRow, Finding,
-    FindingObject, FindingObjectRow, FindingRow, ModelInfo, ModelRow, PackVersionRow, RunDetail,
-    RunRow, RunSpecRow, SeverityBand, SpecResultRowOut, RUN_SUMMARY_SELECT, SEVERITY_ORDER,
+    FindingObject, FindingObjectRow, FindingRow, InputProvenance, ModelInfo, ModelRow,
+    PackVersionRow, RunDetail, RunRow, RunSpecRow, SeverityBand, SpecResultRowOut,
+    DELIVERY_SELECT, RUN_SUMMARY_SELECT, SEVERITY_ORDER, UNPINNED_REASON,
 };
 use crate::error::ApiError;
 use crate::ids_meta::{finding_key, PackMetadata};
@@ -30,13 +31,11 @@ pub async fn create_run(
     State(state): State<AppState>,
     Json(body): Json<CreateRunBody>,
 ) -> Result<Json<RunDetail>, ApiError> {
-    let delivery: DeliveryRow = sqlx::query_as(
-        "SELECT id, project_id, label, delivery_date, created_at FROM deliveries WHERE id = ?1",
-    )
-    .bind(&body.delivery_id)
-    .fetch_optional(&state.pool)
-    .await?
-    .ok_or_else(|| ApiError::not_found("delivery"))?;
+    let delivery: DeliveryRow = sqlx::query_as(&format!("{DELIVERY_SELECT} WHERE id = ?1"))
+        .bind(&body.delivery_id)
+        .fetch_optional(&state.pool)
+        .await?
+        .ok_or_else(|| ApiError::not_found("delivery"))?;
 
     let pack_version: PackVersionRow = sqlx::query_as(
         "SELECT pv.id, pv.pack_id, p.name AS pack_name, pv.version, pv.ids_xml, pv.ids_sha256,
@@ -49,25 +48,18 @@ pub async fn create_run(
     .await?
     .ok_or_else(|| ApiError::not_found("pack version"))?;
 
-    let models: Vec<ModelRow> = sqlx::query_as(
-        "SELECT id, delivery_id, discipline, filename, content_sha256, byte_size, schema_label,
-                entity_count, product_count, length_to_metre, storage_path, header_json,
-                parse_ms, uploaded_at
-           FROM models WHERE delivery_id = ?1 ORDER BY discipline",
-    )
-    .bind(&delivery.id)
-    .fetch_all(&state.pool)
-    .await?;
+    let models: Vec<ModelRow> = crate::diff::load_models(&state.pool, &delivery.id).await?;
     if models.is_empty() {
         return Err(ApiError::bad_request("delivery has no models to check"));
     }
 
     let run_id = new_id();
     let started_at = now_iso();
+    let provenance = InputProvenance::Incomplete { reason: UNPINNED_REASON.to_owned() };
     sqlx::query(
         "INSERT INTO runs (id, project_id, delivery_id, pack_version_id, engine_version,
-             parser_version, status, started_at)
-         VALUES (?1,?2,?3,?4,?5,?6,'running',?7)",
+             parser_version, status, started_at, input_provenance, input_provenance_reason)
+         VALUES (?1,?2,?3,?4,?5,?6,'running',?7,?8,?9)",
     )
     .bind(&run_id)
     .bind(&delivery.project_id)
@@ -76,6 +68,8 @@ pub async fn create_run(
     .bind(ids::ENGINE_VERSION)
     .bind(ifc_model::PARSER_VERSION)
     .bind(&started_at)
+    .bind(provenance.status())
+    .bind(provenance.reason())
     .execute(&state.pool)
     .await?;
 
@@ -375,18 +369,8 @@ pub async fn run_detail(pool: &SqlitePool, run_id: &str) -> Result<RunDetail, Ap
     let row = fetch_run_row(pool, run_id).await?;
     let (finding_count, failing_object_count) = run_counts(pool, run_id).await?;
 
-    let models: Vec<ModelInfo> = sqlx::query_as::<_, ModelRow>(
-        "SELECT id, delivery_id, discipline, filename, content_sha256, byte_size, schema_label,
-                entity_count, product_count, length_to_metre, storage_path, header_json,
-                parse_ms, uploaded_at
-           FROM models WHERE delivery_id = ?1 ORDER BY discipline",
-    )
-    .bind(&row.delivery_id)
-    .fetch_all(pool)
-    .await?
-    .iter()
-    .map(model_json)
-    .collect();
+    let models: Vec<ModelInfo> =
+        crate::diff::load_models(pool, &row.delivery_id).await?.iter().map(model_json).collect();
 
     let finding_rows: Vec<FindingRow> = sqlx::query_as(
         "SELECT id, run_id, finding_key, spec_identifier, spec_name, severity, category_id,
@@ -459,6 +443,11 @@ pub async fn run_detail(pool: &SqlitePool, run_id: &str) -> Result<RunDetail, Ap
         scorecard,
         specs,
         review_incomplete: incomplete,
+        input_provenance: InputProvenance::from_row(
+            &row.input_provenance,
+            row.input_provenance_reason.as_deref(),
+        )
+        .into(),
     })
 }
 
@@ -550,10 +539,11 @@ pub async fn finding_objects(
     let rows: Vec<FindingObjectRow> = sqlx::query_as(
         "SELECT fo.finding_id, fo.model_id, fo.object_id, fo.express_id, fo.global_id,
                 fo.actual, fo.incomplete_reason,
-                m.discipline AS discipline, o.ifc_type AS ifc_type, o.name AS name,
+                sm.discipline AS discipline, o.ifc_type AS ifc_type, o.name AS name,
                 o.storey AS storey
            FROM finding_objects fo
-           JOIN models m ON m.id = fo.model_id
+           LEFT JOIN model_revisions mr ON mr.id = fo.model_id
+           LEFT JOIN source_models sm ON sm.id = mr.source_model_id
            LEFT JOIN objects o ON o.id = fo.object_id
           WHERE fo.finding_id = ?1
           ORDER BY fo.id LIMIT ?2 OFFSET ?3",

@@ -60,13 +60,23 @@ pub struct DeliveryRow {
     pub label: String,
     pub delivery_date: Option<String>,
     pub created_at: String,
+    pub finalized_at: Option<String>,
 }
 
+pub const DELIVERY_SELECT: &str =
+    "SELECT id, project_id, label, delivery_date, created_at, finalized_at FROM deliveries";
+
+/// One delivery's view of one member's revision: `delivery_id`/`discipline` are
+/// joined in from `delivery_members`/`source_models`, not physical columns on
+/// `model_revisions` (a revision belongs to a source model, not a delivery — the
+/// same revision can be `ModelRow`-projected once per delivery it is a member of).
 #[derive(sqlx::FromRow, Clone)]
 pub struct ModelRow {
     pub id: String,
     pub delivery_id: String,
     pub discipline: String,
+    pub source_model_id: String,
+    pub source_model_name: String,
     pub filename: String,
     pub content_sha256: String,
     pub byte_size: i64,
@@ -79,6 +89,50 @@ pub struct ModelRow {
     pub parse_ms: Option<i64>,
     pub uploaded_at: String,
 }
+
+/// Every current (post-migration) read of "the models in a delivery" goes through
+/// this join; `diff.rs::load_models` and `run.rs::create_run` both use it so the
+/// query shape lives in exactly one place.
+pub const DELIVERY_MODEL_ROW_SELECT: &str = "SELECT mr.id, dm.delivery_id, sm.discipline,
+        sm.id AS source_model_id, sm.name AS source_model_name,
+        mr.filename, mr.content_sha256, mr.byte_size, mr.schema_label, mr.entity_count,
+        mr.product_count, mr.length_to_metre, mr.storage_path, mr.header_json, mr.parse_ms,
+        mr.uploaded_at
+   FROM delivery_members dm
+   JOIN model_revisions mr ON mr.id = dm.model_revision_id
+   JOIN source_models sm ON sm.id = dm.source_model_id";
+
+#[derive(sqlx::FromRow)]
+pub struct SourceModelRow {
+    pub id: String,
+    pub project_id: String,
+    pub name: String,
+    pub discipline: String,
+    pub created_at: String,
+}
+
+#[derive(sqlx::FromRow)]
+pub struct ModelRevisionRow {
+    pub id: String,
+    pub source_model_id: String,
+    pub filename: String,
+    pub content_sha256: String,
+    pub byte_size: i64,
+    pub schema_label: String,
+    pub entity_count: i64,
+    pub product_count: i64,
+    pub length_to_metre: f64,
+    pub storage_path: String,
+    pub header_json: Option<String>,
+    pub parse_ms: Option<i64>,
+    pub uploaded_at: String,
+    pub provenance: String,
+}
+
+pub const MODEL_REVISION_SELECT: &str = "SELECT id, source_model_id, filename, content_sha256,
+        byte_size, schema_label, entity_count, product_count, length_to_metre, storage_path,
+        header_json, parse_ms, uploaded_at, provenance
+   FROM model_revisions";
 
 #[derive(sqlx::FromRow)]
 pub struct ObjectRowDb {
@@ -95,7 +149,36 @@ pub struct ObjectRowDb {
     pub fp_placement: String,
     pub fp_shape: String,
     pub fp_combined: String,
+    /// schemas/model/v1 ObjectRef.objectId; nullable only because SQLite cannot add
+    /// a NOT NULL column with no constant default to an existing table (see
+    /// migrations/0002_source_models.sql) — every row is backfilled/inserted with one.
+    /// `#[sqlx(default)]` because some queries against this row (e.g. diff.rs's
+    /// snapshot rebuild) do not select it at all.
+    #[sqlx(default)]
+    pub ref_object_id: Option<String>,
 }
+
+#[derive(sqlx::FromRow)]
+pub struct IngestionJobRow {
+    pub id: String,
+    pub source_model_id: String,
+    pub filename: String,
+    pub content_sha256: String,
+    pub byte_size: i64,
+    pub storage_path: String,
+    pub status: String,
+    pub model_revision_id: Option<String>,
+    pub error: Option<String>,
+    pub attempt_count: i64,
+    pub created_at: String,
+    pub started_at: Option<String>,
+    pub finished_at: Option<String>,
+}
+
+pub const JOB_SELECT: &str = "SELECT id, source_model_id, filename, content_sha256, byte_size,
+        storage_path, status, model_revision_id, error, attempt_count, created_at, started_at,
+        finished_at
+   FROM ingestion_jobs";
 
 #[derive(sqlx::FromRow)]
 pub struct PropRow {
@@ -128,6 +211,8 @@ pub struct RunRow {
     pub fail_count: i64,
     pub not_applicable_count: i64,
     pub incomplete_count: i64,
+    pub input_provenance: String,
+    pub input_provenance_reason: Option<String>,
 }
 
 #[derive(sqlx::FromRow)]
@@ -184,7 +269,8 @@ pub const RUN_SUMMARY_SELECT: &str = "SELECT r.id, r.project_id, r.delivery_id,
         p.name AS pack_name, pv.version AS pack_version,
         r.engine_version, r.parser_version, r.status, r.error,
         r.started_at, r.finished_at, r.duration_ms,
-        r.pass_count, r.fail_count, r.not_applicable_count, r.incomplete_count
+        r.pass_count, r.fail_count, r.not_applicable_count, r.incomplete_count,
+        r.input_provenance, r.input_provenance_reason
    FROM runs r
    JOIN deliveries d ON d.id = r.delivery_id
    JOIN pack_versions pv ON pv.id = r.pack_version_id
@@ -223,6 +309,7 @@ pub struct Delivery {
     pub label: String,
     pub delivery_date: Option<String>,
     pub created_at: String,
+    pub finalized_at: Option<String>,
     pub model_count: i64,
     pub product_count: i64,
 }
@@ -233,6 +320,8 @@ pub struct ModelInfo {
     pub id: String,
     pub delivery_id: String,
     pub discipline: String,
+    pub source_model_id: String,
+    pub source_model_name: String,
     pub filename: String,
     pub content_sha256: String,
     pub byte_size: i64,
@@ -243,6 +332,32 @@ pub struct ModelInfo {
     pub parse_ms: Option<i64>,
     pub uploaded_at: String,
     pub originating_system: Option<String>,
+}
+
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelRevisionSummary {
+    pub id: String,
+    pub source_model_id: String,
+    pub filename: String,
+    pub content_sha256: String,
+    pub byte_size: i64,
+    pub schema_label: String,
+    pub entity_count: i64,
+    pub product_count: i64,
+    pub uploaded_at: String,
+    pub provenance: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SourceModel {
+    pub id: String,
+    pub project_id: String,
+    pub name: String,
+    pub discipline: String,
+    pub created_at: String,
+    pub revisions: Vec<ModelRevisionSummary>,
 }
 
 #[derive(Serialize)]
@@ -412,6 +527,63 @@ pub struct SpecResultRowOut {
     pub notes: Vec<String>,
 }
 
+/// Why a run created today cannot claim its listed models are its proven inputs.
+pub const UNPINNED_REASON: &str =
+    "the listed models are this delivery's current membership, not a recorded snapshot of what \
+     this run evaluated; pinning a run's exact inputs is not implemented yet";
+
+/// Whether a run's listed `models` are its proven inputs. The two stored columns can
+/// express `complete` with a reason, `incomplete` without one, and any string at all.
+/// This type is the two-state domain they are trying to be.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum InputProvenance {
+    /// The run's listed `models` are its proven, pinned inputs.
+    Complete,
+    /// The listed models are reconstructed from current delivery membership, not verified inputs.
+    Incomplete { reason: String },
+}
+
+impl InputProvenance {
+    /// Unrecognized stored values resolve to `Incomplete`: an unknown provenance is one the
+    /// application cannot prove, and must never be surfaced as though it were proven.
+    pub fn from_row(status: &str, reason: Option<&str>) -> Self {
+        match status {
+            "complete" => Self::Complete,
+            _ => Self::Incomplete { reason: reason.unwrap_or(UNPINNED_REASON).to_owned() },
+        }
+    }
+
+    pub fn status(&self) -> &'static str {
+        match self {
+            Self::Complete => "complete",
+            Self::Incomplete { .. } => "incomplete",
+        }
+    }
+
+    pub fn reason(&self) -> Option<&str> {
+        match self {
+            Self::Complete => None,
+            Self::Incomplete { reason } => Some(reason),
+        }
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RunInputProvenance {
+    pub status: String,
+    pub reason: Option<String>,
+}
+
+impl From<InputProvenance> for RunInputProvenance {
+    fn from(value: InputProvenance) -> Self {
+        Self {
+            status: value.status().to_owned(),
+            reason: value.reason().map(str::to_owned),
+        }
+    }
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RunDetail {
@@ -420,6 +592,7 @@ pub struct RunDetail {
     pub scorecard: Vec<SeverityBand>,
     pub specs: Vec<SpecResultRowOut>,
     pub review_incomplete: Vec<Finding>,
+    pub input_provenance: RunInputProvenance,
 }
 
 #[derive(Serialize)]
@@ -431,11 +604,24 @@ pub struct ObjectFingerprints {
     pub combined: String,
 }
 
+/// Mirrors `model_contracts::ObjectRef`'s wire shape exactly (not the generated type
+/// itself: these are already-valid internal strings computed at ingest time via
+/// `model_contracts::express_id_to_object_id`, not external input that needs that
+/// crate's ingress validation).
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ObjectRefOut {
+    pub revision_id: String,
+    pub object_id: String,
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ObjectRowOut {
     pub id: String,
     pub model_id: String,
+    #[serde(rename = "ref")]
+    pub object_ref: ObjectRefOut,
     pub express_id: i64,
     pub global_id: Option<String>,
     pub ifc_type: String,
@@ -613,6 +799,58 @@ pub struct CreateRunBody {
     pub pack_version_id: String,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateSourceModelBody {
+    pub name: String,
+    pub discipline: String,
+}
+
+/// Returned by `POST /api/source-models/:id/revisions` (202) and
+/// `GET`/`POST retry` `/api/jobs/:jobId`. Deliberately its own shape rather than
+/// a passthrough of `IngestionJobRow` — the API contract must not expose the
+/// database row structure directly (ticket 04's boundary).
+#[derive(Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct IngestionJob {
+    pub id: String,
+    pub source_model_id: String,
+    pub filename: String,
+    pub content_sha256: String,
+    pub byte_size: i64,
+    pub status: String,
+    pub model_revision_id: Option<String>,
+    pub error: Option<String>,
+    pub attempt_count: i64,
+    pub created_at: String,
+    pub started_at: Option<String>,
+    pub finished_at: Option<String>,
+}
+
+pub fn job_json(row: IngestionJobRow) -> IngestionJob {
+    IngestionJob {
+        id: row.id,
+        source_model_id: row.source_model_id,
+        filename: row.filename,
+        content_sha256: row.content_sha256,
+        byte_size: row.byte_size,
+        status: row.status,
+        model_revision_id: row.model_revision_id,
+        error: row.error,
+        attempt_count: row.attempt_count,
+        created_at: row.created_at,
+        started_at: row.started_at,
+        finished_at: row.finished_at,
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AddDeliveryMemberBody {
+    pub source_model_id: String,
+    pub model_revision_id: String,
+}
+
 // ---------------------------------------------------------------------------
 // Conversions
 // ---------------------------------------------------------------------------
@@ -635,7 +873,9 @@ pub fn project_json(
 
 pub async fn delivery_json(pool: &sqlx::SqlitePool, row: &DeliveryRow) -> Result<Delivery, sqlx::Error> {
     let (model_count, product_count): (i64, i64) = sqlx::query_as(
-        "SELECT COUNT(*), COALESCE(SUM(product_count), 0) FROM models WHERE delivery_id = ?1",
+        "SELECT COUNT(*), COALESCE(SUM(mr.product_count), 0)
+           FROM delivery_members dm JOIN model_revisions mr ON mr.id = dm.model_revision_id
+          WHERE dm.delivery_id = ?1",
     )
     .bind(&row.id)
     .fetch_one(pool)
@@ -646,6 +886,7 @@ pub async fn delivery_json(pool: &sqlx::SqlitePool, row: &DeliveryRow) -> Result
         label: row.label.clone(),
         delivery_date: row.delivery_date.clone(),
         created_at: row.created_at.clone(),
+        finalized_at: row.finalized_at.clone(),
         model_count,
         product_count,
     })
@@ -666,6 +907,8 @@ pub fn model_json(row: &ModelRow) -> ModelInfo {
         id: row.id.clone(),
         delivery_id: row.delivery_id.clone(),
         discipline: row.discipline.clone(),
+        source_model_id: row.source_model_id.clone(),
+        source_model_name: row.source_model_name.clone(),
         filename: row.filename.clone(),
         content_sha256: row.content_sha256.clone(),
         byte_size: row.byte_size,
@@ -676,6 +919,32 @@ pub fn model_json(row: &ModelRow) -> ModelInfo {
         parse_ms: row.parse_ms,
         uploaded_at: row.uploaded_at.clone(),
         originating_system,
+    }
+}
+
+pub fn model_revision_summary_json(row: &ModelRevisionRow) -> ModelRevisionSummary {
+    ModelRevisionSummary {
+        id: row.id.clone(),
+        source_model_id: row.source_model_id.clone(),
+        filename: row.filename.clone(),
+        content_sha256: row.content_sha256.clone(),
+        byte_size: row.byte_size,
+        schema_label: row.schema_label.clone(),
+        entity_count: row.entity_count,
+        product_count: row.product_count,
+        uploaded_at: row.uploaded_at.clone(),
+        provenance: row.provenance.clone(),
+    }
+}
+
+pub fn source_model_json(row: SourceModelRow, revisions: Vec<ModelRevisionSummary>) -> SourceModel {
+    SourceModel {
+        id: row.id,
+        project_id: row.project_id,
+        name: row.name,
+        discipline: row.discipline,
+        created_at: row.created_at,
+        revisions,
     }
 }
 
@@ -751,6 +1020,10 @@ pub fn object_row_json(row: &ObjectRowDb) -> ObjectRowOut {
     ObjectRowOut {
         id: row.id.clone(),
         model_id: row.model_id.clone(),
+        object_ref: ObjectRefOut {
+            revision_id: row.model_id.clone(),
+            object_id: row.ref_object_id.clone().unwrap_or_default(),
+        },
         express_id: row.express_id,
         global_id: row.global_id.clone(),
         ifc_type: row.ifc_type.clone(),

@@ -32,6 +32,13 @@
         "classification": { "type": "string", "minLength": 1 },
         "name": { "type": "string" },
         "storey": { "type": "string" },
+        "placement": {
+          "description": "Row-major 3x4 project-frame transform. Translations are metres. Omitted when the source placement cannot be interpreted.",
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 12,
+          "maxItems": 12
+        },
         "properties": {
           "type": "array",
           "items": { "$ref": "#/$defs/property" }
@@ -41,10 +48,24 @@
     "property": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["pset", "name", "value"],
+      "required": ["pset", "name", "values", "ordered", "origin"],
       "properties": {
         "pset": { "type": "string", "minLength": 1 },
         "name": { "type": "string", "minLength": 1 },
+        "values": {
+          "description": "One entry per stored value. List-valued IFC properties keep authoring order; unordered IFC sets set ordered=false.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/propertyValue" }
+        },
+        "ordered": { "type": "boolean" },
+        "origin": { "enum": ["occurrence", "type"] }
+      }
+    },
+    "propertyValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value"],
+      "properties": {
         "value": {
           "oneOf": [
             { "type": "string" },
@@ -52,7 +73,10 @@
             { "type": "boolean" },
             { "type": "null" }
           ]
-        }
+        },
+        "originalUnit": { "type": "string" },
+        "siValue": { "type": ["number", "null"] },
+        "dimension": { "enum": ["length", "area", "volume"] }
       }
     }
   }

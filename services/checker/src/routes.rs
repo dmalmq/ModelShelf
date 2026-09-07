@@ -10,11 +10,12 @@ use tokio_util::io::ReaderStream;
 
 use crate::db::{new_id, now_iso, SCHEMA_VERSION};
 use crate::dto::{
-    delivery_json, model_json, pack_version_json, project_json, run_summary, CreateDeliveryBody,
-    CreatePackVersionBody, Delivery, DeliveryDetail, DeliveryRow, DeliverySummary, Health,
-    ModelInfo, ModelRow, ObjectDetail, ObjectFingerprints, ObjectPage, ObjectProperty,
-    ObjectRowDb, ObjectRowOut, Pack, PackRow, PackSpecInfo, PackVersion, PackVersionDetail,
-    PackVersionRow, Project, ProjectDetail, ProjectRow, PropRow, RunRow, RunSummary,
+    delivery_json, model_json, pack_version_json, project_json, run_summary,
+    AddDeliveryMemberBody, CreateDeliveryBody, CreatePackVersionBody, Delivery, DeliveryDetail,
+    DeliveryRow, DeliverySummary, Health, ModelInfo, ModelRevisionRow, ObjectDetail,
+    ObjectFingerprints, ObjectPage, ObjectProperty, ObjectRefOut, ObjectRowDb, ObjectRowOut, Pack,
+    PackRow, PackSpecInfo, PackVersion, PackVersionDetail, PackVersionRow, Project, ProjectDetail,
+    ProjectRow, PropRow, RunRow, RunSummary, DELIVERY_SELECT, MODEL_REVISION_SELECT,
     RUN_SUMMARY_SELECT,
 };
 use crate::error::ApiError;
@@ -28,8 +29,19 @@ pub fn router() -> Router<AppState> {
         .route("/api/projects", get(list_projects))
         .route("/api/projects/{project_id}", get(get_project))
         .route("/api/projects/{project_id}/deliveries", post(create_delivery))
+        .route(
+            "/api/projects/{project_id}/source-models",
+            get(crate::sources::list_source_models).post(crate::sources::create_source_model),
+        )
+        .route(
+            "/api/source-models/{source_model_id}/revisions",
+            post(crate::sources::upload_revision),
+        )
+        .route("/api/jobs/{job_id}", get(crate::jobs::get_job))
+        .route("/api/jobs/{job_id}/retry", post(crate::jobs::retry_job))
         .route("/api/deliveries/{delivery_id}", get(get_delivery))
-        .route("/api/deliveries/{delivery_id}/models", post(crate::upload::upload_model))
+        .route("/api/deliveries/{delivery_id}/members", post(add_delivery_member))
+        .route("/api/deliveries/{delivery_id}/finalize", post(finalize_delivery))
         .route("/api/models/{model_id}/file", get(model_file))
         .route("/api/models/{model_id}/objects", get(list_objects))
         .route("/api/objects/{object_id}", get(get_object))
@@ -95,10 +107,9 @@ async fn get_project(
     let (delivery_count, run_count) = project_counts(&state, &project_id).await?;
     let project = project_json(row, delivery_count, run_count);
 
-    let delivery_rows: Vec<DeliveryRow> = sqlx::query_as(
-        "SELECT id, project_id, label, delivery_date, created_at FROM deliveries
-          WHERE project_id = ?1 ORDER BY created_at DESC",
-    )
+    let delivery_rows: Vec<DeliveryRow> = sqlx::query_as(&format!(
+        "{DELIVERY_SELECT} WHERE project_id = ?1 ORDER BY created_at DESC"
+    ))
     .bind(&project_id)
     .fetch_all(&state.pool)
     .await?;
@@ -187,6 +198,7 @@ async fn create_delivery(
         label: body.label.trim().to_owned(),
         delivery_date: body.delivery_date.clone(),
         created_at: now_iso(),
+        finalized_at: None,
     };
     sqlx::query(
         "INSERT INTO deliveries (id, project_id, label, delivery_date, created_at)
@@ -209,7 +221,10 @@ async fn get_delivery(
     let row = crate::diff::load_delivery(&state.pool, &delivery_id).await?;
     let models = load_model_infos(&state, &delivery_id).await?;
     let runs = list_run_summaries(&state, "r.delivery_id = ?1", &delivery_id).await?;
-    let locked = runs.iter().any(|r| r.status == "completed");
+    // finalize (routes::finalize_delivery) is the explicit mechanism; a delivery with
+    // a completed run stays locked even without it, preserving the invariant that
+    // predates finalization (see migrate_v2::backfill_finalized_deliveries).
+    let locked = row.finalized_at.is_some() || runs.iter().any(|r| r.status == "completed");
     Ok(Json(DeliveryDetail {
         delivery: delivery_json(&state.pool, &row).await?,
         models,
@@ -218,17 +233,99 @@ async fn get_delivery(
     }))
 }
 
-async fn load_model_row(state: &AppState, model_id: &str) -> Result<ModelRow, ApiError> {
-    sqlx::query_as(
-        "SELECT id, delivery_id, discipline, filename, content_sha256, byte_size, schema_label,
-                entity_count, product_count, length_to_metre, storage_path, header_json,
-                parse_ms, uploaded_at
-           FROM models WHERE id = ?1",
+/// Adds a source model's revision to a delivery, replacing any revision already
+/// pinned there for that source model (one revision per source model per
+/// delivery). The `INSERT OR REPLACE ... SELECT ... WHERE NOT EXISTS (...)` is one
+/// atomic statement precisely so a concurrent `finalize_delivery` can never land
+/// between "checked not finalized" and "wrote the membership" — SQLite gives a
+/// single statement full isolation, which a separate check-then-write pair would not.
+async fn add_delivery_member(
+    State(state): State<AppState>,
+    Path(delivery_id): Path<String>,
+    Json(body): Json<AddDeliveryMemberBody>,
+) -> Result<Json<DeliveryDetail>, ApiError> {
+    let delivery_project: Option<String> = sqlx::query_scalar("SELECT project_id FROM deliveries WHERE id = ?1")
+        .bind(&delivery_id)
+        .fetch_optional(&state.pool)
+        .await?;
+    let delivery_project = delivery_project.ok_or_else(|| ApiError::not_found("delivery"))?;
+
+    let source_model_project: Option<String> =
+        sqlx::query_scalar("SELECT project_id FROM source_models WHERE id = ?1")
+            .bind(&body.source_model_id)
+            .fetch_optional(&state.pool)
+            .await?;
+    let source_model_project = source_model_project.ok_or_else(|| ApiError::not_found("source model"))?;
+    if source_model_project != delivery_project {
+        return Err(ApiError::bad_request("source model does not belong to this delivery's project"));
+    }
+
+    let revision_source: Option<String> =
+        sqlx::query_scalar("SELECT source_model_id FROM model_revisions WHERE id = ?1")
+            .bind(&body.model_revision_id)
+            .fetch_optional(&state.pool)
+            .await?;
+    let revision_source = revision_source.ok_or_else(|| ApiError::not_found("model revision"))?;
+    if revision_source != body.source_model_id {
+        return Err(ApiError::bad_request("model revision does not belong to the given source model"));
+    }
+
+    let result = sqlx::query(
+        "INSERT OR REPLACE INTO delivery_members (id, delivery_id, source_model_id, model_revision_id, added_at)
+         SELECT ?1, ?2, ?3, ?4, ?5
+          WHERE NOT EXISTS (SELECT 1 FROM deliveries WHERE id = ?2 AND finalized_at IS NOT NULL)
+            AND NOT EXISTS (SELECT 1 FROM runs WHERE delivery_id = ?2 AND status = 'completed')",
     )
-    .bind(model_id)
-    .fetch_optional(&state.pool)
-    .await?
-    .ok_or_else(|| ApiError::not_found("model"))
+    .bind(new_id())
+    .bind(&delivery_id)
+    .bind(&body.source_model_id)
+    .bind(&body.model_revision_id)
+    .bind(now_iso())
+    .execute(&state.pool)
+    .await?;
+    if result.rows_affected() == 0 {
+        return Err(ApiError::delivery_locked());
+    }
+
+    get_delivery(State(state), Path(delivery_id)).await
+}
+
+/// Freezes membership forever. Idempotent: finalizing an already-finalized
+/// delivery is a no-op success, not an error — a second caller racing the first
+/// (or simply retrying) gets the same frozen state back either way. The `WHERE
+/// finalized_at IS NULL` guard is what makes concurrent finalize calls safe: only
+/// one of them can actually change the row from NULL to a timestamp.
+async fn finalize_delivery(
+    State(state): State<AppState>,
+    Path(delivery_id): Path<String>,
+) -> Result<Json<DeliveryDetail>, ApiError> {
+    let exists: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM deliveries WHERE id = ?1")
+        .bind(&delivery_id)
+        .fetch_one(&state.pool)
+        .await?;
+    if exists == 0 {
+        return Err(ApiError::not_found("delivery"));
+    }
+    sqlx::query("UPDATE deliveries SET finalized_at = ?2 WHERE id = ?1 AND finalized_at IS NULL")
+        .bind(&delivery_id)
+        .bind(now_iso())
+        .execute(&state.pool)
+        .await?;
+
+    get_delivery(State(state), Path(delivery_id)).await
+}
+
+/// A revision belongs to a source model, not a delivery, so this is scoped to the
+/// revision's own row — it does not answer "which delivery is this in" (a revision
+/// can be a member of several, or none). `ModelInfo`/`ModelRow` are the
+/// delivery-projected view; this is the revision-only view `/file` and the object
+/// endpoints actually need.
+async fn load_model_row(state: &AppState, model_id: &str) -> Result<ModelRevisionRow, ApiError> {
+    sqlx::query_as(&format!("{MODEL_REVISION_SELECT} WHERE id = ?1"))
+        .bind(model_id)
+        .fetch_optional(&state.pool)
+        .await?
+        .ok_or_else(|| ApiError::not_found("model"))
 }
 
 /// Stream the immutable IFC bytes to the viewer. The content hash is a strong ETag, so a
@@ -308,7 +405,7 @@ async fn list_objects(
 
     let rows: Vec<ObjectRowDb> = sqlx::query_as(
         "SELECT id, model_id, express_id, global_id, ifc_type, name, predefined_type, storey,
-                placement_json, fp_properties, fp_placement, fp_shape, fp_combined
+                placement_json, fp_properties, fp_placement, fp_shape, fp_combined, ref_object_id
            FROM objects
           WHERE model_id = ?1
             AND (?2 IS NULL OR ifc_type = ?2)
@@ -335,6 +432,10 @@ fn object_row_json(row: &ObjectRowDb) -> ObjectRowOut {
     ObjectRowOut {
         id: row.id.clone(),
         model_id: row.model_id.clone(),
+        object_ref: ObjectRefOut {
+            revision_id: row.model_id.clone(),
+            object_id: row.ref_object_id.clone().unwrap_or_default(),
+        },
         express_id: row.express_id,
         global_id: row.global_id.clone(),
         ifc_type: row.ifc_type.clone(),
@@ -356,7 +457,7 @@ async fn get_object(
 ) -> Result<Json<ObjectDetail>, ApiError> {
     let row: ObjectRowDb = sqlx::query_as(
         "SELECT id, model_id, express_id, global_id, ifc_type, name, predefined_type, storey,
-                placement_json, fp_properties, fp_placement, fp_shape, fp_combined
+                placement_json, fp_properties, fp_placement, fp_shape, fp_combined, ref_object_id
            FROM objects WHERE id = ?1",
     )
     .bind(&object_id)

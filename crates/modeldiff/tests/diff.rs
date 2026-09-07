@@ -12,8 +12,11 @@ fn fp(properties: &str, placement: &str, shape: &str) -> Fingerprints {
     }
 }
 
+/// Identity rotation, origin at (x, y, z). Layout matches
+/// `ifc_model::Transform::to_array12`: three axis vectors, then the origin —
+/// `[xx,xy,xz, yx,yy,yz, zx,zy,zz, ox,oy,oz]`.
 fn placement_at(x: f64, y: f64, z: f64) -> [f64; 12] {
-    [1.0, 0.0, 0.0, x, 0.0, 1.0, 0.0, y, 0.0, 0.0, 1.0, z]
+    [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, x, y, z]
 }
 
 fn prop(pset: &str, name: &str, value: &str) -> PropSnapshot {

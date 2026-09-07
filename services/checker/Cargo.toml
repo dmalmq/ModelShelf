@@ -13,6 +13,7 @@ ifc-model.workspace = true
 ids.workspace = true
 fingerprint.workspace = true
 modeldiff.workspace = true
+model-contracts.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
@@ -29,3 +30,6 @@ anyhow = "1.0.104"
 tracing = "0.1.44"
 tokio-util = { version = "0.7.19", features = ["io"] }
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+
+[dev-dependencies]
+tempfile = "3.14"

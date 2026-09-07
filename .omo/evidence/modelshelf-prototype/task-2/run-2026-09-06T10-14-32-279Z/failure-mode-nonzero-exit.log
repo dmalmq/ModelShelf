@@ -1,0 +1,2 @@
+2026-09-06T10:14:33.236939Z  INFO modelshelf_checker: modelshelf-checker listening addr=127.0.0.1:41357
+2026-09-06T10:14:33.463892Z  WARN modelshelf_checker::jobs: ingestion job failed job_id="134f66e8-bb08-440c-a3c0-71d7f7a322e3" error=worker exited with exit status: 1: simulated engine failure

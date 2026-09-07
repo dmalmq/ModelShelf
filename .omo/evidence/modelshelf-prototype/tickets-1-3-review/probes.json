@@ -1,0 +1,69 @@
+{
+  "explicitMetresInMillimetreProject": {
+    "original_unit": "m",
+    "si_multiplier": 0.001,
+    "dimension": "length"
+  },
+  "unknownExplicitUnit": {
+    "original_unit": "?",
+    "si_multiplier": 0.001,
+    "dimension": "length"
+  },
+  "placement1000mm": [
+    1.0,
+    0.0,
+    0.0,
+    1000.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0
+  ],
+  "orderedList": {
+    "records": [],
+    "diagnostics": [
+      "object #11: skipped unsupported property definitions of type IfcPropertyListValue"
+    ]
+  },
+  "inheritedProperty": {
+    "records": [],
+    "diagnostics": []
+  },
+  "findingForeignKeys": [
+    [
+      0,
+      0,
+      "objects_v1",
+      "object_id",
+      "id",
+      "NO ACTION",
+      "NO ACTION",
+      "NONE"
+    ],
+    [
+      1,
+      0,
+      "models",
+      "model_id",
+      "id",
+      "NO ACTION",
+      "NO ACTION",
+      "NONE"
+    ],
+    [
+      2,
+      0,
+      "findings",
+      "finding_id",
+      "id",
+      "NO ACTION",
+      "NO ACTION",
+      "NONE"
+    ]
+  ],
+  "findingInsertError": "no such table: main.objects_v1"
+}

@@ -1,85 +1,46 @@
 #!/usr/bin/env node
 // Smoke-tests the modelshelf-checker service against a real, isolated process:
-// build, seed twice, start serve, hit /api/health twice, reject an unknown CLI
-// command, then tear everything down. Every process/port/data-dir it touches is
-// its own; nothing here reads or deletes anything outside its own temp dir and
-// evidence dir.
+// build, seed twice (with samples/ids/seed-smoke.ids, so pack-version idempotency
+// is actually exercised, not just the empty-packs-dir no-op case), start serve, hit
+// /api/health twice, reject an unknown CLI command, then tear everything down.
+// Every process/port/data-dir it touches is its own; nothing here reads or
+// deletes anything outside its own temp dir and evidence dir. Cleanup and log
+// capture happen in `finally`, so a server that crashes before answering health
+// still gets its log written and its temp dirs removed, not left as orphans.
 //
 // Usage: node scripts/qa-harness.mjs
 
-import { spawnSync, spawn } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, cpSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-import net from "node:net";
+import { join } from "node:path";
 
-const REPO_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
+import { BIN_PATH, REPO_ROOT, buildBinary, createChecker, freePort, runCli, stopProcess, waitForHealth } from "./lib/checker-harness.mjs";
+
 const EVIDENCE_DIR = join(REPO_ROOT, ".omo", "evidence", "modelshelf-prototype", "task-1");
-const BIN_PATH = join(REPO_ROOT, "target", "debug", "modelshelf-checker");
-
-let failures = 0;
-function check(label, condition, detail) {
-  if (condition) {
-    console.log(`ok - ${label}`);
-  } else {
-    failures += 1;
-    console.error(`FAIL - ${label}${detail ? `: ${detail}` : ""}`);
-  }
-}
-
-async function freePort() {
-  return new Promise((resolve, reject) => {
-    const server = net.createServer();
-    server.unref();
-    server.on("error", reject);
-    server.listen(0, "127.0.0.1", () => {
-      const { port } = server.address();
-      server.close(() => resolve(port));
-    });
-  });
-}
-
-function runCli(args, { cwd = REPO_ROOT } = {}) {
-  return spawnSync(BIN_PATH, args, { cwd, encoding: "utf8" });
-}
-
-async function waitForHealth(port, timeoutMs = 10_000) {
-  const deadline = Date.now() + timeoutMs;
-  while (Date.now() < deadline) {
-    try {
-      const res = await fetch(`http://127.0.0.1:${port}/api/health`);
-      if (res.ok) return res.json();
-    } catch {
-      // service not accepting connections yet
-    }
-    await new Promise((r) => setTimeout(r, 150));
-  }
-  throw new Error(`service did not become healthy within ${timeoutMs}ms`);
-}
+const SAMPLE_IDS =
+  process.env.MODELSHELF_QA_IDS ?? join(REPO_ROOT, "samples", "ids", "seed-smoke.ids");
 
 async function main() {
+  const { check, failureCount } = createChecker();
   mkdirSync(EVIDENCE_DIR, { recursive: true });
   const runDir = join(EVIDENCE_DIR, `run-${new Date().toISOString().replace(/[:.]/g, "-")}`);
   mkdirSync(runDir, { recursive: true });
 
-  console.log("building modelshelf-checker...");
-  const build = spawnSync("cargo", ["build", "-p", "modelshelf-checker"], {
-    cwd: REPO_ROOT,
-    encoding: "utf8",
-  });
-  writeFileSync(join(runDir, "build.log"), build.stdout + build.stderr);
-  check("cargo build succeeds", build.status === 0, `exit ${build.status}`);
-  if (build.status !== 0 || !existsSync(BIN_PATH)) {
-    console.error("cannot continue without a built binary; see build.log");
-    process.exit(1);
-  }
+  buildBinary(runDir);
 
-  const dataDir = mkdtempSync(join(tmpdir(), "modelshelf-qa-data-"));
-  const packsDir = mkdtempSync(join(tmpdir(), "modelshelf-qa-packs-"));
+  let dataDir;
+  let packsDir;
   let serverProcess;
+  let serverLog = "";
 
   try {
+    dataDir = mkdtempSync(join(tmpdir(), "modelshelf-qa-data-"));
+    packsDir = mkdtempSync(join(tmpdir(), "modelshelf-qa-packs-"));
+    if (!existsSync(SAMPLE_IDS)) {
+      throw new Error(`seed IDS fixture is missing: ${SAMPLE_IDS}`);
+    }
+    cpSync(SAMPLE_IDS, join(packsDir, "sample.ids"));
     // --- unknown CLI command exits nonzero with usage ---
     const bogus = runCli(["definitely-not-a-command"]);
     check("unknown command exits nonzero", bogus.status !== 0, `exit ${bogus.status}`);
@@ -95,7 +56,8 @@ async function main() {
     check("--help exits zero", help.status === 0, `exit ${help.status}`);
     check("--help prints usage", /USAGE/.test(help.stdout + help.stderr), "no USAGE text in output");
 
-    // --- seed twice against the same fresh data dir: one copy of each entity ---
+    // --- seed twice against the same fresh data dir, with a real pack file: one
+    // copy of each entity, including pack *versions* (not just tenant/project/pack) ---
     const seed1 = runCli(["seed", "--data-dir", dataDir, "--packs-dir", packsDir, "--samples-dir", packsDir]);
     const seed2 = runCli(["seed", "--data-dir", dataDir, "--packs-dir", packsDir, "--samples-dir", packsDir]);
     writeFileSync(
@@ -105,22 +67,22 @@ async function main() {
     check("first seed exits zero", seed1.status === 0, `exit ${seed1.status}`);
     check("second seed exits zero", seed2.status === 0, `exit ${seed2.status}`);
     check(
-      "seed is idempotent (same ids, no growth reported)",
-      seed1.stdout.trim() === seed2.stdout.trim(),
+      "first seed adds one pack version, second seed adds none (idempotent)",
+      /\(\+1 pack version\(s\)\)/.test(seed1.stdout) && /\(\+0 pack version\(s\)\)/.test(seed2.stdout),
       `run1=${seed1.stdout.trim()} run2=${seed2.stdout.trim()}`,
     );
 
-    // --- serve starts on an isolated, unused port; health responds; projects/packs read back one each ---
+    // --- serve starts on an isolated, unused port; health responds; projects/packs
+    // read back one each, and the pack has exactly one version (not two) ---
     const port = await freePort();
     serverProcess = spawn(BIN_PATH, ["serve", "--data-dir", dataDir, "--port", String(port)], {
       cwd: REPO_ROOT,
       stdio: ["ignore", "pipe", "pipe"],
     });
-    let serverLog = "";
     serverProcess.stdout.on("data", (chunk) => (serverLog += chunk));
     serverProcess.stderr.on("data", (chunk) => (serverLog += chunk));
 
-    const health = await waitForHealth(port);
+    const health = await waitForHealth(port, { child: serverProcess });
     check("health responds with status ok", health.status === "ok", JSON.stringify(health));
     check("health reports engine/parser/schema versions", Boolean(health.engineVersion && health.parserVersion && health.schemaVersion), JSON.stringify(health));
 
@@ -129,23 +91,25 @@ async function main() {
 
     const packs = await (await fetch(`http://127.0.0.1:${port}/api/packs`)).json();
     check("exactly one seeded pack", Array.isArray(packs) && packs.length === 1, JSON.stringify(packs));
+    check(
+      "the pack has exactly one version despite two seed runs",
+      packs[0]?.versions?.length === 1,
+      JSON.stringify(packs[0]?.versions),
+    );
 
-    writeFileSync(join(runDir, "serve.log"), serverLog);
     writeFileSync(join(runDir, "health-response.json"), JSON.stringify(health, null, 2));
     writeFileSync(join(runDir, "projects-response.json"), JSON.stringify(projects, null, 2));
     writeFileSync(join(runDir, "packs-response.json"), JSON.stringify(packs, null, 2));
   } finally {
-    if (serverProcess && !serverProcess.killed) {
-      serverProcess.kill("SIGTERM");
-      await new Promise((resolve) => serverProcess.once("exit", resolve));
-    }
-    rmSync(dataDir, { recursive: true, force: true });
-    rmSync(packsDir, { recursive: true, force: true });
+    await stopProcess(serverProcess);
+    writeFileSync(join(runDir, "serve.log"), serverLog);
+    if (dataDir) rmSync(dataDir, { recursive: true, force: true });
+    if (packsDir) rmSync(packsDir, { recursive: true, force: true });
   }
 
   console.log(`\nevidence written to ${runDir}`);
-  if (failures > 0) {
-    console.error(`\n${failures} check(s) failed`);
+  if (failureCount() > 0) {
+    console.error(`\n${failureCount()} check(s) failed`);
     process.exit(1);
   }
   console.log("\nall checks passed");

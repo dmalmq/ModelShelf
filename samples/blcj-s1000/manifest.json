@@ -1,0 +1,41 @@
+[
+  {
+    "discipline": "architecture",
+    "tool": "GLOOBE",
+    "url": "https://blcj.or.jp/wp/wp-content/uploads/2026/04/BLCJ_S1000_A_GLOOBE.zip",
+    "zipPath": "downloads/BLCJ_S1000_A_GLOOBE.zip",
+    "zipSha256": "b0d8ca7799a041de777d754f392b1538b70d529f128da553007f5015503ee0a9",
+    "zipBytes": 14908212,
+    "ifcEntry": "BLCJ_S1000_A_GLOOBE/BLCJsampleIFC_A_GLOOBE_R2.ifc",
+    "ifcPath": "../ifc/blcj-s1000-architecture.ifc",
+    "ifcSha256": "0f674223f596c483c5abea0b58fe6c05ef3c68692409c977782040ffa501cca4",
+    "ifcBytes": 36232021,
+    "retrievedAt": "2026-09-06T09:58:35.192Z"
+  },
+  {
+    "discipline": "structure",
+    "tool": "Revit/SS7",
+    "url": "https://blcj.or.jp/wp/wp-content/uploads/2026/04/BLCJ_S1000_S_Revit.zip",
+    "zipPath": "downloads/BLCJ_S1000_S_Revit.zip",
+    "zipSha256": "6f14aef6597aa5fef338b00b544b2679bd184041d30e26a7655d6d5ad6586fed",
+    "zipBytes": 23622500,
+    "ifcEntry": "BLCJ_S1000_S_Revit/S_構造モデル_260319修正分.ifc",
+    "ifcPath": "../ifc/blcj-s1000-structure.ifc",
+    "ifcSha256": "64084908b3eda8f2a34cb0e5d51532b98882d62aa42839b9fa9b27e1ca1e75d5",
+    "ifcBytes": 836678,
+    "retrievedAt": "2026-09-06T09:58:35.220Z"
+  },
+  {
+    "discipline": "mep",
+    "tool": "Rebro",
+    "url": "https://blcj.or.jp/wp/wp-content/uploads/2026/04/BLCJ_S1000_MEP_Rebro.zip",
+    "zipPath": "downloads/BLCJ_S1000_MEP_Rebro.zip",
+    "zipSha256": "c4535a92ae18b744a101da7f26f27c88b103563b9f02c8c0d348743d1cf51039",
+    "zipBytes": 17143446,
+    "ifcEntry": "BLCJ_S1000_MEP_Rebro/BLCJ_SampleModel_2022_MEP_Variation_03.ifc",
+    "ifcPath": "../ifc/blcj-s1000-mep.ifc",
+    "ifcSha256": "46eae66e578211012ee8c6d3d03eb3876670852cc62d452f40bc98c5215c08c2",
+    "ifcBytes": 48736361,
+    "retrievedAt": "2026-09-06T09:58:35.461Z"
+  }
+]

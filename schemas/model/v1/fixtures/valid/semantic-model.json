@@ -8,9 +8,10 @@
       "classification": "IfcWallStandardCase",
       "name": "Basic Wall:Exterior - 200mm",
       "storey": "Level 1",
+      "placement": [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
       "properties": [
-        { "pset": "Pset_WallCommon", "name": "IsExternal", "value": true },
-        { "pset": "Pset_WallCommon", "name": "FireRating", "value": "60" }
+        { "pset": "Pset_WallCommon", "name": "IsExternal", "values": [{ "value": true }], "ordered": true, "origin": "occurrence" },
+        { "pset": "Pset_WallCommon", "name": "FireRating", "values": [{ "value": "60" }], "ordered": true, "origin": "occurrence" }
       ]
     },
     {
@@ -20,7 +21,7 @@
       "name": "Basic Wall:Exterior - 200mm",
       "storey": "Level 1",
       "properties": [
-        { "pset": "Pset_WallCommon", "name": "IsExternal", "value": true }
+        { "pset": "Pset_WallCommon", "name": "IsExternal", "values": [{ "value": true }], "ordered": true, "origin": "type" }
       ]
     },
     {
@@ -30,8 +31,9 @@
       "name": "Single-Flush:0915 x 2134mm",
       "storey": "Level 1",
       "properties": [
-        { "pset": "Pset_DoorCommon", "name": "FireRating", "value": "20" },
-        { "pset": "Pset_DoorCommon", "name": "OverallHeight", "value": 2134.0 }
+        { "pset": "Pset_DoorCommon", "name": "FireRating", "values": [{ "value": "20" }], "ordered": true, "origin": "occurrence" },
+        { "pset": "Pset_DoorCommon", "name": "OverallHeight", "values": [{ "value": 2134.0, "originalUnit": "mm", "siValue": 2.134, "dimension": "length" }], "ordered": true, "origin": "occurrence" },
+        { "pset": "Pset_DoorCommon", "name": "Layers", "values": [{ "value": "outer" }, { "value": "inner" }], "ordered": true, "origin": "occurrence" }
       ]
     }
   ]

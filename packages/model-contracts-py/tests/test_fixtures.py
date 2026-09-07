@@ -12,14 +12,16 @@ import pytest
 from pydantic import ValidationError
 
 from model_contracts import (
+    GeometryChunk,
     ModelDescriptor,
     ObjectRef,
     RenderManifest,
     SemanticModel,
     check_distinct_object_ids,
+    check_revision_ids,
     express_id_to_object_id,
 )
-from model_contracts.boundary import DuplicateObjectIdError
+from model_contracts.boundary import DuplicateObjectIdError, MismatchedRevisionIdError
 
 FIXTURES_DIR = Path(__file__).resolve().parents[3] / "schemas" / "model" / "v1" / "fixtures"
 
@@ -68,10 +70,19 @@ def test_every_invalid_schema_fixture_is_rejected(filename: str):
         model_cls = ModelDescriptor
     elif filename.startswith("render-manifest"):
         model_cls = RenderManifest
+    elif filename.startswith("geometry-chunk"):
+        model_cls = GeometryChunk
     else:
         model_cls = SemanticModel
     with pytest.raises(ValidationError):
         model_cls.model_validate(payload)
+
+
+def test_mismatched_revision_fixture_passes_schema_but_fails_the_boundary_check():
+    payload = load("invalid", "boundary", "semantic-model-mismatched-revision.json")
+    model = SemanticModel.model_validate(payload)
+    with pytest.raises(MismatchedRevisionIdError, match="does not match"):
+        check_revision_ids(model)
 
 
 def test_duplicate_objectid_fixture_passes_schema_but_fails_the_boundary_check():
@@ -98,12 +109,15 @@ def test_produced_payloads_match_the_hand_authored_golden_fixtures():
     (mod dump ordering) so both are proven to describe the same contract."""
     from model_contracts import produce
 
-    assert produce.build_model_descriptor().model_dump(mode="json") == load("valid", "model-descriptor.json")
-    assert produce.build_semantic_model().model_dump(mode="json") == load("valid", "semantic-model.json")
-    assert produce.build_render_manifest().model_dump(mode="json") == load("valid", "render-manifest.json")
-    assert produce.build_prepared_scene_descriptor().model_dump(mode="json") == load(
+    def dump(payload):
+        return payload.model_dump(mode="json", exclude_unset=True)
+
+    assert dump(produce.build_model_descriptor()) == load("valid", "model-descriptor.json")
+    assert dump(produce.build_semantic_model()) == load("valid", "semantic-model.json")
+    assert dump(produce.build_render_manifest()) == load("valid", "render-manifest.json")
+    assert dump(produce.build_prepared_scene_descriptor()) == load(
         "valid", "prepared-scene-non-ifc", "model-descriptor.json"
     )
-    assert produce.build_prepared_scene_render_manifest().model_dump(mode="json") == load(
+    assert dump(produce.build_prepared_scene_render_manifest()) == load(
         "valid", "prepared-scene-non-ifc", "render-manifest.json"
     )
