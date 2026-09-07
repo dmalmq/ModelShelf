@@ -1,20 +1,20 @@
    ▲ Next.js 15.5.25
-   - Local:        http://localhost:44913
-   - Network:      http://10.255.255.254:44913
+   - Local:        http://localhost:35937
+   - Network:      http://10.255.255.254:35937
 
  ✓ Starting...
- ✓ Ready in 1024ms
+ ✓ Ready in 996ms
  ○ Compiling /deliveries/[deliveryId] ...
- ✓ Compiled /deliveries/[deliveryId] in 1247ms (836 modules)
- GET /deliveries/combined 200 in 1871ms
- GET /deliveries/combined 200 in 45ms
+ ✓ Compiled /deliveries/[deliveryId] in 1170ms (840 modules)
+ GET /deliveries/combined 200 in 1757ms
+ GET /deliveries/combined 200 in 46ms
 browser info: %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
  ⚠ Cross origin request detected from 127.0.0.1 to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
 Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
-browser warning: [.WebGL-0x21ec00194a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-browser warning: [.WebGL-0x21ec00194a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-browser warning: [.WebGL-0x21ec00194a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-browser warning: [.WebGL-0x21ec00194a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)
+browser warning: [.WebGL-0x310400196200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+browser warning: [.WebGL-0x310400196200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+browser warning: [.WebGL-0x310400196200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+browser warning: [.WebGL-0x310400196200]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)
 browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 343644
 browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 345785
 browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 346732
@@ -150,10 +150,10 @@ browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 419710
 browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 419780
 browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 419813
 browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 420832
- GET /deliveries/duplicate 200 in 44ms
+ GET /deliveries/duplicate 200 in 45ms
 browser info: %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
- GET /deliveries/duplicate 200 in 40ms
+ GET /deliveries/duplicate 200 in 42ms
 browser info: %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
- GET /deliveries/empty 200 in 37ms
+ GET /deliveries/empty 200 in 45ms
 browser info: %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
 [?25h

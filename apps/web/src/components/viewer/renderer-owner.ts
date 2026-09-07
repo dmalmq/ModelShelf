@@ -12,6 +12,7 @@ import {
   type SelectionRecord,
   type TransferGeometry,
   type TransferInstance,
+  type ViewerHighlight,
   type ViewerRenderer,
   type ViewerResourceStats,
   type WorkerHeader,
@@ -21,7 +22,6 @@ interface RendererOptions {
   readonly canvas: HTMLCanvasElement;
   readonly onPick: (ref: ObjectRef) => void;
 }
-
 interface RevisionResource {
   readonly root: THREE.Group;
   readonly mesh: THREE.BatchedMesh;
@@ -29,6 +29,8 @@ interface RevisionResource {
   readonly geometryIds: Map<number, number>;
 }
 
+// Installed three types omit BatchedMesh.instanceColor even though setColorAt maintains it at runtime.
+type ColoredMesh = THREE.BatchedMesh & { instanceColor?: { needsUpdate: boolean } };
 const SELECTED_COLOR = new THREE.Color(0x1d4ed8);
 
 export class RendererOwner implements ViewerRenderer {
@@ -54,6 +56,12 @@ export class RendererOwner implements ViewerRenderer {
     MEP: true,
     OTHER: true,
   };
+  private highlightColors = new Map<ObjectRefKey, THREE.Color>();
+  private highlightGroups: { label: string | null; color: string; requested: number; matched: number }[] = [];
+  private isolated: Set<ObjectRefKey> | null = null;
+  private dimOpacity = 1;
+  private readonly dimWhite = new THREE.Color(0xffffff);
+  private sectionPlane: THREE.Plane | null = null;
   private readonly canvas: HTMLCanvasElement;
   private readonly onPick: (ref: ObjectRef) => void;
   private readonly resizeObserver: ResizeObserver;
@@ -68,6 +76,7 @@ export class RendererOwner implements ViewerRenderer {
     this.renderer = new THREE.WebGLRenderer({ canvas: options.canvas, antialias: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.localClippingEnabled = true;
     this.scene.background = new THREE.Color(0xffffff);
 
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0xcbd5e1, 2.4));
@@ -186,6 +195,27 @@ export class RendererOwner implements ViewerRenderer {
       if (key.startsWith(prefix)) this.targetRecords.delete(key);
     }
     if (this.selected?.ref.revisionId === revisionId) this.selected = null;
+    let highlightsChanged = false;
+    for (const key of this.highlightColors.keys()) {
+      if (key.startsWith(prefix)) {
+        this.highlightColors.delete(key);
+        highlightsChanged = true;
+      }
+    }
+    if (highlightsChanged) {
+      this.highlightGroups = this.highlightGroups.filter((group) => group.matched > 0);
+      this.repaint();
+    }
+    if (this.isolated !== null) {
+      let isolatedChanged = false;
+      for (const key of this.isolated) {
+        if (key.startsWith(prefix)) {
+          this.isolated.delete(key);
+          isolatedChanged = true;
+        }
+      }
+      if (isolatedChanged) this.applyVisibility();
+    }
   }
 
   setOrigin(origin: readonly [number, number, number]): void {
@@ -204,9 +234,8 @@ export class RendererOwner implements ViewerRenderer {
   }
 
   select(record: SelectionRecord | null): void {
-    if (this.selected) this.paintBaseColors(this.selected);
     this.selected = record;
-    if (record) this.paint(record, SELECTED_COLOR);
+    this.repaint();
   }
 
   selection(ref: ObjectRef): SelectionRecord | null {
@@ -232,6 +261,53 @@ export class RendererOwner implements ViewerRenderer {
     this.applyVisibility();
   }
 
+  setHighlights(groups: readonly ViewerHighlight[]): void {
+    const colors = new Map<ObjectRefKey, THREE.Color>();
+    const summaries: { label: string | null; color: string; requested: number; matched: number }[] = [];
+    for (const group of groups) {
+      let color: THREE.Color;
+      try {
+        color = new THREE.Color(group.color);
+      } catch {
+        throw new Error(`highlight color must be a CSS color, got ${JSON.stringify(group.color)}`);
+      }
+      let matched = 0;
+      for (const ref of group.refs) {
+        const key = objectRefKey(ref);
+        if (this.records.has(key)) matched += 1;
+        colors.set(key, color);
+      }
+      summaries.push({ label: group.label ?? null, color: group.color, requested: group.refs.length, matched });
+    }
+    this.highlightColors = colors;
+    this.highlightGroups = summaries;
+    this.repaint();
+  }
+
+  isolate(refs: readonly ObjectRef[] | null): void {
+    this.isolated = refs === null ? null : new Set(refs.map((ref) => objectRefKey(ref)));
+    this.applyVisibility();
+  }
+
+  setSectionZ(worldZ: number | null): void {
+    if (worldZ === null) {
+      this.sectionPlane = null;
+      this.material.clippingPlanes = [];
+      return;
+    }
+    if (!Number.isFinite(worldZ)) throw new Error("section Z must be a finite number");
+    this.sectionPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), worldZ);
+    this.material.clippingPlanes = [this.sectionPlane];
+  }
+
+  setDimOpacity(opacity: number): void {
+    if (!Number.isFinite(opacity) || opacity < 0 || opacity > 1) {
+      throw new Error(`dim opacity must be within 0..1, got ${opacity}`);
+    }
+    this.dimOpacity = opacity;
+    this.repaint();
+  }
+
   fitAll(): void {
     const box = new THREE.Box3();
     this.scene.updateMatrixWorld(true);
@@ -254,6 +330,10 @@ export class RendererOwner implements ViewerRenderer {
         offset: resource.root.position.toArray(),
         visible: resource.root.visible,
       })),
+      highlightGroups: this.highlightGroups.map((group) => ({ ...group })),
+      isolatedMatched: this.isolated === null ? null : this.countIsolatedMatched(),
+      selectedHidden: this.selected !== null && this.isolated !== null && !this.isolated.has(objectRefKey(this.selected.ref)),
+      clipping: this.sectionPlane !== null,
     };
   }
 
@@ -283,9 +363,13 @@ export class RendererOwner implements ViewerRenderer {
     this.canvas.removeEventListener("pointerup", this.handlePointerUp);
     this.controls.dispose();
     for (const revisionId of [...this.resources.keys()]) this.removeRevision(revisionId);
+    this.material.clippingPlanes = [];
     this.material.dispose();
     this.records.clear();
     this.targetRecords.clear();
+    this.highlightColors.clear();
+    this.highlightGroups = [];
+    this.isolated = null;
     this.scene.clear();
     this.renderer.renderLists.dispose();
     this.renderer.dispose();
@@ -302,29 +386,50 @@ export class RendererOwner implements ViewerRenderer {
       this.targetRecords.set(targetKey(target.revisionId, target.instanceId), combined);
     }
   }
-
   private applyVisibility(): void {
-    for (const record of this.records.values()) {
-      const visible = this.visibleByDiscipline[record.discipline];
+    for (const [key, record] of this.records) {
+      const visible =
+        this.visibleByDiscipline[record.discipline] && (this.isolated === null || this.isolated.has(key));
       for (const target of record.targets) this.setTargetVisible(target, visible);
-    }
-  }
-
-  private paint(record: SelectionRecord, color: THREE.Color): void {
-    for (const target of record.targets) {
-      this.resources.get(target.revisionId)?.mesh.setColorAt(target.instanceId, color);
-    }
-  }
-
-  private paintBaseColors(record: SelectionRecord): void {
-    for (const target of record.targets) {
-      const color = new THREE.Color(target.baseColor[0], target.baseColor[1], target.baseColor[2]);
-      this.resources.get(target.revisionId)?.mesh.setColorAt(target.instanceId, color);
     }
   }
 
   private setTargetVisible(target: DrawTarget, visible: boolean): void {
     this.resources.get(target.revisionId)?.mesh.setVisibleAt(target.instanceId, visible);
+  }
+
+  private countIsolatedMatched(): number {
+    let matched = 0;
+    for (const key of this.isolated ?? []) {
+      if (this.records.has(key)) matched += 1;
+    }
+    return matched;
+  }
+
+  private repaint(): void {
+    if (this.disposed) return;
+    const dimming = this.highlightColors.size > 0 && this.dimOpacity < 1;
+    const dimBlend = 1 - this.dimOpacity;
+    const touched = new Set<THREE.BatchedMesh>();
+    const selectedKey = this.selected === null ? null : objectRefKey(this.selected.ref);
+    const scratch = new THREE.Color();
+    for (const [key, record] of this.records) {
+      const highlight = this.highlightColors.get(key);
+      for (const target of record.targets) {
+        const mesh = this.resources.get(target.revisionId)?.mesh;
+        if (!mesh) continue;
+        scratch.setRGB(target.baseColor[0], target.baseColor[1], target.baseColor[2]);
+        if (dimming && !highlight) scratch.lerp(this.dimWhite, dimBlend);
+        if (highlight) scratch.copy(highlight);
+        if (key === selectedKey) scratch.copy(SELECTED_COLOR);
+        mesh.setColorAt(target.instanceId, scratch);
+        touched.add(mesh);
+      }
+    }
+    for (const mesh of touched) {
+      const colored: ColoredMesh = mesh;
+      if (colored.instanceColor) colored.instanceColor.needsUpdate = true;
+    }
   }
 
   private expandTargetBox(box: THREE.Box3, target: DrawTarget): void {
