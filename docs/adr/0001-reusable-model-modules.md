@@ -2,7 +2,7 @@
 
 Status: accepted, 2026-09-06. Implementation is tracked in the local tickets.
 
-ModelShelf needs a viewer that future applications can use without adopting its delivery and checking workflows. Keep one repository and the existing local deployment, but extract shared model contracts and one viewer package with a rendering core and a thin React wrapper. Format-specific processing produces model data behind those contracts; ModelShelf supplies project policy, review state, and persistence. See [`VISION.md`](../../VISION.md) for when to extract the viewer package.
+ModelShelf needs a viewer that future applications can use without adopting its delivery and checking workflows. Keep one repository and the existing local deployment, but extract shared model contracts and one viewer package with a rendering core and a thin React wrapper. Format-specific processing produces model data behind those contracts; ModelShelf supplies project policy, review state, and persistence. Build the combined ModelShelf view in `apps/web` first. Extract `packages/model-viewer` after that view exists. See [`VISION.md`](../../VISION.md).
 
 ## Module ownership
 

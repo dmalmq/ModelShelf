@@ -17,7 +17,7 @@ What implementation and evidence establish the behavior below without violating 
 
 ## What to build
 
-A reviewer sees the real architectural, structural, and MEP revisions together in one navigable view with load progress and failure information.
+A reviewer sees the real architectural, structural, and MEP revisions together in one navigable ModelShelf view with load progress and failure information. Selection uses opaque ObjectRefs. A reusable viewer package is out of this ticket.
 
 ## Context for a fresh agent
 
@@ -32,34 +32,25 @@ Read [the handoff](../HANDOFF.md), [the specification](../spec.md), and [the sta
 
 ## Ownership
 
-Reusable model-viewer package, standalone example, thin React wrapper, minimal ModelShelf test-route integration, private browser IFC loader, and public-contract lifecycle tests.
+ModelShelf viewer route in `apps/web`, browser IFC loading, ObjectRef selection against a combined delivery.
 
 Other agents may be working in this checkout. Do not revert their edits. A dependency being resolved does not make concurrent edits to the same files safe. Coordinate shared file/contract ownership first.
 
 ## Implementation boundaries
 
-- Implement the reusable model-viewer package with framework-independent rendering core and thin React export. Keep a browser IFC loader private behind the normalized scene-input seam. ModelShelf uses the public package from its test route.
-- Add a standalone plain-browser example using only public exports and local assets; it must run without Next.js, Rust service, or Python worker. A tiny prepared scene with opaque non-IFC IDs proves the core does not require IFC metadata.
-- Host callbacks own resource fetching and property lookup. Do not import app Discipline enums, findings, authentication, routes, Three.js objects through the public contract, or global application state.
-
-- Implement a minimal runnable viewer route. Load IFC through a dedicated browser worker, share/batch geometry, bound pixel ratio, and release GPU/worker resources on unload.
+- Implement a minimal runnable ModelShelf viewer route. Load IFC through a dedicated browser worker, share/batch geometry, bound pixel ratio, and release GPU/worker resources on unload.
 - Keep original model transforms and use one common origin offset. Never independently center disciplines.
 - Use opaque revisionId/objectId for selection; keep IFC expressId and GlobalId in source mappings. Findings do not depend on every model having drawable geometry.
+- Do not extract `packages/model-viewer`, a standalone example, or import-boundary packaging in this ticket. That extraction waits until this combined view exists and a second consumer needs it.
 
 ## Acceptance criteria
 
-- [ ] The standalone example loads, picks, highlights, frames, isolates, clips, and unloads through public exports with all ModelShelf services stopped.
-- [ ] A prepared scene using opaque non-IFC IDs and the real IFC integration both work without changing the rendering core.
-- [ ] Automated boundary checks reject viewer imports from ModelShelf/Next.js/checking code and app imports of private renderer modules.
-
 - [ ] All three real models load together and align; orbit/pan/zoom work without parsing on the UI thread.
 - [ ] Progress and failures identify the source model. One failed model does not hide successful models.
-- [ ] Two revisions containing the same GlobalId can be selected independently.
+- [ ] Two revisions containing the same GlobalId can be selected independently via ObjectRef.
 - [ ] Repeated load/unload frees resources; no per-object rendering design that predictably overwhelms the selected fixtures.
 
 ## Verification
-
-- Create `node scripts/verify-viewer.mjs --scenario standalone` and a deterministic import-boundary check. Exercise controlled invalid-import fixtures to prove the check rejects violations.
 
 - npm --prefix apps/web run typecheck
 - npm --prefix apps/web run build
@@ -74,3 +65,5 @@ Append an Answer with changes, exact commands/results, evidence links, remaining
 ## Comments
 
 Created from the approved prototype plan on 2026-09-06. No implementation is claimed by ticket creation.
+
+2026-09-07: VISION.md sequences the combined ModelShelf view before extracting a reusable viewer package. This ticket no longer owns `packages/model-viewer`, the standalone example, or import-boundary packaging.

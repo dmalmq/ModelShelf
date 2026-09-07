@@ -40,6 +40,9 @@ review:
     - path: "apps/web/src/components/viewer/**"
       instructions: |
         The viewer does not own checking policy, finding color, or which revision is better. Selection uses opaque ObjectRefs.
+    - path: "packages/model-viewer/**"
+      instructions: |
+        The viewer does not own checking policy, finding color, or which revision is better. Selection uses opaque ObjectRefs.
     - path: "services/checker/**"
       instructions: |
         Revisions, original bytes, and finalized delivery membership stay immutable. Unpinned run inputs stay incomplete. Do not guess lineage.
