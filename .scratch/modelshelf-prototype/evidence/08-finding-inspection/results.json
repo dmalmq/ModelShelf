@@ -1,5 +1,5 @@
 {
-  "passed": true,
+  "passed": false,
   "checks": [
     "seed succeeds",
     "BLCJ pack version is published",
@@ -22,18 +22,17 @@
     "reset view clears isolation and reveals the selection",
     "section cut clips above the project height",
     "canvas picking selects geometry beside the inspector",
-    "property inspection shows the selected object record",
-    "non-geometric finding renders evidence with an explanation"
+    "cold usable geometry arrives within 15 s (2955 ms)"
   ],
   "runA": {
-    "deliveryId": "5fc384fc-2976-45cd-a8bf-7d4191c80ed4",
-    "runId": "71369df5-9232-46b6-848e-8117fc9a7ce5",
-    "findingId": "ba54825e-6717-486b-8ee5-bb1c4a450b84",
+    "deliveryId": "10bcd875-fc74-4a70-857d-d9cce2ce41ed",
+    "runId": "6bdf3654-a1eb-47c9-bf1a-175bdeb1a858",
+    "findingId": "09a888a3-61a0-4bf6-a27f-c6c140465d76",
     "objectCount": 107
   },
   "runB": {
-    "deliveryId": "33ed17fb-296f-4b15-ac55-a892cb857107",
-    "runId": "48b96a8c-0a4b-456b-906b-b0dfae55e6d1",
+    "deliveryId": "5175f6c7-9497-48c5-b019-95335df0cd81",
+    "runId": "e3e31ffc-f39e-42df-8bdb-0c90f6a5eb48",
     "incompleteCount": 9
   },
   "highlight": {
@@ -45,6 +44,4548 @@
   "isolation": {
     "storey": "1FL",
     "isolatedRequested": 33
+  },
+  "perf": {
+    "machine": {
+      "platform": "linux",
+      "arch": "x64",
+      "cpus": 32,
+      "totalMem": 33486995456
+    },
+    "browser": {
+      "version": "153.0.8010.12",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      }
+    },
+    "inputs": {
+      "revisions": [
+        {
+          "revisionId": "1ca1b6ff-b85c-48b7-85f1-7112bd2712b4",
+          "bytes": 36232021
+        },
+        {
+          "revisionId": "3c43378f-8982-4bab-8f25-0d1e5fd6937f",
+          "bytes": 48736361
+        },
+        {
+          "revisionId": "cb3fa36d-728d-4b6f-bc4f-60048dc5b4bb",
+          "bytes": 836678
+        }
+      ],
+      "objects": 5275,
+      "triangles": 692230
+    },
+    "coldMs": 2955,
+    "orbitFps": [
+      2.594931234318946,
+      2.4876653260891577,
+      2.4925224327018944
+    ],
+    "orbitFpsSmall": [
+      2.9645942740988516,
+      2.9688692849256886
+    ],
+    "orbitFpsStructOnly": [
+      23.030184241465523,
+      23.371456986573843
+    ],
+    "marks": [
+      {
+        "name": "ready",
+        "t": 3528.10000000149
+      },
+      {
+        "name": "orbit-full-start",
+        "t": 7761.60000000149
+      },
+      {
+        "name": "orbit-full-end",
+        "t": 99830.69999999925
+      },
+      {
+        "name": "orbit-small-start",
+        "t": 101218.5
+      },
+      {
+        "name": "orbit-small-end",
+        "t": 152001.1000000015
+      },
+      {
+        "name": "orbit-struct-start",
+        "t": 161344.19999999925
+      },
+      {
+        "name": "orbit-struct-end",
+        "t": 165542.3999999985
+      }
+    ],
+    "selectMs": [
+      3,
+      1.9000000022351742,
+      1.5,
+      0.3999999985098839,
+      0.4000000022351742,
+      0.5,
+      0.5,
+      0.29999999701976776,
+      0.5,
+      0.5,
+      0.4000000022351742,
+      0.5,
+      0.3999999985098839,
+      0.4000000022351742,
+      0.5,
+      0.3999999985098839,
+      0.5,
+      0.3999999985098839,
+      0.30000000074505806,
+      0.5,
+      0.4000000022351742
+    ],
+    "filterMs": 499,
+    "longTasks": [
+      {
+        "start": 1451.199999999255,
+        "duration": 71,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 2951.800000000745,
+        "duration": 575,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 3528.5,
+        "duration": 480,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 4013.89999999851,
+        "duration": 472,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 4486.60000000149,
+        "duration": 452,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 4941.10000000149,
+        "duration": 465,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 5407.10000000149,
+        "duration": 483,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 5890.89999999851,
+        "duration": 475,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 6366.800000000745,
+        "duration": 459,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 6826.89999999851,
+        "duration": 459,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 7287.300000000745,
+        "duration": 474,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 7761.699999999255,
+        "duration": 465,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 8227.5,
+        "duration": 459,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 8689.800000000745,
+        "duration": 470,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 9161.10000000149,
+        "duration": 456,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 9617.60000000149,
+        "duration": 463,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 10081.5,
+        "duration": 457,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 10539.300000000745,
+        "duration": 449,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 10989.199999999255,
+        "duration": 460,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 11449.5,
+        "duration": 459,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 11908.800000000745,
+        "duration": 459,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 12368.39999999851,
+        "duration": 448,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 12817.10000000149,
+        "duration": 468,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 13286.199999999255,
+        "duration": 457,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 13743.699999999255,
+        "duration": 459,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 14203.39999999851,
+        "duration": 456,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 14660.300000000745,
+        "duration": 465,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 15125.60000000149,
+        "duration": 458,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 15584.5,
+        "duration": 468,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 16052.800000000745,
+        "duration": 461,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 16513.89999999851,
+        "duration": 457,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 16971.60000000149,
+        "duration": 455,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 17426.89999999851,
+        "duration": 463,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 17890.300000000745,
+        "duration": 463,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 18353.89999999851,
+        "duration": 450,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 18804.60000000149,
+        "duration": 472,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 19277.60000000149,
+        "duration": 453,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 19731.60000000149,
+        "duration": 465,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 20197.699999999255,
+        "duration": 466,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 20664.800000000745,
+        "duration": 460,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 21125.39999999851,
+        "duration": 470,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 21596.39999999851,
+        "duration": 454,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 22050.800000000745,
+        "duration": 458,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 22509.39999999851,
+        "duration": 473,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 22983.5,
+        "duration": 460,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 23443.800000000745,
+        "duration": 454,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 23898.89999999851,
+        "duration": 460,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 24359.199999999255,
+        "duration": 450,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 24810,
+        "duration": 462,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 25272.89999999851,
+        "duration": 460,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 25733.800000000745,
+        "duration": 457,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 26191.5,
+        "duration": 470,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 26662.5,
+        "duration": 479,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 27141.89999999851,
+        "duration": 468,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 27610.5,
+        "duration": 460,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 28071.699999999255,
+        "duration": 462,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 28534.300000000745,
+        "duration": 472,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 29007,
+        "duration": 477,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 29484.60000000149,
+        "duration": 466,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 29951.89999999851,
+        "duration": 465,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 30417.10000000149,
+        "duration": 461,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 30878.800000000745,
+        "duration": 452,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 31331.10000000149,
+        "duration": 470,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 31801.89999999851,
+        "duration": 457,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 32260.10000000149,
+        "duration": 453,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 32713.5,
+        "duration": 472,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 33185.800000000745,
+        "duration": 476,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 33662.800000000745,
+        "duration": 455,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 34118.699999999255,
+        "duration": 472,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 34591.5,
+        "duration": 545,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 35137.5,
+        "duration": 558,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 35695.89999999851,
+        "duration": 541,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 36237.199999999255,
+        "duration": 540,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 36778.10000000149,
+        "duration": 566,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 37346,
+        "duration": 532,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 37878.800000000745,
+        "duration": 520,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 38400.10000000149,
+        "duration": 494,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 38894.89999999851,
+        "duration": 453,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 39348.39999999851,
+        "duration": 471,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 39820.39999999851,
+        "duration": 469,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 40290.300000000745,
+        "duration": 478,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 40769,
+        "duration": 479,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 41249.10000000149,
+        "duration": 476,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 41725.60000000149,
+        "duration": 473,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 42199.199999999255,
+        "duration": 466,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 42665.800000000745,
+        "duration": 483,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 43149.300000000745,
+        "duration": 467,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 43617.300000000745,
+        "duration": 491,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 44109.10000000149,
+        "duration": 481,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 44591.199999999255,
+        "duration": 477,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 45068.699999999255,
+        "duration": 478,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 45547.10000000149,
+        "duration": 480,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 46027.5,
+        "duration": 503,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 46530.60000000149,
+        "duration": 486,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 47017.39999999851,
+        "duration": 479,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 47497.300000000745,
+        "duration": 490,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 47988.39999999851,
+        "duration": 482,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 48471.5,
+        "duration": 485,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 48956.89999999851,
+        "duration": 489,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 49446.10000000149,
+        "duration": 501,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 49947.699999999255,
+        "duration": 486,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 50434.60000000149,
+        "duration": 496,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 50930.800000000745,
+        "duration": 485,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 51416.800000000745,
+        "duration": 495,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 51913,
+        "duration": 494,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 52407.699999999255,
+        "duration": 492,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 52900.89999999851,
+        "duration": 493,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 53394.800000000745,
+        "duration": 497,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 53891.89999999851,
+        "duration": 499,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 54391.699999999255,
+        "duration": 488,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 54880.699999999255,
+        "duration": 491,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 55372.300000000745,
+        "duration": 494,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 55867.10000000149,
+        "duration": 495,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 56363.199999999255,
+        "duration": 498,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 56862.199999999255,
+        "duration": 507,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 57372.10000000149,
+        "duration": 490,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 57862.60000000149,
+        "duration": 511,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 58374.10000000149,
+        "duration": 505,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 58880.10000000149,
+        "duration": 507,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 59387.800000000745,
+        "duration": 498,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 59888.800000000745,
+        "duration": 499,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 60388.39999999851,
+        "duration": 511,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 60900.300000000745,
+        "duration": 493,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 61393.699999999255,
+        "duration": 503,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 61897.300000000745,
+        "duration": 491,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 62388.800000000745,
+        "duration": 491,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 62880.10000000149,
+        "duration": 504,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 63384.89999999851,
+        "duration": 507,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 63893,
+        "duration": 525,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 64418.199999999255,
+        "duration": 511,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 64930.39999999851,
+        "duration": 508,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 65439.39999999851,
+        "duration": 516,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 65956.10000000149,
+        "duration": 496,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 66453.19999999925,
+        "duration": 510,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 66963.69999999925,
+        "duration": 508,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 67472.80000000075,
+        "duration": 497,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 67971,
+        "duration": 508,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 68479.60000000149,
+        "duration": 497,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 68977.80000000075,
+        "duration": 500,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 69478.5,
+        "duration": 509,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 69988.5,
+        "duration": 502,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 70490.69999999925,
+        "duration": 492,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 70983.5,
+        "duration": 507,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 71491,
+        "duration": 486,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 71977.69999999925,
+        "duration": 517,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 72495.10000000149,
+        "duration": 506,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 73002.19999999925,
+        "duration": 505,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 73508,
+        "duration": 511,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 74019.5,
+        "duration": 497,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 74516.89999999851,
+        "duration": 495,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 75012.69999999925,
+        "duration": 492,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 75505.5,
+        "duration": 528,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 76034.19999999925,
+        "duration": 509,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 76544,
+        "duration": 510,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 77054.89999999851,
+        "duration": 500,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 77555.30000000075,
+        "duration": 496,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 78051.5,
+        "duration": 494,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 78545.80000000075,
+        "duration": 489,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 79035.19999999925,
+        "duration": 514,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 79550.19999999925,
+        "duration": 514,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 80065.39999999851,
+        "duration": 513,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 80579,
+        "duration": 501,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 81080.69999999925,
+        "duration": 498,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 81579.30000000075,
+        "duration": 517,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 82096.80000000075,
+        "duration": 496,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 82593.19999999925,
+        "duration": 507,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 83101.39999999851,
+        "duration": 500,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 83601.89999999851,
+        "duration": 492,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 84094.5,
+        "duration": 493,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 84588.69999999925,
+        "duration": 496,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 85085.39999999851,
+        "duration": 494,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 85580.30000000075,
+        "duration": 503,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 86084.60000000149,
+        "duration": 497,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 86582,
+        "duration": 497,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 87079.30000000075,
+        "duration": 552,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 87632.10000000149,
+        "duration": 506,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 88138.69999999925,
+        "duration": 500,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 88639.60000000149,
+        "duration": 498,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 89138,
+        "duration": 491,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 89629.30000000075,
+        "duration": 511,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 90141.19999999925,
+        "duration": 491,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 90633.5,
+        "duration": 485,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 91121.60000000149,
+        "duration": 488,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 91610.69999999925,
+        "duration": 491,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 92102.30000000075,
+        "duration": 486,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 92588.69999999925,
+        "duration": 480,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 93069.5,
+        "duration": 488,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 93558.80000000075,
+        "duration": 478,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 94037.30000000075,
+        "duration": 477,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 94515.5,
+        "duration": 489,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 95005,
+        "duration": 475,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 95480.89999999851,
+        "duration": 485,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 95966.60000000149,
+        "duration": 483,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 96450,
+        "duration": 492,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 96942.5,
+        "duration": 476,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 97419.5,
+        "duration": 481,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 97901.5,
+        "duration": 482,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 98384.5,
+        "duration": 487,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 98871.80000000075,
+        "duration": 477,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 99349.30000000075,
+        "duration": 481,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 99830.80000000075,
+        "duration": 498,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 100332.10000000149,
+        "duration": 497,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 100829.80000000075,
+        "duration": 388,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 101222.10000000149,
+        "duration": 407,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 101630.10000000149,
+        "duration": 388,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 102024.10000000149,
+        "duration": 384,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 102408.60000000149,
+        "duration": 376,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 102785.5,
+        "duration": 392,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 103178.39999999851,
+        "duration": 403,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 103582.39999999851,
+        "duration": 387,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 103969.89999999851,
+        "duration": 400,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 104371,
+        "duration": 395,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 104766.80000000075,
+        "duration": 395,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 105162.39999999851,
+        "duration": 389,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 105552.30000000075,
+        "duration": 394,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 105947.19999999925,
+        "duration": 386,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 106333.89999999851,
+        "duration": 394,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 106729.30000000075,
+        "duration": 403,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 107133.39999999851,
+        "duration": 381,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 107515.80000000075,
+        "duration": 386,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 107902.5,
+        "duration": 398,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 108300.80000000075,
+        "duration": 396,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 108697.39999999851,
+        "duration": 383,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 109081.69999999925,
+        "duration": 390,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 109472.30000000075,
+        "duration": 380,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 109853,
+        "duration": 381,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 110235,
+        "duration": 392,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 110627.80000000075,
+        "duration": 399,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 111027.5,
+        "duration": 396,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 111424.80000000075,
+        "duration": 389,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 111814.39999999851,
+        "duration": 393,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 112208,
+        "duration": 396,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 112604.5,
+        "duration": 380,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 112985.5,
+        "duration": 423,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 113409.5,
+        "duration": 400,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 113810.69999999925,
+        "duration": 387,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 114198.39999999851,
+        "duration": 383,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 114582.19999999925,
+        "duration": 392,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 114975,
+        "duration": 392,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 115367.19999999925,
+        "duration": 380,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 115748.19999999925,
+        "duration": 383,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 116132.30000000075,
+        "duration": 387,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 116519.39999999851,
+        "duration": 395,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 116915.5,
+        "duration": 419,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 117335.60000000149,
+        "duration": 384,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 117720.69999999925,
+        "duration": 402,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 118123.30000000075,
+        "duration": 371,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 118494.60000000149,
+        "duration": 390,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 118884.80000000075,
+        "duration": 381,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 119266.69999999925,
+        "duration": 384,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 119651.80000000075,
+        "duration": 396,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 120048.19999999925,
+        "duration": 383,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 120432.30000000075,
+        "duration": 384,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 120817,
+        "duration": 390,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 121207.60000000149,
+        "duration": 403,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 121611.30000000075,
+        "duration": 375,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 121987.30000000075,
+        "duration": 370,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 122358.10000000149,
+        "duration": 388,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 122746.69999999925,
+        "duration": 393,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 123140.39999999851,
+        "duration": 397,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 123538.19999999925,
+        "duration": 383,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 123922.39999999851,
+        "duration": 375,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 124298.19999999925,
+        "duration": 390,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 124688.69999999925,
+        "duration": 381,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 125070.30000000075,
+        "duration": 375,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 125446.30000000075,
+        "duration": 397,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 125843.80000000075,
+        "duration": 403,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 126247.30000000075,
+        "duration": 383,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 126630.80000000075,
+        "duration": 397,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 127028.60000000149,
+        "duration": 397,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 127427,
+        "duration": 385,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 127813,
+        "duration": 388,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 128201.10000000149,
+        "duration": 383,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 128585,
+        "duration": 406,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 128992.30000000075,
+        "duration": 391,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 129383.89999999851,
+        "duration": 405,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 129789.89999999851,
+        "duration": 396,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 130187,
+        "duration": 397,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 130584.5,
+        "duration": 395,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 130980.30000000075,
+        "duration": 394,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 131375.3999999985,
+        "duration": 385,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 131761,
+        "duration": 397,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 132158.6000000015,
+        "duration": 395,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 132554.80000000075,
+        "duration": 405,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 132960.19999999925,
+        "duration": 386,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 133347.1000000015,
+        "duration": 402,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 133750.3999999985,
+        "duration": 400,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 134150.6000000015,
+        "duration": 396,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 134547.19999999925,
+        "duration": 413,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 134960.6000000015,
+        "duration": 368,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 135329.19999999925,
+        "duration": 383,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 135712.5,
+        "duration": 402,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 136114.80000000075,
+        "duration": 384,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 136499.30000000075,
+        "duration": 392,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 136892.6000000015,
+        "duration": 403,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 137296.5,
+        "duration": 383,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 137679.6000000015,
+        "duration": 410,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 138090.8999999985,
+        "duration": 425,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 138517.1000000015,
+        "duration": 444,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 138962,
+        "duration": 464,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 139427.1000000015,
+        "duration": 470,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 139898,
+        "duration": 476,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 140374.3999999985,
+        "duration": 489,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 140864.3999999985,
+        "duration": 491,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 141356.1000000015,
+        "duration": 479,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 141835.5,
+        "duration": 485,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 142321.30000000075,
+        "duration": 494,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 142816.69999999925,
+        "duration": 406,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 143223.6000000015,
+        "duration": 448,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 143672.6000000015,
+        "duration": 427,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 144100.1000000015,
+        "duration": 426,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 144526.8999999985,
+        "duration": 417,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 144944.3999999985,
+        "duration": 413,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 145358.3999999985,
+        "duration": 423,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 145781.6000000015,
+        "duration": 402,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 146184.6000000015,
+        "duration": 442,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 146627,
+        "duration": 423,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 147051.1000000015,
+        "duration": 410,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 147462.19999999925,
+        "duration": 421,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 147883.8999999985,
+        "duration": 411,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 148295.1000000015,
+        "duration": 415,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 148710.5,
+        "duration": 404,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 149115.3999999985,
+        "duration": 414,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 149529.69999999925,
+        "duration": 414,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 149944.80000000075,
+        "duration": 403,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 150348.5,
+        "duration": 410,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 150759.5,
+        "duration": 417,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 151177,
+        "duration": 405,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 151582.80000000075,
+        "duration": 418,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 152001.19999999925,
+        "duration": 401,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 152406.19999999925,
+        "duration": 397,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 152803.69999999925,
+        "duration": 493,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 153299.3999999985,
+        "duration": 569,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 153871.5,
+        "duration": 575,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 154448.19999999925,
+        "duration": 586,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 155035,
+        "duration": 564,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 155600.3999999985,
+        "duration": 568,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 156169.5,
+        "duration": 597,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 156766.80000000075,
+        "duration": 587,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 157354.8999999985,
+        "duration": 526,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 157882.69999999925,
+        "duration": 493,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 158380.69999999925,
+        "duration": 288,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 158669.6000000015,
+        "duration": 298,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 158972.3999999985,
+        "duration": 293,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 159272.3999999985,
+        "duration": 293,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 159566.30000000075,
+        "duration": 294,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 159861,
+        "duration": 289,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 160150.3999999985,
+        "duration": 302,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 160453.8999999985,
+        "duration": 281,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 161344.19999999925,
+        "duration": 56,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 161401,
+        "duration": 56,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 162600.3999999985,
+        "duration": 50,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 165943.30000000075,
+        "duration": 256,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 166200,
+        "duration": 253,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 166455.3999999985,
+        "duration": 253,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 166722.1000000015,
+        "duration": 262,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 166985.1000000015,
+        "duration": 262,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 167247.6000000015,
+        "duration": 263,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 167511.8999999985,
+        "duration": 252,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 167764.5,
+        "duration": 253,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 168020.8999999985,
+        "duration": 527,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 168548.80000000075,
+        "duration": 527,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 169088.69999999925,
+        "duration": 505,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 169610.80000000075,
+        "duration": 510,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 170122.80000000075,
+        "duration": 496,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 170621.3999999985,
+        "duration": 489,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 171110.8999999985,
+        "duration": 513,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 171624.6000000015,
+        "duration": 520,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 172145.1000000015,
+        "duration": 511,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 172657.1000000015,
+        "duration": 524,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 173181.80000000075,
+        "duration": 519,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 173706.6000000015,
+        "duration": 509,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 174217.30000000075,
+        "duration": 496,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 174714.6000000015,
+        "duration": 488,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 175204.5,
+        "duration": 493,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 175701.30000000075,
+        "duration": 485,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 176186.8999999985,
+        "duration": 498,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 176687.5,
+        "duration": 480,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 177168.69999999925,
+        "duration": 493,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 177662.6000000015,
+        "duration": 541,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 178204.5,
+        "duration": 502,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 178707.6000000015,
+        "duration": 513,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 179221.6000000015,
+        "duration": 512,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 179736.69999999925,
+        "duration": 496,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 180233.6000000015,
+        "duration": 493,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 180727.5,
+        "duration": 503,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 181232,
+        "duration": 499,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 181732.80000000075,
+        "duration": 500,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 182234.1000000015,
+        "duration": 481,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 182778.8999999985,
+        "duration": 58,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 182838.6000000015,
+        "duration": 56,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 182895.1000000015,
+        "duration": 50,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 182945.6000000015,
+        "duration": 54,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 183177.30000000075,
+        "duration": 53,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 183231.19999999925,
+        "duration": 53,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 183284.3999999985,
+        "duration": 50,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 183335,
+        "duration": 51,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 183387.80000000075,
+        "duration": 54,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 183443,
+        "duration": 51,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 183494.3999999985,
+        "duration": 51,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 183547.69999999925,
+        "duration": 52,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 183649.1000000015,
+        "duration": 54,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 183800.30000000075,
+        "duration": 53,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 183854.5,
+        "duration": 52,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 183907.5,
+        "duration": 50,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 183958.3999999985,
+        "duration": 53,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 184375.6000000015,
+        "duration": 650,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 185026.6000000015,
+        "duration": 647,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 185687.8999999985,
+        "duration": 705,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 186404.6000000015,
+        "duration": 692,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 187097.80000000075,
+        "duration": 670,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 187769,
+        "duration": 683,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 188452.80000000075,
+        "duration": 687,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 189140.80000000075,
+        "duration": 679,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 189820.30000000075,
+        "duration": 663,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 190484.3999999985,
+        "duration": 668,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 191154.30000000075,
+        "duration": 677,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 191832,
+        "duration": 672,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 192505.3999999985,
+        "duration": 695,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 193201,
+        "duration": 673,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 193875.30000000075,
+        "duration": 667,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 194543.3999999985,
+        "duration": 677,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 195222.30000000075,
+        "duration": 646,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 195868.6000000015,
+        "duration": 638,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 196507.30000000075,
+        "duration": 643,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 197151.3999999985,
+        "duration": 659,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 197810.80000000075,
+        "duration": 644,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 198455.30000000075,
+        "duration": 653,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 199109.6000000015,
+        "duration": 661,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 199771.30000000075,
+        "duration": 647,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 200419.5,
+        "duration": 649,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 201078,
+        "duration": 650,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 201797,
+        "duration": 651,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 202455.1000000015,
+        "duration": 655,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 203121,
+        "duration": 652,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 203773.80000000075,
+        "duration": 644,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 204418.5,
+        "duration": 647,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 205066.8999999985,
+        "duration": 648,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 205715.3999999985,
+        "duration": 653,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 206372,
+        "duration": 648,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 207020.6000000015,
+        "duration": 645,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      },
+      {
+        "start": 207670.80000000075,
+        "duration": 636,
+        "attribution": [
+          {
+            "name": "unknown",
+            "containerSrc": ""
+          }
+        ]
+      }
+    ],
+    "readyPerfNow": 153297.30000000075,
+    "longTaskSummary": {
+      "coldCount": 332,
+      "maxColdMs": 575,
+      "uiCount": 107,
+      "maxUiMs": 705,
+      "orbitCount": 3,
+      "maxOrbitMs": 56
+    },
+    "gate": [
+      {
+        "label": "cold usable geometry arrives within 15 s (2955 ms)",
+        "met": true
+      },
+      {
+        "label": "median orbit stays at 30 FPS or above (2.5)",
+        "met": false
+      }
+    ]
   },
   "propertySample": "Type\nIfcFlowSegment\nName\n【ダクト】排煙ダクト 400×300\nStorey\n1FL\nPset_BE-Bridge_Common.connecting_point_1\n3500.000000,11008.771430,3500.000000,D00236\nPset_BE-Bridge_Common.connecting_point_2\n3500.000000,10025.771430,3500.000000,D00238\nPset_BE-Bridge_Common.connecting_point_3\n0\nPset_BE-Bridge_Common.connecting_point_4\n0\nPset_BE-Bridge_Common.data_class\nD\nPset_BE-Bridge_Common.main_vecter\n0.000000,-1.000000,0"
 }
