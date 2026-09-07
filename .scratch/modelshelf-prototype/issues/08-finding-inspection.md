@@ -36,7 +36,7 @@ Other agents may be working in this checkout. Do not revert their edits. A depen
 
 ## Implementation boundaries
 
-- Implement inspector-specific UI in ModelShelf. Translate findings into generic ObjectRef highlight groups and host-provided styles. Keep colors/priorities, requirement text, delivery state, and API lookups outside the viewer package.
+- Implement inspector-specific UI in ModelShelf. Translate findings into generic ObjectRef highlight groups and host-provided styles. Keep colors/priorities, requirement text, delivery state, and API lookups outside the rendering core.
 
 - Connect live run results to the viewer test route, with no hardcoded findings. Retrieve the complete affected-object set through paging.
 - Add source/discipline/storey/type filters, section cut, dimming, isolate/reset, frame selection, and selected-object properties.
@@ -44,7 +44,7 @@ Other agents may be working in this checkout. Do not revert their edits. A depen
 
 ## Acceptance criteria
 
-- [ ] Identical viewer exports are used by ModelShelf and the standalone example; no inspection-specific method or state is added to the rendering core.
+- [ ] No inspection-specific method or state is added to the rendering core.
 
 - [ ] Selecting a 100+ object finding highlights every accessible member rather than the embedded preview page only.
 - [ ] Storey/discipline/source filters, section plane, isolation reset, and property inspection work through real controls.
