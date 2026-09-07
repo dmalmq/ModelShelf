@@ -1,0 +1,17 @@
+Counter-proof that the version-5 work is load-bearing. An isolated copy of this
+worktree with only the production fix reverted (SCHEMA_VERSION back to 4, the
+apply_version_5 dispatch removed, create_run's explicit provenance bind removed)
+and the new tests kept.
+
+$ cargo test -p modelshelf-checker db::
+test db::tests::a_run_inserted_without_naming_input_provenance_defaults_to_incomplete ... FAILED
+test db::tests::version_5_downgrades_the_unprovable_complete_claim_and_keeps_historical_reasons ... FAILED
+test db::tests::a_fault_during_the_provenance_default_swap_rolls_back_the_whole_version ... FAILED
+test result: FAILED. 9 passed; 3 failed; 0 ignored; 0 measured; 0 filtered out
+
+$ node scripts/verify-api.mjs --scenario revisions
+FAIL - a newly created run reports incomplete input provenance with a stated reason: {"status":200,"provenance":{"status":"complete","reason":null}}
+1 check(s) failed
+
+That payload is finding R6 verbatim, from a real spawned server: a run the service
+just created, claiming complete provenance with no reason, for inputs nothing pinned.

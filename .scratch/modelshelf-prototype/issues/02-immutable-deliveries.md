@@ -5,8 +5,8 @@ Parent: ../map.md
 Type: task
 Mode: AFK
 Labels: wayfinder:task, ready-for-agent
-Status: open
-Assignee: unassigned
+Status: resolved
+Assignee: claude-timingila
 Blocked by: 01, 18
 Wave: 1
 Original plan coverage: 2
@@ -155,6 +155,79 @@ Evidence: `.omo/evidence/modelshelf-prototype/task-2/` — `migration-tests.log`
 
 Reopened by review. The historical Answer above is retained; completion requires the corrections below. Read [the review through ticket 05](../../../docs/reviews/tickets-01-05.md) and [the earlier follow-up](../../../docs/reviews/tickets-01-03-follow-up.md) for evidence and verification.
 
-- [ ] Run input provenance must default to incomplete until exact inputs are pinned. Add a forward migration and test a newly created run.
+- [x] Run input provenance must default to incomplete until exact inputs are pinned. Add a forward migration and test a newly created run.
 
 Coordinate shared schema and jobs.rs edits with the owners of related tickets. Append new evidence and close only after these checks pass.
+
+## Answer — review correction R6, 2026-09-07
+
+### What changed
+
+Schema version 5 (`services/checker/migrations/0005_run_input_provenance_default.sql`)
+rewrites `runs.input_provenance`'s declared default from `'complete'` to `'incomplete'`.
+SQLite has no `ALTER COLUMN`, and renaming `runs` to rebuild it would rewrite the
+foreign-key text in `run_specs` and `findings` and force those tables to be rebuilt too,
+so the migration swaps the column instead: add `input_provenance_v5 NOT NULL DEFAULT
+'incomplete'` (which backfills every existing row as it goes), drop the old column,
+rename the new one into its place. Both referencing tables are left untouched. This was
+settled by probing the real bundled SQLite (3.46.0) before any code was written, not by
+reading documentation.
+
+`migrate_v2::stamp_unpinned_run_provenance` gives a reason to the rows that had none.
+That `WHERE input_provenance_reason IS NULL` guard is exactly the set of runs created
+after version 4 took its `'complete'` default; the runs version 4 already explained keep
+their own wording.
+
+`create_run` now binds both provenance columns explicitly rather than leaning on the
+default, and `dto::InputProvenance` replaces the two loose strings with the two-state
+domain they were trying to be. The stored pair could previously express `complete` with
+a reason, `incomplete` without one, and any string at all. Unrecognized stored values
+resolve to `Incomplete`: a provenance the application does not recognize is one it
+cannot prove, and must never surface as though it were proven. `InputProvenance::Complete`
+is deliberately unreachable today. Ticket 06 owns making it reachable by pinning inputs.
+
+The wire DTO is byte-identical, so `docs/contracts/http-api.md` rule 10 and the
+`RunDetail.inputProvenance` doc comment in `apps/web/src/lib/types.ts` change wording only.
+
+### Commands and results
+
+Every command ran in an isolated `git worktree` at the fix commit, because two other
+sessions were concurrently editing `schemas/model/v1/`, the generated contract bindings,
+and `services/ifc-worker/`. Their in-flight state made the shared checkout red for
+reasons unrelated to this change.
+
+```
+cargo test --workspace                            all crates pass
+node scripts/verify-api.mjs --scenario revisions   21/21, ending in
+    ok - a newly created run reports incomplete input provenance with a stated reason
+node scripts/verify-api.mjs --scenario worker-failure  18/18
+npm run typecheck --prefix apps/web                clean
+```
+
+Four new tests in `services/checker/src/db.rs`: a run inserted without naming the column
+defaults to `incomplete`; a version-4 database holding a run that claims `complete` with
+no reason migrates to 5, downgrades that run, and keeps a historical run's version-4
+reason verbatim while the rest of the row survives the swap; an injected fault leaves
+`schema_migrations` at 4 with no half-applied column and a clean retry then succeeds
+without duplicating it; an unrecognized stored status resolves to `Incomplete`.
+
+Read back out of a real database written by the shipped binary: schema version 5,
+`input_provenance TEXT NOT NULL DEFAULT 'incomplete'`, `run_specs` and `findings` still
+referencing `runs(id)`, `idx_runs_project` intact, `foreign_key_check` and
+`integrity_check` both clean.
+
+The fix was also reverted in a scratch copy with the tests kept, reproducing R6 verbatim
+off a real server as `{"status":"complete","reason":null}`.
+
+Evidence: `.omo/evidence/modelshelf-prototype/task-2/ticket-02-r6-correction/`.
+
+### Limits
+
+- The column swap resets every run to `incomplete`, including any that were legitimately
+  `complete`. Nothing can produce a legitimate `complete` today, so this is a no-op in
+  practice, but a version 6 that introduces pinning must not assume version 5 preserved a
+  status.
+- A raw insert naming neither column still stores `incomplete` with a NULL reason. The
+  enum heals that on read; the database alone does not enforce the pairing.
+- `migrate_v2.rs`'s module doc still frames the file as version 2 data migration while it
+  now hosts version 4 and 5 helpers. That staleness predates this correction.
