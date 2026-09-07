@@ -14,7 +14,7 @@ The ticket map authorizes implementation by a future agent. Creating these ticke
 
 ## Accepted reusable-module amendment
 
-The [module decision](../../docs/adr/0001-reusable-model-modules.md) is approved and takes precedence over earlier IFC-specific viewer references in drafts. Implement shared model contracts and one reusable viewer package. Keep native RVT/PLN integration deferred. The new shared-contract ticket is a prerequisite for source/revision payloads and the worker; the existing combined-viewer ticket owns the standalone consumer. Existing ticket IDs and claims are preserved.
+The [module decision](../../docs/adr/0001-reusable-model-modules.md) is approved and takes precedence over earlier IFC-specific viewer references in drafts. Implement shared model contracts and one reusable viewer package. Keep native RVT/PLN integration deferred. The new shared-contract ticket is a prerequisite for source/revision payloads and the worker. The combined-viewer ticket does not own the standalone consumer; extract the reusable viewer package after Wave 1. Existing ticket IDs and claims are preserved.
 
 ## Contract clarification
 

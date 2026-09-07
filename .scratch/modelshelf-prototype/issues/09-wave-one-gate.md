@@ -35,7 +35,7 @@ Other agents may be working in this checkout. Do not revert their edits. A depen
 
 ## Implementation boundaries
 
-- Include the standalone viewer reuse gate and import-boundary checks in Wave 1 acceptance. If prepared geometry is needed, adapt the loader rather than altering selection/render contracts or checking evidence.
+- If prepared geometry is needed, adapt the loader rather than altering selection/render contracts or checking evidence.
 
 - Run the real Rust service, Python worker, and browser against isolated data. Seed/upload a delivery and pack, poll run completion, page objects, and select one in the combined viewer.
 - Record machine/browser, input bytes/object/triangle counts, cold usable geometry time, orbit FPS, selection/filter latency, UI long tasks, and resource use.
@@ -43,7 +43,7 @@ Other agents may be working in this checkout. Do not revert their edits. A depen
 
 ## Acceptance criteria
 
-- [ ] The standalone example still works with all application services stopped, and shared contracts regenerate without drift after integration.
+- [ ] Shared contracts regenerate without drift after integration.
 
 - [ ] scripts/verify-api.mjs --scenario first-loop passes without mocked checker or viewer results.
 - [ ] On the recorded local demo setup: median orbit at least 30 FPS, p95 selection below 200 ms, filters below 500 ms, no parsing-induced UI task over 200 ms, cold usable geometry within 15 seconds.
@@ -52,7 +52,6 @@ Other agents may be working in this checkout. Do not revert their edits. A depen
 
 ## Verification
 
-- node scripts/verify-viewer.mjs --scenario standalone
 - node scripts/generate-model-contracts.mjs --check
 
 - cargo test --workspace

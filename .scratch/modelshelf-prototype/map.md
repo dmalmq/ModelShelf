@@ -10,7 +10,8 @@ A runnable local ModelShelf prototype that combines architectural, structural, a
 
 ## Notes
 
-- Accepted amendment: [reusable model modules](../../docs/adr/0001-reusable-model-modules.md). Shared contracts, format-neutral ObjectRefs, a reusable viewer core/React wrapper, and standalone reuse verification are required. Native Revit/Archicad integrations stay deferred.
+- Accepted amendment: [reusable model modules](../../docs/adr/0001-reusable-model-modules.md). Shared contracts, format-neutral ObjectRefs, a reusable viewer core/React wrapper, and standalone reuse verification are required. Native Revit/Archicad integrations stay deferred. [VISION.md](../../VISION.md) sequences the combined ModelShelf view before extracting `packages/model-viewer`.
+- Ticket 07 is the ModelShelf combined view and ObjectRef selection only. Extracting `packages/model-viewer`, the standalone example, and import-boundary packaging waits until after Wave 1.
 
 - Execution override: the user explicitly requested tickets so another AI can build the approved plan. This map includes implementation deliverables, overriding Wayfinder's decision-only default. Charting this map does not execute the tickets.
 - Use [HANDOFF.md](HANDOFF.md) as the entry point. Read [the specification](spec.md), [the starting codebase](codebase-map.md), and the chosen child ticket.

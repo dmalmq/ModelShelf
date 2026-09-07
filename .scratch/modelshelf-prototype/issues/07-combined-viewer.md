@@ -41,7 +41,7 @@ Other agents may be working in this checkout. Do not revert their edits. A depen
 - Implement a minimal runnable ModelShelf viewer route. Load IFC through a dedicated browser worker, share/batch geometry, bound pixel ratio, and release GPU/worker resources on unload.
 - Keep original model transforms and use one common origin offset. Never independently center disciplines.
 - Use opaque revisionId/objectId for selection; keep IFC expressId and GlobalId in source mappings. Findings do not depend on every model having drawable geometry.
-- Do not extract `packages/model-viewer`, a standalone example, or import-boundary packaging in this ticket. That extraction waits until this combined view exists and a second consumer needs it.
+- Do not extract `packages/model-viewer`, a standalone example, or import-boundary packaging in this ticket. That extraction waits until this combined view exists.
 
 ## Acceptance criteria
 
@@ -66,4 +66,4 @@ Append an Answer with changes, exact commands/results, evidence links, remaining
 
 Created from the approved prototype plan on 2026-09-06. No implementation is claimed by ticket creation.
 
-2026-09-07: shrunk to the ModelShelf combined view and ObjectRef selection. A reusable viewer package, standalone example, and import-boundary checks are deferred until this loop exists.
+2026-09-07: VISION.md sequences the combined ModelShelf view before extracting a reusable viewer package. This ticket no longer owns `packages/model-viewer`, the standalone example, or import-boundary packaging.
