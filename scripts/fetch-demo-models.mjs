@@ -85,10 +85,22 @@ async function download(url, destPath) {
   await pipeline(Readable.fromWeb(res.body), createWriteStream(destPath));
 }
 
+function previousRetrievedAt(discipline) {
+  if (!existsSync(MANIFEST_PATH)) return undefined;
+  try {
+    const previous = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
+    const row = previous.find((entry) => entry.discipline === discipline);
+    return row?.retrievedAt;
+  } catch {
+    return undefined;
+  }
+}
+
 async function main() {
   mkdirSync(DOWNLOADS_DIR, { recursive: true });
   mkdirSync(IFC_DIR, { recursive: true });
   const manifest = [];
+  const verifiedAt = new Date().toISOString();
 
   for (const source of SOURCES) {
     const zipPath = join(DOWNLOADS_DIR, source.zipName);
@@ -138,7 +150,8 @@ async function main() {
       ifcPath: `../ifc/${source.ifcOut}`,
       ifcSha256,
       ifcBytes: ifcBytes.length,
-      retrievedAt: new Date().toISOString(),
+      retrievedAt: previousRetrievedAt(source.discipline) ?? verifiedAt,
+      lastVerifiedAt: verifiedAt,
     });
   }
 

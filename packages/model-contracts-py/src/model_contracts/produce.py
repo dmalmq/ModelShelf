@@ -176,6 +176,7 @@ def build_render_manifest() -> RenderManifest:
             Instance(
                 instanceId="inst-0",
                 ref=_object_ref(1),
+                placement=[1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0],
                 boundingBox=BoundingBox(min=[0.0, 0.0, 0.0], max=[5.0, 0.2, 3.0]),
             ),
             Instance(

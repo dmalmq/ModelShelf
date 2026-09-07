@@ -25,7 +25,7 @@ Write an owner file inside the claim directory, then set `Status: claimed` and `
 - Use poteto-mode and relevant implementation skills. The user has authorized building through this map; do not repeat the whole product interview.
 - Inspect current source and uncommitted edits first. Preserve other agents' work. No destructive reset/clean, no invented stubs presented as implementation.
 - Deliver the ticket's complete observable behavior with focused tests. Fix integration defects that prevent its acceptance rather than reporting a green library test alone.
-- Keep source models and original uploaded bytes immutable. Keep the established worker authoritative for IFC/IDS checks. Preserve explicit failure/incomplete outcomes.
+- Keep source models and original uploaded bytes immutable. Keep the established worker authoritative for IFC/IDS checks. Preserve explicit failure/incomplete outcomes. Do not add live-scoring features to `crates/ids`; IfcTester is the scorer (ticket 06).
 - Use the existing dark ModelShelf theme for app UI. This is a product prototype, not a screenshot mock.
 - Do not implement later tickets silently, except a necessary prerequisite fix that is documented with its owner.
 

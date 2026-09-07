@@ -304,3 +304,147 @@ def write_list_and_inherited_properties(path: Path) -> Path:
     )
     ifc_file.write(str(path))
     return path
+
+
+def write_prefixed_square_and_cubic_millimetres(path: Path) -> Path:
+    """1_000_000 mm² and 1_000_000_000 mm³ must convert as 1 m² and 1 m³."""
+    ifc_file = _project_with_units([])
+    mm = _si_length(ifc_file, prefix="MILLI")
+    area_mm2 = ifc_file.create_entity(
+        "IfcSIUnit", UnitType="AREAUNIT", Prefix="MILLI", Name="SQUARE_METRE"
+    )
+    volume_mm3 = ifc_file.create_entity(
+        "IfcSIUnit", UnitType="VOLUMEUNIT", Prefix="MILLI", Name="CUBIC_METRE"
+    )
+    ifc_file.by_type("IfcUnitAssignment")[0].Units = [mm, area_mm2, volume_mm3]
+    wall = _wall(ifc_file, _placement(ifc_file, (0.0, 0.0, 0.0)))
+    area_prop = ifc_file.create_entity(
+        "IfcPropertySingleValue",
+        Name="NetArea",
+        NominalValue=ifc_file.create_entity("IfcAreaMeasure", 1_000_000.0),
+        Unit=area_mm2,
+    )
+    volume_prop = ifc_file.create_entity(
+        "IfcPropertySingleValue",
+        Name="NetVolume",
+        NominalValue=ifc_file.create_entity("IfcVolumeMeasure", 1_000_000_000.0),
+        Unit=volume_mm3,
+    )
+    pset = ifc_file.create_entity(
+        "IfcPropertySet",
+        GlobalId=ifcopenshell.guid.new(),
+        Name="Pset_Test",
+        HasProperties=[area_prop, volume_prop],
+    )
+    ifc_file.create_entity(
+        "IfcRelDefinesByProperties",
+        GlobalId=ifcopenshell.guid.new(),
+        RelatedObjects=[wall],
+        RelatingPropertyDefinition=pset,
+    )
+    ifc_file.write(str(path))
+    return path
+
+
+def write_ifc2x3_type_properties(path: Path) -> Path:
+    """IFC2X3 exposes IfcRelDefinesByType through IsDefinedBy, not IsTypedBy."""
+    ifc_file = ifcopenshell.file(schema="IFC2X3")
+    origin = ifc_file.create_entity("IfcCartesianPoint", Coordinates=(0.0, 0.0, 0.0))
+    axis = ifc_file.create_entity("IfcAxis2Placement3D", Location=origin)
+    ctx = ifc_file.create_entity(
+        "IfcGeometricRepresentationContext",
+        ContextType="Model",
+        CoordinateSpaceDimension=3,
+        Precision=1e-5,
+        WorldCoordinateSystem=axis,
+    )
+    metre = ifc_file.create_entity("IfcSIUnit", UnitType="LENGTHUNIT", Name="METRE")
+    assignment = ifc_file.create_entity("IfcUnitAssignment", Units=[metre])
+    ifc_file.create_entity(
+        "IfcProject",
+        GlobalId=ifcopenshell.guid.new(),
+        Name="Fixture",
+        RepresentationContexts=[ctx],
+        UnitsInContext=assignment,
+    )
+    wall = _wall(ifc_file, _placement(ifc_file, (0.0, 0.0, 0.0)))
+    type_load = ifc_file.create_entity(
+        "IfcPropertySingleValue",
+        Name="LoadBearing",
+        NominalValue=ifc_file.create_entity("IfcBoolean", True),
+    )
+    type_pset = ifc_file.create_entity(
+        "IfcPropertySet",
+        GlobalId=ifcopenshell.guid.new(),
+        Name="Pset_WallCommon",
+        HasProperties=[type_load],
+    )
+    wall_type = ifc_file.create_entity(
+        "IfcWallType",
+        GlobalId=ifcopenshell.guid.new(),
+        Name="BasicWall",
+        HasPropertySets=[type_pset],
+    )
+    ifc_file.create_entity(
+        "IfcRelDefinesByType",
+        GlobalId=ifcopenshell.guid.new(),
+        RelatedObjects=[wall],
+        RelatingType=wall_type,
+    )
+    ifc_file.write(str(path))
+    return path
+
+
+def _box_shape(
+    ifc_file: ifcopenshell.file,
+    ctx: ifcopenshell.entity_instance,
+    *,
+    x_dim: float,
+    y_dim: float,
+    depth: float,
+) -> ifcopenshell.entity_instance:
+    origin2d = ifc_file.create_entity("IfcCartesianPoint", Coordinates=(0.0, 0.0))
+    place2d = ifc_file.create_entity("IfcAxis2Placement2D", Location=origin2d)
+    profile = ifc_file.create_entity(
+        "IfcRectangleProfileDef",
+        ProfileType="AREA",
+        Position=place2d,
+        XDim=x_dim,
+        YDim=y_dim,
+    )
+    origin3d = ifc_file.create_entity("IfcCartesianPoint", Coordinates=(0.0, 0.0, 0.0))
+    axis = ifc_file.create_entity("IfcAxis2Placement3D", Location=origin3d)
+    direction = ifc_file.create_entity("IfcDirection", DirectionRatios=(0.0, 0.0, 1.0))
+    solid = ifc_file.create_entity(
+        "IfcExtrudedAreaSolid",
+        SweptArea=profile,
+        Position=axis,
+        ExtrudedDirection=direction,
+        Depth=depth,
+    )
+    representation = ifc_file.create_entity(
+        "IfcShapeRepresentation",
+        ContextOfItems=ctx,
+        RepresentationIdentifier="Body",
+        RepresentationType="SweptSolid",
+        Items=[solid],
+    )
+    return ifc_file.create_entity("IfcProductDefinitionShape", Representations=[representation])
+
+
+def write_translated_rotated_millimetre_box(path: Path) -> Path:
+    """1 m cube in a millimetre project, translated 1 m on X and rotated 90° about Z."""
+    ifc_file = _project_with_units([])
+    mm = _si_length(ifc_file, prefix="MILLI")
+    ifc_file.by_type("IfcUnitAssignment")[0].Units = [mm]
+    ctx = ifc_file.by_type("IfcGeometricRepresentationContext")[0]
+    point = ifc_file.create_entity("IfcCartesianPoint", Coordinates=(1000.0, 0.0, 0.0))
+    z_dir = ifc_file.create_entity("IfcDirection", DirectionRatios=(0.0, 0.0, 1.0))
+    y_dir = ifc_file.create_entity("IfcDirection", DirectionRatios=(0.0, 1.0, 0.0))
+    ref = ifc_file.create_entity("IfcAxis2Placement3D", Location=point, Axis=z_dir, RefDirection=y_dir)
+    placement = ifc_file.create_entity("IfcLocalPlacement", RelativePlacement=ref)
+    wall = _wall(ifc_file, placement)
+    wall.Representation = _box_shape(ifc_file, ctx, x_dim=1000.0, y_dim=1000.0, depth=1000.0)
+    ifc_file.write(str(path))
+    return path
+

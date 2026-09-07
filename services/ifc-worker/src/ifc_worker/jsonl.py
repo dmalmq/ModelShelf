@@ -36,12 +36,14 @@ def write_json_atomic(path: Path, payload: BaseModel, *, record_count: int) -> A
     )
 
 
-def write_jsonl_atomic(path: Path, records: Iterable[BaseModel]) -> ArtifactInfo:
+def write_jsonl_atomic(
+    path: Path, records: Iterable[BaseModel], *, exclude_none: bool = True
+) -> ArtifactInfo:
     tmp_path = path.with_name(f".{path.name}.tmp")
     record_count = 0
     with tmp_path.open("w", encoding="utf-8") as handle:
         for record in records:
-            handle.write(record.model_dump_json())
+            handle.write(record.model_dump_json(exclude_none=exclude_none))
             handle.write("\n")
             record_count += 1
     tmp_path.replace(path)

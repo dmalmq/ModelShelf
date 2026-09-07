@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import ifcopenshell.util.element as util_element
 from model_contracts import Dimension as SiDimension
 from model_contracts import Origin, Property, PropertyValue
 
@@ -44,20 +45,35 @@ def extract_properties(
 def _property_definitions(
     product: ifcopenshell.entity_instance,
 ) -> list[tuple[Origin, ifcopenshell.entity_instance]]:
-    definitions: list[tuple[Origin, ifcopenshell.entity_instance]] = []
-    for rel in getattr(product, "IsTypedBy", None) or ():
-        if not rel.is_a("IfcRelDefinesByType"):
-            continue
-        relating_type = rel.RelatingType
-        definitions.extend(
-            (Origin.type, pset) for pset in getattr(relating_type, "HasPropertySets", None) or ()
-        )
-    definitions.extend(
-        (Origin.occurrence, rel.RelatingPropertyDefinition)
-        for rel in getattr(product, "IsDefinedBy", None) or ()
-        if rel.is_a("IfcRelDefinesByProperties")
-    )
-    return definitions
+    type_sets: list[ifcopenshell.entity_instance] = []
+    occurrence_sets: list[ifcopenshell.entity_instance] = []
+    seen: set[int] = set()
+
+    def add(bucket: list[ifcopenshell.entity_instance], definition: ifcopenshell.entity_instance) -> None:
+        ident = definition.id()
+        if ident in seen:
+            return
+        seen.add(ident)
+        bucket.append(definition)
+
+    relating_type = util_element.get_type(product)
+    if relating_type is not None:
+        for pset in getattr(relating_type, "HasPropertySets", None) or ():
+            add(type_sets, pset)
+
+    for rel in getattr(product, "IsDefinedBy", None) or ():
+        if rel.is_a("IfcRelDefinesByType"):
+            relating_type = rel.RelatingType
+            if relating_type is None:
+                continue
+            for pset in getattr(relating_type, "HasPropertySets", None) or ():
+                add(type_sets, pset)
+        elif rel.is_a("IfcRelDefinesByProperties"):
+            add(occurrence_sets, rel.RelatingPropertyDefinition)
+
+    return [(Origin.type, definition) for definition in type_sets] + [
+        (Origin.occurrence, definition) for definition in occurrence_sets
+    ]
 
 
 def _records_from_definition(

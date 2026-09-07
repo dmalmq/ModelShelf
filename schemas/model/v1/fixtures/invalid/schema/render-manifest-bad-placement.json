@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "model-v1",
+  "revisionId": "rev-arch-01",
+  "format": "prepared-scene-v1",
+  "instances": [
+    {
+      "instanceId": "inst-0",
+      "ref": { "revisionId": "rev-arch-01", "objectId": "occ_823c7adb931b5478" },
+      "placement": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+    }
+  ]
+}

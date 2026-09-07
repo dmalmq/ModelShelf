@@ -108,6 +108,24 @@ def test_context_dependent_unit_keeps_raw_value_without_invented_si(tmp_path: Pa
     assert "mystery" in resolved.original_unit.lower()
 
 
+def test_milli_prefix_on_area_and_volume_is_raised_to_dimension(tmp_path: Path) -> None:
+    from tests.ifc_fixtures import write_prefixed_square_and_cubic_millimetres
+
+    path = write_prefixed_square_and_cubic_millimetres(tmp_path / "mm2-mm3.ifc")
+    ifc_file = ifcopenshell.open(str(path))
+    by_name = {prop.Name: prop for prop in ifc_file.by_type("IfcPropertySingleValue")}
+    area = resolve_measure_unit(by_name["NetArea"].NominalValue.is_a(), by_name["NetArea"], ifc_file)
+    volume = resolve_measure_unit(
+        by_name["NetVolume"].NominalValue.is_a(), by_name["NetVolume"], ifc_file
+    )
+    assert area.dimension == "area"
+    assert area.si_multiplier == pytest.approx(1e-6)
+    assert by_name["NetArea"].NominalValue.wrappedValue * area.si_multiplier == pytest.approx(1.0)
+    assert volume.dimension == "volume"
+    assert volume.si_multiplier == pytest.approx(1e-9)
+    assert by_name["NetVolume"].NominalValue.wrappedValue * volume.si_multiplier == pytest.approx(1.0)
+
+
 def test_explicit_square_and_cubic_metres_in_millimetre_project(tmp_path: Path) -> None:
     from tests.ifc_fixtures import write_explicit_area_and_volume
 

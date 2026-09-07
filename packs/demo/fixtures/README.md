@@ -10,24 +10,25 @@ the GlobalIds involved and the diff classification a consumer should expect —
 regenerate and re-check independently with:
 
 ```
-services/ifc-worker/.venv/bin/python3 scripts/generate-demo-fixtures.py
-cargo run -p modeldiff --example diff_fixtures -- packs/demo/fixtures/base.ifc packs/demo/fixtures/head.ifc
-cargo run -p ids --example evaluate_pack -- packs/demo/fixtures.ids packs/demo/fixtures/base.ifc packs/demo/fixtures/head.ifc
+uv run --project services/ifc-worker python scripts/generate-demo-fixtures.py
+uv run --project services/ifc-worker python scripts/check-demo-oracle.py --prove-regen
 ```
+
+`--output-dir` writes elsewhere so tests can regenerate without touching the checked-in baseline. GUIDs and IFC timestamps come from `--seed` (default `modelshelf-demo-fixtures-v1`).
 
 ## Categories
 
 | Category | Design | Verified real `modeldiff` result |
 | --- | --- | --- |
-| Repeated failure | 120 identical walls, unchanged, all missing `Pset_WallCommon.FireRating` | `unchanged`; grouped into one IDS finding (135 affected objects once the other categories below are counted too — see `packs/demo/fixtures.ids`), persisting identically base→head |
+| Repeated failure | 120 identical walls, unchanged, all missing `Pset_WallCommon.FireRating` | `unchanged`. IfcTester fails 135 walls per revision: these 120 plus removed/added/shape/moved/rotated/ambiguous walls. `oracle.json` enumerates every group. |
 | Added | 3 walls, head only, shape unique in the fixture | `added` |
 | Removed | 3 walls, base only, shape unique in the fixture | `removed` |
 | Property changed | 3 walls, same GlobalId, `FireRating` REI30→REI60 | `properties_changed` |
 | Shape changed | 3 walls, same GlobalId/placement, block thickness 0.2m→0.4m | `shape_changed` |
 | Moved | 3 walls, same GlobalId/shape, translated +0.5 m in Y | `moved` |
-| Rotated | 3 walls, same GlobalId/shape, rotated 30° about its own origin, zero translation | `unchanged` with a "sub-threshold displacement 0.000000 m" note — see below |
-| Ambiguous: duplicate GlobalId | 2 walls sharing one GlobalId, in both revisions | paired by express id (`uncertain_matches`), not silently dropped |
-| Ambiguous: empty GlobalId | 1 wall with `GlobalId = ""`, in both revisions | paired by heuristic matching (`uncertain_matches`) |
+| Rotated | 3 walls, same GlobalId/shape, rotated 30° about its own origin, zero translation | Intended diff is `moved`. Current modeldiff reports `unchanged` because it measures origin-to-origin distance only. Recorded as `engineLimitation`, not as the intended result. |
+| Ambiguous: duplicate GlobalId | 2 walls sharing one GlobalId, in both revisions | Intended correspondence is `uncertain`. |
+| Ambiguous: empty GlobalId | 1 wall with `GlobalId = ""`, in both revisions | Intended correspondence is `uncertain`. |
 
 ## Two real things this fixture found while it was being built
 
