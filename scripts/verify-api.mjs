@@ -19,11 +19,19 @@
 // (scripts/fixtures/fake-worker.mjs) substituted in via `--worker-command` —
 // real processes producing real bad output, not a mocked validation result.
 //
+// `--scenario first-loop` proves one complete review loop (ticket 09): seed a
+// delivery from uploaded revisions, score it against a published pack, page a
+// grouped finding past its samples, and resolve one member to its full object
+// record — with invalid bytes and an empty model proving honest failure and
+// empty-geometry states along the way. No mocked checker or viewer results.
+//
 // Usage: node scripts/verify-api.mjs --scenario revisions
 //        node scripts/verify-api.mjs --scenario worker-failure
 //        node scripts/verify-api.mjs --scenario checks
+//        node scripts/verify-api.mjs --scenario first-loop
 
 import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { readFile as readFileAsync } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -39,8 +47,8 @@ const FIXTURES_IDS = join(REPO_ROOT, "packs", "demo", "fixtures.ids");
 function requireScenario() {
   const flagIndex = process.argv.indexOf("--scenario");
   const scenario = flagIndex >= 0 ? process.argv[flagIndex + 1] : undefined;
-  if (scenario !== "revisions" && scenario !== "worker-failure" && scenario !== "checks") {
-    console.error(`usage: node scripts/verify-api.mjs --scenario revisions|worker-failure|checks (got ${scenario ?? "<none>"})`);
+  if (scenario !== "revisions" && scenario !== "worker-failure" && scenario !== "checks" && scenario !== "first-loop") {
+    console.error(`usage: node scripts/verify-api.mjs --scenario revisions|worker-failure|checks|first-loop (got ${scenario ?? "<none>"})`);
     process.exit(2);
   }
   return scenario;
@@ -719,6 +727,174 @@ async function runChecksScenario(runDir, check, log) {
 }
 
 // ---------------------------------------------------------------------------
+// scenario: first-loop (ticket 09)
+// ---------------------------------------------------------------------------
+
+const EMPTY_IFC = Buffer.from(`ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('ViewDefinition [CoordinationView]'),'2;1');
+FILE_NAME('empty.ifc','2026-09-07T00:00:00',(),(),'','','');
+FILE_SCHEMA(('IFC4'));
+ENDSEC;
+DATA;
+#1=IFCPERSON($,$,'Verifier',$,$,$,$,$);
+#2=IFCORGANIZATION($,'ModelShelf',$,$,$);
+#3=IFCPERSONANDORGANIZATION(#1,#2,$);
+#4=IFCAPPLICATION(#2,'1.0','First loop prover','PROVER');
+#5=IFCOWNERHISTORY(#3,#4,$,.ADDED.,$,$,$,0);
+#6=IFCCARTESIANPOINT((0.,0.,0.));
+#7=IFCAXIS2PLACEMENT3D(#6,$,$);
+#8=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-5,#7,$);
+#9=IFCSIUNIT(*,.LENGTHUNIT.,.MILLI.,.METRE.);
+#10=IFCUNITASSIGNMENT((#9));
+#11=IFCPROJECT('0YvctVUKv0kugbFTf53O9L',#5,'Empty',$,$,$,$,(#8),#10);
+ENDSEC;
+END-ISO-10303-21;
+`);
+
+function expectedObjectId(revisionId, expressId) {
+  return `occ_${createHash("sha256").update(`${revisionId}:${expressId}`).digest("hex").slice(0, 16)}`;
+}
+
+async function runFirstLoopScenario(runDir, check, log) {
+  const dataDir = mkdtempSync(join(tmpdir(), "modelshelf-verify-api-first-loop-"));
+  const phases = [];
+  async function phase(name, fn) {
+    const started = Date.now();
+    const out = await fn();
+    phases.push({ name, ms: Date.now() - started });
+    return out;
+  }
+  let server;
+  try {
+    await phase("seed", async () => {
+      const seed = runCli(["seed", "--data-dir", dataDir, "--packs-dir", dataDir, "--samples-dir", dataDir]);
+      check("seed succeeds", seed.status === 0, seed.stderr);
+    });
+
+    server = await phase("serve", async () => startServer(dataDir));
+    const { base } = server;
+
+    const packVersion = await phase("publish-pack", async () =>
+      (
+        await api(base, "POST", "/api/packs/demo-pack/versions", {
+          idsXml: await readFileAsync(FIXTURES_IDS, "utf8"),
+          metadata: {
+            categories: [{ id: "regulatory", label: "Regulatory" }],
+            defaults: { severity: "high", categoryId: "regulatory" },
+            specs: {
+              "Wall declares a fire rating": { severity: "high", categoryId: "regulatory", disciplines: ["ARCH"] },
+            },
+          },
+        })
+      ).json,
+    );
+    check("fixtures pack version is published", Boolean(packVersion?.id), JSON.stringify(packVersion));
+
+    const east = await phase("create-models", async () =>
+      (await api(base, "POST", "/api/projects/demo-project/source-models", { name: "East", discipline: "ARCH" })).json,
+    );
+    const west = (
+      await api(base, "POST", "/api/projects/demo-project/source-models", { name: "West", discipline: "ARCH" })
+    ).json;
+
+    const garbage = await phase("invalid-upload", async () => {
+      const enqueued = await uploadBytes(base, east.id, "garbage.ifc", Buffer.from("not an IFC file at all"));
+      if (enqueued.status !== 202) return { enqueued, job: null };
+      return { enqueued, job: await pollJob(base, enqueued.json.id, { timeoutMs: 120_000 }) };
+    });
+    check(
+      "invalid IFC bytes fail the job without publishing a revision",
+      garbage.job?.status === "failed" && !garbage.job?.modelRevisionId,
+      JSON.stringify(garbage.job),
+    );
+
+    const empty = await phase("empty-upload", async () => {
+      const enqueued = await uploadBytes(base, east.id, "empty.ifc", EMPTY_IFC);
+      if (enqueued.status !== 202) return { enqueued, job: null };
+      return { enqueued, job: await pollJob(base, enqueued.json.id, { timeoutMs: 120_000 }) };
+    });
+    check(
+      "a valid model with no drawable geometry ingests honestly",
+      empty.job?.status === "completed" && empty.job?.modelRevisionId,
+      JSON.stringify(empty.job),
+    );
+
+    const { eastId, westId } = await phase("ingest", async () => {
+      const eastRev = await uploadFileAndAwait(base, east.id, "east.ifc", FIXTURES_IFC);
+      const westRev = await uploadFileAndAwait(base, west.id, "west.ifc", FIXTURES_IFC);
+      check(
+        "both fixture revisions ingest",
+        eastRev.job?.status === "completed" && westRev.job?.status === "completed",
+        JSON.stringify({ east: eastRev.job?.status, west: westRev.job?.status }),
+      );
+      return { eastId: eastRev.job.modelRevisionId, westId: westRev.job.modelRevisionId };
+    });
+
+    const delivery = await phase("deliver", async () => {
+      const created = (
+        await api(base, "POST", "/api/projects/demo-project/deliveries", { label: "First loop" })
+      ).json;
+      await api(base, "POST", `/api/deliveries/${created.id}/members`, { sourceModelId: east.id, modelRevisionId: eastId });
+      await api(base, "POST", `/api/deliveries/${created.id}/members`, { sourceModelId: west.id, modelRevisionId: westId });
+      const finalized = (await api(base, "POST", `/api/deliveries/${created.id}/finalize`, {})).json;
+      check("delivery finalizes with two members", finalized?.models?.length === 2, JSON.stringify(finalized?.models?.length));
+      return created;
+    });
+
+    const run = await phase("run", async () =>
+      (await api(base, "POST", "/api/runs", { deliveryId: delivery.id, packVersionId: packVersion.id })).json,
+    );
+    log("first-loop-run.json", run);
+    check(
+      "the run completes against pinned complete inputs",
+      run?.run?.status === "completed" && run?.inputProvenance?.status === "complete",
+      JSON.stringify({ status: run?.run?.status, provenance: run?.inputProvenance }),
+    );
+
+    const member = await phase("resolve-object", async () => {
+      const findings = run.scorecard?.flatMap((band) => band.categories.flatMap((c) => c.findings)) ?? [];
+      const finding = findings.find((f) => f.specName === "Wall declares a fire rating") ?? findings[0];
+      check("the fire-rating rule groups one finding", Boolean(finding) && finding.objectCount > 0, JSON.stringify(findings.map((f) => f.specName)));
+      const paged = await pageAllFindingObjects(base, finding.id);
+      check(
+        "paging retrieves every affected member",
+        paged.total === finding.objectCount && paged.objects.length === finding.objectCount,
+        JSON.stringify({ total: paged.total, retrieved: paged.objects.length }),
+      );
+      const first = paged.objects[0];
+      check(
+        "the member ref matches the shared occurrence-identity contract",
+        first?.ref?.revisionId === first?.modelId && first?.ref?.objectId === expectedObjectId(first.modelId, first.expressId),
+        JSON.stringify(first?.ref),
+      );
+      const detail = (await api(base, "GET", `/api/objects/${first.objectId}`)).json;
+      check(
+        "the member resolves to its full object record",
+        detail?.id === first.objectId && detail?.ifcType === first.ifcType && detail?.globalId === first.globalId && Array.isArray(detail?.properties),
+        JSON.stringify({ id: detail?.id, ifcType: detail?.ifcType }),
+      );
+      return { findingId: finding.id, objectId: first.objectId };
+    });
+
+    const reread = (await api(base, "GET", `/api/runs/${run.run.id}`)).json;
+    check(
+      "retained run results stay readable",
+      reread?.run?.status === "completed" && (reread?.scorecard?.flatMap((band) => band.categories.flatMap((c) => c.findings)) ?? []).length > 0,
+      JSON.stringify(reread?.run?.status),
+    );
+
+    log("first-loop-phases.json", { phases, findingId: member.findingId, objectId: member.objectId });
+  } finally {
+    if (server) {
+      log("first-loop-serve.log", server.getLog());
+      await stopProcess(server.child);
+    }
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+}
+
+// ---------------------------------------------------------------------------
 
 async function main() {
   const scenario = requireScenario();
@@ -728,7 +904,7 @@ async function main() {
     ".omo",
     "evidence",
     "modelshelf-prototype",
-    scenario === "checks" ? "task-6" : "task-2",
+    scenario === "checks" ? "task-6" : scenario === "first-loop" ? "task-9" : "task-2",
   );
   mkdirSync(evidenceRoot, { recursive: true });
   const runDir = join(evidenceRoot, `run-${new Date().toISOString().replace(/[:.]/g, "-")}`);
@@ -742,6 +918,8 @@ async function main() {
     await runRevisionsScenarioTop(runDir, check, log);
   } else if (scenario === "worker-failure") {
     await runWorkerFailureScenario(check, log);
+  } else if (scenario === "first-loop") {
+    await runFirstLoopScenario(runDir, check, log);
   } else {
     await runChecksScenario(runDir, check, log);
   }
