@@ -527,11 +527,61 @@ pub struct SpecResultRowOut {
     pub notes: Vec<String>,
 }
 
+/// Why a run created today cannot claim its listed models are its proven inputs.
+pub const UNPINNED_REASON: &str =
+    "the listed models are this delivery's current membership, not a recorded snapshot of what \
+     this run evaluated; pinning a run's exact inputs is not implemented yet";
+
+/// Whether a run's listed `models` are its proven inputs. The two stored columns can
+/// express `complete` with a reason, `incomplete` without one, and any string at all.
+/// This type is the two-state domain they are trying to be.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum InputProvenance {
+    /// The run's listed `models` are its proven, pinned inputs.
+    Complete,
+    /// The listed models are reconstructed from current delivery membership, not verified inputs.
+    Incomplete { reason: String },
+}
+
+impl InputProvenance {
+    /// Unrecognized stored values resolve to `Incomplete`: an unknown provenance is one the
+    /// application cannot prove, and must never be surfaced as though it were proven.
+    pub fn from_row(status: &str, reason: Option<&str>) -> Self {
+        match status {
+            "complete" => Self::Complete,
+            _ => Self::Incomplete { reason: reason.unwrap_or(UNPINNED_REASON).to_owned() },
+        }
+    }
+
+    pub fn status(&self) -> &'static str {
+        match self {
+            Self::Complete => "complete",
+            Self::Incomplete { .. } => "incomplete",
+        }
+    }
+
+    pub fn reason(&self) -> Option<&str> {
+        match self {
+            Self::Complete => None,
+            Self::Incomplete { reason } => Some(reason),
+        }
+    }
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RunInputProvenance {
     pub status: String,
     pub reason: Option<String>,
+}
+
+impl From<InputProvenance> for RunInputProvenance {
+    fn from(value: InputProvenance) -> Self {
+        Self {
+            status: value.status().to_owned(),
+            reason: value.reason().map(str::to_owned),
+        }
+    }
 }
 
 #[derive(Serialize)]

@@ -15,7 +15,9 @@ pub const MIGRATION_0001: &str = include_str!("../migrations/0001_init.sql");
 pub const MIGRATION_0002: &str = include_str!("../migrations/0002_source_models.sql");
 pub const MIGRATION_0003: &str = include_str!("../migrations/0003_jobs.sql");
 pub const MIGRATION_0004: &str = include_str!("../migrations/0004_run_input_provenance.sql");
-pub const SCHEMA_VERSION: i64 = 4;
+pub const MIGRATION_0005: &str =
+    include_str!("../migrations/0005_run_input_provenance_default.sql");
+pub const SCHEMA_VERSION: i64 = 5;
 
 pub async fn open(data_dir: &std::path::Path) -> anyhow::Result<SqlitePool> {
     let pool = connect(data_dir).await?;
@@ -66,6 +68,7 @@ pub(crate) enum MigrationFault {
     AfterLegacyModelMigration,
     AfterObjectRefBackfill,
     AfterFindingObjectsRepair,
+    AfterRunProvenanceDefault,
 }
 
 pub async fn migrate(pool: &SqlitePool) -> anyhow::Result<()> {
@@ -86,6 +89,9 @@ pub(crate) async fn migrate_with_fault(pool: &SqlitePool, fault: MigrationFault)
     }
     if current_version(pool).await? < 4 {
         apply_version_4(pool, fault).await?;
+    }
+    if current_version(pool).await? < 5 {
+        apply_version_5(pool, fault).await?;
     }
     Ok(())
 }
@@ -234,6 +240,21 @@ async fn apply_version_4_on(
         anyhow::bail!("migration produced {violations} foreign-key inconsistency(ies)");
     }
     record_version(&mut tx, 4).await?;
+    tx.commit().await?;
+    Ok(())
+}
+
+/// No table is renamed here, so unlike versions 2 and 4 this needs no foreign-key juggling.
+async fn apply_version_5(pool: &SqlitePool, fault: MigrationFault) -> anyhow::Result<()> {
+    let mut tx = pool.begin().await?;
+    for statement in split_statements(MIGRATION_0005) {
+        sqlx::query(statement).execute(&mut *tx).await?;
+    }
+    crate::migrate_v2::stamp_unpinned_run_provenance(&mut tx).await?;
+    if fault == MigrationFault::AfterRunProvenanceDefault {
+        anyhow::bail!("injected fault after run provenance default swap");
+    }
+    record_version(&mut tx, 5).await?;
     tx.commit().await?;
     Ok(())
 }
@@ -797,6 +818,183 @@ mod tests {
         tx.commit().await.unwrap();
         sqlx::query("PRAGMA foreign_keys = ON").execute(&mut *conn).await.unwrap();
         apply_sql_version(pool, 3, MIGRATION_0003).await.unwrap();
+    }
+
+    /// Stop exactly at version 4 so the version-5 behavior can be observed against the
+    /// database shape that actually shipped it: `run-1` predates version 4 and is stamped
+    /// historical by it, `run-2` is inserted afterwards and takes the `'complete'` default
+    /// the application could never prove.
+    async fn migrate_to_version_4_with_two_runs(pool: &SqlitePool) {
+        ensure_schema_migrations_table(pool).await.unwrap();
+        apply_sql_version(pool, 1, MIGRATION_0001).await.unwrap();
+        let (model_a, _) = seed_legacy_v1_data(pool).await;
+        seed_v1_pack_run_and_finding(pool, &model_a, "obj-0").await;
+        apply_version_2(pool, MigrationFault::None).await.unwrap();
+        apply_sql_version(pool, 3, MIGRATION_0003).await.unwrap();
+        apply_version_4(pool, MigrationFault::None).await.unwrap();
+        assert_eq!(current_version(pool).await.unwrap(), 4);
+
+        sqlx::query(
+            "INSERT INTO runs (id, project_id, delivery_id, pack_version_id, engine_version,
+                 parser_version, status, started_at, pass_count)
+             VALUES ('run-2','p1','d1','pv1','eng','par','completed',?1,3)",
+        )
+        .bind(now_iso())
+        .execute(pool)
+        .await
+        .unwrap();
+        let claimed: (String, Option<String>) = sqlx::query_as(
+            "SELECT input_provenance, input_provenance_reason FROM runs WHERE id = 'run-2'",
+        )
+        .fetch_one(pool)
+        .await
+        .unwrap();
+        assert_eq!(
+            claimed,
+            ("complete".to_owned(), None),
+            "the version-4 fixture must reproduce the unprovable claim being corrected"
+        );
+    }
+
+    async fn runs_table_ddl(pool: &SqlitePool) -> String {
+        sqlx::query_scalar("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'runs'")
+            .fetch_one(pool)
+            .await
+            .unwrap()
+    }
+
+    async fn stored_provenance(pool: &SqlitePool, run_id: &str) -> (String, Option<String>) {
+        sqlx::query_as(
+            "SELECT input_provenance, input_provenance_reason FROM runs WHERE id = ?1",
+        )
+        .bind(run_id)
+        .fetch_one(pool)
+        .await
+        .unwrap()
+    }
+
+    async fn seed_run_parents(pool: &SqlitePool) {
+        for statement in [
+            "INSERT INTO tenants (id, name, created_at) VALUES ('t1','Tenant',datetime())",
+            "INSERT INTO projects (id, tenant_id, name, created_at) VALUES ('p1','t1','Project',datetime())",
+            "INSERT INTO deliveries (id, project_id, label, created_at) VALUES ('d1','p1','D1',datetime())",
+            "INSERT INTO packs (id, tenant_id, name, created_at) VALUES ('pack1','t1','Pack',datetime())",
+            "INSERT INTO pack_versions (id, pack_id, version, ids_xml, ids_sha256, spec_count, created_at)
+               VALUES ('pv1','pack1',1,'<ids/>','0',1,datetime())",
+        ] {
+            sqlx::query(statement).execute(pool).await.unwrap();
+        }
+    }
+
+    #[tokio::test]
+    async fn a_run_inserted_without_naming_input_provenance_defaults_to_incomplete() {
+        let (_dir, pool) = temp_pool().await;
+        migrate(&pool).await.expect("migrate");
+        seed_run_parents(&pool).await;
+
+        sqlx::query(
+            "INSERT INTO runs (id, project_id, delivery_id, pack_version_id, engine_version,
+                 parser_version, status, started_at)
+             VALUES ('run-default','p1','d1','pv1','eng','par','running',?1)",
+        )
+        .bind(now_iso())
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        assert_eq!(
+            stored_provenance(&pool, "run-default").await,
+            ("incomplete".to_owned(), None),
+            "the declared default itself must not let a writer claim proven inputs"
+        );
+    }
+
+    #[tokio::test]
+    async fn version_5_downgrades_the_unprovable_complete_claim_and_keeps_historical_reasons() {
+        let (_dir, pool) = temp_pool().await;
+        migrate_to_version_4_with_two_runs(&pool).await;
+        let historical_reason = stored_provenance(&pool, "run-1").await.1.expect("v4 reason");
+        assert!(historical_reason.contains("pre-migration"), "{historical_reason}");
+
+        migrate(&pool).await.expect("migrate to version 5");
+        assert_eq!(current_version(&pool).await.unwrap(), SCHEMA_VERSION);
+
+        assert_eq!(
+            stored_provenance(&pool, "run-1").await,
+            ("incomplete".to_owned(), Some(historical_reason)),
+            "a run version 4 already explained keeps that explanation verbatim"
+        );
+        assert_eq!(
+            stored_provenance(&pool, "run-2").await,
+            ("incomplete".to_owned(), Some(crate::dto::UNPINNED_REASON.to_owned()))
+        );
+
+        let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM runs").fetch_one(&pool).await.unwrap();
+        assert_eq!(total, 2);
+        let survivors: (String, String, String, String, i64) = sqlx::query_as(
+            "SELECT project_id, delivery_id, pack_version_id, status, pass_count
+               FROM runs WHERE id = 'run-2'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(
+            survivors,
+            ("p1".to_owned(), "d1".to_owned(), "pv1".to_owned(), "completed".to_owned(), 3),
+            "the column swap must not disturb the rest of the row"
+        );
+        assert!(!runs_table_ddl(&pool).await.contains("input_provenance_v5"));
+    }
+
+    #[tokio::test]
+    async fn a_fault_during_the_provenance_default_swap_rolls_back_the_whole_version() {
+        let (_dir, pool) = temp_pool().await;
+        migrate_to_version_4_with_two_runs(&pool).await;
+
+        migrate_with_fault(&pool, MigrationFault::AfterRunProvenanceDefault)
+            .await
+            .expect_err("injected fault");
+        assert_eq!(current_version(&pool).await.unwrap(), 4, "failed swap must roll back");
+        let ddl = runs_table_ddl(&pool).await;
+        assert!(!ddl.contains("input_provenance_v5"), "half-applied swap left behind: {ddl}");
+        assert!(ddl.contains("input_provenance TEXT NOT NULL DEFAULT 'complete'"), "{ddl}");
+        assert_eq!(stored_provenance(&pool, "run-2").await, ("complete".to_owned(), None));
+
+        migrate_with_fault(&pool, MigrationFault::None).await.expect("retry");
+        assert_eq!(current_version(&pool).await.unwrap(), SCHEMA_VERSION);
+        let ddl = runs_table_ddl(&pool).await;
+        assert!(ddl.contains("input_provenance TEXT NOT NULL DEFAULT 'incomplete'"), "{ddl}");
+        assert!(!ddl.contains("DEFAULT 'complete'"), "{ddl}");
+        let columns: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM pragma_table_info('runs') WHERE name LIKE 'input_provenance%'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(columns, 2, "the retry must not duplicate the swapped column");
+        assert_eq!(
+            stored_provenance(&pool, "run-2").await,
+            ("incomplete".to_owned(), Some(crate::dto::UNPINNED_REASON.to_owned()))
+        );
+    }
+
+    #[test]
+    fn an_unrecognized_stored_provenance_resolves_to_incomplete() {
+        use crate::dto::{InputProvenance, UNPINNED_REASON};
+
+        assert_eq!(InputProvenance::from_row("complete", None), InputProvenance::Complete);
+        assert_eq!(
+            InputProvenance::from_row("Complete", None),
+            InputProvenance::Incomplete { reason: UNPINNED_REASON.to_owned() },
+            "only the exact stored literal may read as proven"
+        );
+        for status in ["", "COMPLETE", "pinned", "incomplete", "\u{0}complete"] {
+            assert_eq!(
+                InputProvenance::from_row(status, Some("stored reason")),
+                InputProvenance::Incomplete { reason: "stored reason".to_owned() },
+                "status {status:?}"
+            );
+        }
     }
 
     #[tokio::test]

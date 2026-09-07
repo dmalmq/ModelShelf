@@ -16,9 +16,9 @@ use sqlx::SqlitePool;
 use crate::db::{new_id, now_iso};
 use crate::dto::{
     model_json, run_summary, severity_rank, CategoryGroup, CreateRunBody, DeliveryRow, Finding,
-    FindingObject, FindingObjectRow, FindingRow, ModelInfo, ModelRow, PackVersionRow, RunDetail,
-    RunInputProvenance, RunRow, RunSpecRow, SeverityBand, SpecResultRowOut, DELIVERY_SELECT,
-    RUN_SUMMARY_SELECT, SEVERITY_ORDER,
+    FindingObject, FindingObjectRow, FindingRow, InputProvenance, ModelInfo, ModelRow,
+    PackVersionRow, RunDetail, RunRow, RunSpecRow, SeverityBand, SpecResultRowOut,
+    DELIVERY_SELECT, RUN_SUMMARY_SELECT, SEVERITY_ORDER, UNPINNED_REASON,
 };
 use crate::error::ApiError;
 use crate::ids_meta::{finding_key, PackMetadata};
@@ -55,10 +55,11 @@ pub async fn create_run(
 
     let run_id = new_id();
     let started_at = now_iso();
+    let provenance = InputProvenance::Incomplete { reason: UNPINNED_REASON.to_owned() };
     sqlx::query(
         "INSERT INTO runs (id, project_id, delivery_id, pack_version_id, engine_version,
-             parser_version, status, started_at)
-         VALUES (?1,?2,?3,?4,?5,?6,'running',?7)",
+             parser_version, status, started_at, input_provenance, input_provenance_reason)
+         VALUES (?1,?2,?3,?4,?5,?6,'running',?7,?8,?9)",
     )
     .bind(&run_id)
     .bind(&delivery.project_id)
@@ -67,6 +68,8 @@ pub async fn create_run(
     .bind(ids::ENGINE_VERSION)
     .bind(ifc_model::PARSER_VERSION)
     .bind(&started_at)
+    .bind(provenance.status())
+    .bind(provenance.reason())
     .execute(&state.pool)
     .await?;
 
@@ -440,10 +443,11 @@ pub async fn run_detail(pool: &SqlitePool, run_id: &str) -> Result<RunDetail, Ap
         scorecard,
         specs,
         review_incomplete: incomplete,
-        input_provenance: RunInputProvenance {
-            status: row.input_provenance.clone(),
-            reason: row.input_provenance_reason.clone(),
-        },
+        input_provenance: InputProvenance::from_row(
+            &row.input_provenance,
+            row.input_provenance_reason.as_deref(),
+        )
+        .into(),
     })
 }
 

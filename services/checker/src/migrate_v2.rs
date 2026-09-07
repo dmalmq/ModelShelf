@@ -242,6 +242,21 @@ pub(crate) async fn stamp_historical_run_provenance(
     Ok(())
 }
 
+/// Runs created after version 4 took its `'complete'` default with nothing having pinned
+/// their inputs. A null reason is exactly that set: version 4 stamped every run that
+/// pre-dated it with a reason of its own, which stays as written.
+pub(crate) async fn stamp_unpinned_run_provenance(
+    tx: &mut Transaction<'_, Sqlite>,
+) -> anyhow::Result<()> {
+    sqlx::query(
+        "UPDATE runs SET input_provenance_reason = ?1 WHERE input_provenance_reason IS NULL",
+    )
+    .bind(crate::dto::UNPINNED_REASON)
+    .execute(&mut **tx)
+    .await?;
+    Ok(())
+}
+
 async fn tables_referencing(
     tx: &mut Transaction<'_, Sqlite>,
     target: &str,
