@@ -5,8 +5,8 @@ Parent: ../map.md
 Type: task
 Mode: AFK
 Labels: wayfinder:task, ready-for-agent
-Status: open
-Assignee: unassigned
+Status: resolved
+Assignee: orca-timingila-t08
 Blocked by: 06, 07
 Wave: 1
 Original plan coverage: 5
@@ -66,3 +66,63 @@ Append an Answer with changes, exact commands/results, evidence links, remaining
 ## Comments
 
 Created from the approved prototype plan on 2026-09-06. No implementation is claimed by ticket creation.
+
+## Answer
+
+Selecting a live grouped finding highlights every accessible member, isolates and frames the set, and offers source/discipline/storey/type filters, section cut, dimming, isolation reset, and property inspection. Members without drawable geometry keep textual evidence; hidden selections are explicit.
+
+### Behavior
+
+- The delivery page gains a Findings tab beside Selection. A run picker defaults to the latest completed run (`?run=` deep-links); findings flatten the run scorecard plus review-incomplete rows.
+- Selecting a finding pages the complete affected set past the embedded 25, paints one severity-colored highlight group, isolates the set, dims the rest to 0.25, and frames it. Counts report matched vs total members.
+- Source/discipline/storey/type filters compile to revision-qualified ObjectRef subsets applied through generic isolation; Reset clears isolation, filters, section, and dimming.
+- Section Z input clips above a project height (controller converts to world coordinates against the shared origin); property inspection fetches `/api/objects/:id` for finding members.
+- Members with no renderable identity and convertible members with no drawable geometry share one evidence panel with expected/instructions text; incomplete findings always show it with a review-incomplete explanation.
+- Rendering-core additions are generic only: `setHighlights` (later groups win), `isolate` (composes with discipline visibility), `setSectionZ` (world clip plane), `setDimOpacity` (color blend toward white while highlights are active). No finding, severity, or requirement concept entered the core.
+
+### Files
+
+- Inspector UI: `apps/web/src/components/viewer/finding-inspector.tsx`, `apps/web/src/components/viewer/findings-api.ts`
+- Generic core: `apps/web/src/components/viewer/types.ts`, `delivery-controller.ts`, `renderer-owner.ts`
+- Host: `apps/web/src/components/viewer/combined-delivery-viewer.tsx` (Findings tab, extended verify handle)
+- Prover: `scripts/verify-viewer-inspection.mjs` (dispatched by `scripts/verify-viewer.mjs --scenario inspection`)
+
+### Commands
+
+```text
+npm --prefix apps/web run typecheck
+# passed
+
+npm --prefix apps/web run build
+# passed
+
+node scripts/generate-model-contracts.mjs --check
+# passed, no drift
+
+node scripts/verify-viewer.mjs --scenario inspection
+# passed in ~245 s; 23 named browser checks
+
+node scripts/verify-viewer.mjs
+# passed in ~65 s; combined/duplicate/empty regression green
+
+git diff --check
+# passed
+```
+
+The run scored a live checker + IfcTester worker: a BLCJ S1000 delivery (ARCH/STRUCT/MEP) run against the BLCJ v2 pack plus a synthetic-fixtures delivery run against the same pack. The flow-segment finding holds 107 affected objects across 4 storeys; all 107 requested, 107 matched, 0 unaccounted. Storey filtering narrowed isolation 107 to 33 (1FL); hidden selection, reset, section clip, property panel (IfcFlowSegment), and the incomplete-finding evidence panel were asserted against `/api` evidence in the browser.
+
+### Evidence
+
+- [Structured browser results](../evidence/08-finding-inspection/results.json)
+- [Selection and hidden notice](../evidence/08-finding-inspection/inspection-selection.png)
+- [Storey isolation](../evidence/08-finding-inspection/inspection-isolated.png)
+- [Section cut](../evidence/08-finding-inspection/inspection-section.png)
+- [Incomplete evidence](../evidence/08-finding-inspection/inspection-evidence.png)
+- [Browser and server log](../evidence/08-finding-inspection/verifier.log)
+
+### Limits
+
+- Synthetic fixture geometry is not triangulable by the browser IFC engine (`GetMesh() unexpected mesh type`), so the 100+ member proof uses the real BLCJ MEP flow-segment finding; the fixtures delivery covers the incomplete-evidence path.
+- Dimming blends toward white; BatchedMesh exposes no per-instance alpha.
+- Revision-only targeting rides revision-qualified ObjectRef keys (07 duplicate-GlobalId proof still holds); this run's large finding lives in one revision.
+- No database, schema, backend response, or shared-contract change.

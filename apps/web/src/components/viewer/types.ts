@@ -97,6 +97,14 @@ export interface DrawTarget {
   readonly baseColor: readonly [number, number, number];
 }
 
+/** A paint group. Later groups win when an object appears in several groups. */
+export interface ViewerHighlight {
+  readonly refs: readonly ObjectRef[];
+  /** CSS hex colour, e.g. "#e02424". */
+  readonly color: string;
+  readonly label?: string;
+}
+
 export interface SelectionRecord {
   readonly ref: ObjectRef;
   readonly expressId: number;
@@ -137,6 +145,15 @@ export interface RendererDiagnostics {
     offset: readonly [number, number, number];
     visible: boolean;
   }>[];
+  readonly highlightGroups: readonly Readonly<{
+    label: string | null;
+    color: string;
+    requested: number;
+    matched: number;
+  }>[];
+  readonly isolatedMatched: number | null;
+  readonly selectedHidden: boolean;
+  readonly clipping: boolean;
 }
 
 export interface ViewerDiagnostics {
@@ -150,6 +167,9 @@ export interface ViewerDiagnostics {
     globalId: string | null;
     targetCount: number;
   }>[];
+  readonly isolatedRequested: number | null;
+  readonly sectionZ: number | null;
+  readonly selectedHidden: boolean;
 }
 
 export interface DeliveryViewerController {
@@ -160,6 +180,14 @@ export interface DeliveryViewerController {
   select(ref: ObjectRef | null): void;
   frame(refs: readonly ObjectRef[]): void;
   setDisciplineVisibility(discipline: Discipline, visible: boolean): void;
+  /** Paint revision-qualified paint groups; empty clears. Later groups win. */
+  setHighlights(groups: readonly ViewerHighlight[]): void;
+  /** Show only these objects; null clears. Composes with discipline visibility. */
+  isolate(refs: readonly ObjectRef[] | null): void;
+  /** Clip everything above z (metres, project origin); null removes the clip. */
+  setSectionZ(z: number | null): void;
+  /** Blend factor for non-highlighted objects while highlights are active, 0..1. */
+  setDimOpacity(opacity: number): void;
   fitAll(): void;
   resourceStats(): ViewerResourceStats;
   diagnostics(): ViewerDiagnostics;
@@ -181,6 +209,11 @@ export interface ViewerRenderer {
   selectionRecords(): readonly SelectionRecord[];
   frame(refs: readonly ObjectRef[]): void;
   setDisciplineVisibility(discipline: Discipline, visible: boolean): void;
+  setHighlights(groups: readonly ViewerHighlight[]): void;
+  isolate(refs: readonly ObjectRef[] | null): void;
+  /** Clip above z in world coordinates; null removes the clip. */
+  setSectionZ(worldZ: number | null): void;
+  setDimOpacity(opacity: number): void;
   fitAll(): void;
   diagnostics(): RendererDiagnostics;
   dispose(): void;

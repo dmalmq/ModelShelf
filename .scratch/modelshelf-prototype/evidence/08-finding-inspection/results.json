@@ -1,0 +1,50 @@
+{
+  "passed": true,
+  "checks": [
+    "seed succeeds",
+    "BLCJ pack version is published",
+    "all three BLCJ revisions ingest",
+    "BLCJ run completes",
+    "both fixture revisions ingest",
+    "fixtures run completes with honest incomplete findings",
+    "flow-segment finding carries a 100+ object set (got 107)",
+    "paging retrieves the full affected set",
+    "fixtures run exposes a non-geometric incomplete finding",
+    "highlight requests every affected object (107)",
+    "over 100 finding members are accessible in the viewer (107)",
+    "members without drawable geometry are accounted, not silently dropped (0 missing)",
+    "selecting a finding isolates its full member set",
+    "finding members span more than one storey for filter narrowing",
+    "a member outside the narrowed storey exists for the hidden-selection proof",
+    "storey filter narrows isolation (1FL: 33)",
+    "selecting an object outside the isolation is reported as hidden",
+    "hidden selection renders an explicit notice",
+    "reset view clears isolation and reveals the selection",
+    "section cut clips above the project height",
+    "canvas picking selects geometry beside the inspector",
+    "property inspection shows the selected object record",
+    "non-geometric finding renders evidence with an explanation"
+  ],
+  "runA": {
+    "deliveryId": "5fc384fc-2976-45cd-a8bf-7d4191c80ed4",
+    "runId": "71369df5-9232-46b6-848e-8117fc9a7ce5",
+    "findingId": "ba54825e-6717-486b-8ee5-bb1c4a450b84",
+    "objectCount": 107
+  },
+  "runB": {
+    "deliveryId": "33ed17fb-296f-4b15-ac55-a892cb857107",
+    "runId": "48b96a8c-0a4b-456b-906b-b0dfae55e6d1",
+    "incompleteCount": 9
+  },
+  "highlight": {
+    "label": "MEP flow segment records its outer diameter",
+    "color": "#3b82f6",
+    "requested": 107,
+    "matched": 107
+  },
+  "isolation": {
+    "storey": "1FL",
+    "isolatedRequested": 33
+  },
+  "propertySample": "Type\nIfcFlowSegment\nName\n【ダクト】排煙ダクト 400×300\nStorey\n1FL\nPset_BE-Bridge_Common.connecting_point_1\n3500.000000,11008.771430,3500.000000,D00236\nPset_BE-Bridge_Common.connecting_point_2\n3500.000000,10025.771430,3500.000000,D00238\nPset_BE-Bridge_Common.connecting_point_3\n0\nPset_BE-Bridge_Common.connecting_point_4\n0\nPset_BE-Bridge_Common.data_class\nD\nPset_BE-Bridge_Common.main_vecter\n0.000000,-1.000000,0"
+}

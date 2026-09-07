@@ -1,0 +1,432 @@
+checker: 2026-09-07T07:35:39.486162Z  INFO modelshelf_checker: modelshelf-checker listening addr=127.0.0.1:41615
+   ▲ Next.js 15.5.25
+   - Local:        http://localhost:36659
+   - Network:      http://10.255.255.254:36659
+
+ ✓ Starting...
+ ✓ Ready in 1060ms
+ ○ Compiling /deliveries/[deliveryId] ...
+ ✓ Compiled /deliveries/[deliveryId] in 1175ms (840 modules)
+ GET /deliveries/5fc384fc-2976-45cd-a8bf-7d4191c80ed4?run=71369df5-9232-46b6-848e-8117fc9a7ce5 200 in 1754ms
+ GET /deliveries/5fc384fc-2976-45cd-a8bf-7d4191c80ed4?run=71369df5-9232-46b6-848e-8117fc9a7ce5 200 in 43ms
+browser info: %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+ ⚠ Cross origin request detected from 127.0.0.1 to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+browser warning: [.WebGL-0x267c0018f400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+browser warning: [.WebGL-0x267c0018f400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+browser warning: [.WebGL-0x267c0018f400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+browser warning: [.WebGL-0x267c0018f400]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 343644
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 345785
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 346732
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 352724
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 354001
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 354053
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 356923
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 358049
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 358100
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 343644
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 343644
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 405916
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 406426
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 406562
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 406969
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 407294
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 407543
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 407561
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 407800
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 345785
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 346732
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 418750
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 418782
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 419685
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 419710
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 419780
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 419813
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 420832
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 626016
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 626020
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 626023
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 626032
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 626231
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 626235
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 626240
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 626246
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 626249
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 626252
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 628507
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 628510
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 628513
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 628522
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 628693
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 628696
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 628699
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 628705
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 628708
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 628711
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 631389
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 631392
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 631395
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 631401
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 631404
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 631407
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 631606
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 631615
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 631618
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 631621
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 633808
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 633811
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 633814
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 633820
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 633823
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 633826
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 633997
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 634006
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 634009
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 634012
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 636841
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 638930
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 641701
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 643699
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 343644
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 343644
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 405916
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 406426
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 406562
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 406969
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 407294
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 407543
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 407561
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 407800
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 345785
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 346732
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 742151
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 742154
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 742157
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 742166
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 742337
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 742340
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 742343
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 742349
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 742352
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 742355
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 744422
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 744425
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 744428
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 744437
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 744608
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 744611
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 744614
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 744620
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 744623
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 744626
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 747095
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 747098
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 747101
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 747107
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 747110
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 747113
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 747284
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 747293
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 747296
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 747299
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 749366
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 749369
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 749372
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 749378
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 749381
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 749384
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 749555
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 749564
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 749567
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 749570
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 752076
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 754074
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 756820
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 758818
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 418750
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 418782
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 419685
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 419710
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 419780
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 419813
+browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 420832
+ GET /deliveries/33ed17fb-296f-4b15-ac55-a892cb857107?run=48b96a8c-0a4b-456b-906b-b0dfae55e6d1 200 in 78ms
+browser info: %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 24
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 37
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 50
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 63
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 76
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 89
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 102
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 115
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 128
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 141
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 154
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 167
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 180
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 193
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 206
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 219
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 232
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 245
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 258
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 271
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 284
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 297
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 310
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 323
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 336
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 349
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 362
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 375
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 388
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 401
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 414
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 427
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 440
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 453
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 466
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 479
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 492
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 505
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 518
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 531
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 544
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 557
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 570
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 583
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 596
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 609
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 622
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 635
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 648
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 661
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 674
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 687
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 700
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 713
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 726
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 739
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 752
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 765
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 778
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 791
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 804
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 817
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 830
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 843
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 856
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 869
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 882
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 895
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 908
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 921
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 934
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 947
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 960
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 973
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 986
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 999
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1012
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1025
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1038
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1051
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1064
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1077
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1090
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1103
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1116
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1129
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1142
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1155
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1168
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1181
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1194
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1207
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1220
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1233
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1246
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1259
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1272
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1285
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1298
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1311
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1324
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1337
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1350
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1363
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1376
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1389
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1402
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1415
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1428
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1441
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1454
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1467
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1480
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1493
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1506
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1519
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1532
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1545
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1558
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1571
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1584
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1597
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1610
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1623
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1639
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1655
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1671
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1684
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1697
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1710
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1723
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1736
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1749
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1762
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1775
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1788
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1801
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1814
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 24
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 37
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 50
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 63
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 76
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 89
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 102
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 115
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 128
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 141
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 154
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 167
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 180
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 193
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 206
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 219
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 232
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 245
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 258
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 271
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 284
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 297
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 310
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 323
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 336
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 349
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 362
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 375
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 388
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 401
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 414
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 427
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 440
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 453
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 466
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 479
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 492
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 505
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 518
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 531
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 544
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 557
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 570
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 583
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 596
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 609
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 622
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 635
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 648
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 661
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 674
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 687
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 700
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 713
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 726
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 739
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 752
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 765
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 778
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 791
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 804
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 817
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 830
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 843
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 856
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 869
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 882
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 895
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 908
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 921
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 934
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 947
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 960
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 973
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 986
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 999
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1012
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1025
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1038
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1051
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1064
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1077
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1090
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1103
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1116
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1129
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1142
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1155
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1168
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1181
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1194
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1207
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1220
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1233
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1246
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1259
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1272
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1285
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1298
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1311
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1324
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1337
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1350
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1363
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1376
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1389
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1402
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1415
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1428
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1441
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1454
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1467
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1480
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1493
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1506
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1519
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1532
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1545
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1558
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1571
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1584
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1597
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1610
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1623
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1639
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1655
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1671
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1684
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1697
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1710
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1723
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1736
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1749
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1762
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1775
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1788
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1801
+browser log: [WEB-IFC][error][GetMesh()] unexpected mesh type 1814
+[?25h

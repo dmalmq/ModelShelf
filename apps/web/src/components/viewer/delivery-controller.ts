@@ -13,6 +13,7 @@ import {
   type RevisionId,
   type SelectionRecord,
   type ViewerDiagnostics,
+  type ViewerHighlight,
   type ViewerRenderer,
   type ViewerResourceStats,
 } from "./types";
@@ -76,6 +77,8 @@ class DeliveryViewerControllerImpl implements DeliveryViewerController {
   private started = false;
   private initialReady = false;
   private disposed = false;
+  private isolatedRequested: number | null = null;
+  private sectionZ: number | null = null;
 
   constructor(
     delivery: DeliveryDetail,
@@ -158,6 +161,33 @@ class DeliveryViewerControllerImpl implements DeliveryViewerController {
     if (!this.disposed) this.renderer.setDisciplineVisibility(discipline, visible);
   }
 
+  setHighlights(groups: readonly ViewerHighlight[]): void {
+    if (this.disposed) return;
+    this.renderer.setHighlights(groups);
+    this.emit();
+  }
+
+  isolate(refs: readonly ObjectRef[] | null): void {
+    if (this.disposed) return;
+    this.isolatedRequested = refs === null ? null : refs.length;
+    this.renderer.isolate(refs);
+    this.emit();
+  }
+
+  setSectionZ(z: number | null): void {
+    if (this.disposed) return;
+    if (z !== null && !Number.isFinite(z)) throw new Error("section Z must be a finite number");
+    this.sectionZ = z;
+    this.applySection();
+    this.emit();
+  }
+
+  setDimOpacity(opacity: number): void {
+    if (this.disposed) return;
+    this.renderer.setDimOpacity(opacity);
+    this.emit();
+  }
+
   fitAll(): void {
     if (!this.disposed) this.renderer.fitAll();
   }
@@ -179,6 +209,9 @@ class DeliveryViewerControllerImpl implements DeliveryViewerController {
         globalId: record.globalId,
         targetCount: record.targets.length,
       })),
+      isolatedRequested: this.isolatedRequested,
+      sectionZ: this.sectionZ,
+      selectedHidden: this.renderer.diagnostics().selectedHidden,
     };
   }
 
@@ -199,6 +232,8 @@ class DeliveryViewerControllerImpl implements DeliveryViewerController {
     }
     this.renderer.dispose();
     this.selected = null;
+    this.isolatedRequested = null;
+    this.sectionZ = null;
     this.listeners.clear();
   }
 
@@ -408,8 +443,18 @@ class DeliveryViewerControllerImpl implements DeliveryViewerController {
       fitCamera = this.origin !== null;
     }
     if (this.origin) this.renderer.setOrigin(this.origin);
+    this.applySection();
     this.renderer.reveal(fitCamera);
     this.emit();
+  }
+
+  private applySection(): void {
+    if (this.sectionZ === null) {
+      this.renderer.setSectionZ(null);
+      return;
+    }
+    if (!this.origin) return;
+    this.renderer.setSectionZ(this.sectionZ - this.origin[2]);
   }
 
   private removeSelectionForRevision(revisionId: RevisionId): void {

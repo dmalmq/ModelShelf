@@ -6,6 +6,7 @@ import type { Discipline, DeliveryDetail } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { fetchDelivery, modelForDelivery } from "./delivery-api";
 import { createDeliveryViewer } from "./delivery-controller";
+import { FindingInspector } from "./finding-inspector";
 import { parseObjectRef } from "./object-ref";
 import type {
   DeliverySnapshot,
@@ -13,6 +14,7 @@ import type {
   ModelLoadState,
   ObjectRef,
   ViewerDiagnostics,
+  ViewerHighlight,
   ViewerResourceStats,
 } from "./types";
 
@@ -23,6 +25,10 @@ interface CombinedDeliveryViewerProps {
 interface ViewerVerificationHandle {
   inspect(): ViewerDiagnostics;
   select(ref: ObjectRef): void;
+  highlight(groups: ViewerHighlight[]): void;
+  isolate(refs: ObjectRef[] | null): void;
+  section(z: number | null): void;
+  dim(opacity: number): void;
   fitAll(): void;
   dispose(): ViewerResourceStats;
 }
@@ -53,6 +59,12 @@ export function CombinedDeliveryViewer({
   const [visible, setVisible] = useState<Record<Discipline, boolean>>({
     ...DEFAULT_VISIBILITY,
   });
+  const [panelTab, setPanelTab] = useState<"selection" | "findings">("selection");
+  const [initialRunId] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const run = new URLSearchParams(window.location.search).get("run");
+    return run && run.trim().length > 0 ? run : null;
+  });
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -80,6 +92,10 @@ export function CombinedDeliveryViewer({
       window.__modelshelfViewer = {
         inspect: () => controller.diagnostics(),
         select: (ref) => controller.select(parseObjectRef(ref)),
+        highlight: (groups) => controller.setHighlights(groups),
+        isolate: (refs) => controller.isolate(refs),
+        section: (z) => controller.setSectionZ(z),
+        dim: (opacity) => controller.setDimOpacity(opacity),
         fitAll: () => controller.fitAll(),
         dispose: () => {
           controller.dispose();
@@ -216,11 +232,38 @@ export function CombinedDeliveryViewer({
         </section>
 
         <aside className="order-3 border-t bg-card xl:min-h-0 xl:border-l xl:border-t-0">
-          <div className="border-b px-4 py-3">
-            <h2 className="text-sm font-semibold">Selection / 選択</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">Revision-qualified object identity</p>
+          <div className="flex gap-1 border-b px-4 py-2" role="tablist" aria-label="Inspector panels">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={panelTab === "selection"}
+              onClick={() => setPanelTab("selection")}
+              className="px-2 py-1 text-sm font-semibold aria-selected:underline"
+            >
+              Selection / 選択
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={panelTab === "findings"}
+              onClick={() => setPanelTab("findings")}
+              className="px-2 py-1 text-sm font-semibold aria-selected:underline"
+            >
+              Findings / 指摘
+            </button>
           </div>
+          {panelTab === "findings" ? (
+            <div className="p-4">
+              <FindingInspector
+                delivery={delivery}
+                getController={() => controllerRef.current}
+                selected={selected}
+                initialRunId={initialRunId}
+              />
+            </div>
+          ) : (
           <div className="p-4">
+            <p className="mb-2 text-xs text-muted-foreground">Revision-qualified object identity</p>
             {selected ? (
               <dl className="space-y-3 text-xs">
                 <Info label="Revision ID" value={selected.ref.revisionId} />
@@ -245,6 +288,7 @@ export function CombinedDeliveryViewer({
               </p>
             )}
           </div>
+          )}
         </aside>
       </div>
     </main>
