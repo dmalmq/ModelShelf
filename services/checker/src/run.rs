@@ -3,26 +3,28 @@
 //! A run binds `pack_version + model content hashes + engine/parser versions` and stores
 //! findings grouped by distinct violated requirement. Object-level outcomes are folded
 //! into those findings, never listed one row per object — a manager reading "124 walls
-//! missing a fire rating" needs one line, not 124.
+//! missing a fire rating" needs one line, not 124. IfcTester is the scorer; `crates/ids`
+//! is only used here to list specification names for discipline scope.
 
 use std::collections::HashMap;
 
 use axum::extract::{Path, State};
 use axum::Json;
-use ids::{Ids, Outcome};
-use ifc_model::IfcModel;
+use serde::Deserialize;
 use sqlx::SqlitePool;
 
 use crate::db::{new_id, now_iso};
 use crate::dto::{
-    model_json, run_summary, severity_rank, CategoryGroup, CreateRunBody, DeliveryRow, Finding,
-    FindingObject, FindingObjectRow, FindingRow, InputProvenance, ModelInfo, ModelRow,
-    PackVersionRow, RunDetail, RunRow, RunSpecRow, SeverityBand, SpecResultRowOut,
-    DELIVERY_SELECT, RUN_SUMMARY_SELECT, SEVERITY_ORDER, UNPINNED_REASON,
+    finding_object_json, model_json, run_summary, severity_rank, CategoryGroup, CreateRunBody,
+    DeliveryRow, Finding, FindingObject, FindingObjectRow, FindingRow, InputProvenance, ModelInfo,
+    ModelRow, PackVersionRow, RunDetail, RunRow, RunSpecRow, SeverityBand, SpecResultRowOut,
+    DELIVERY_SELECT, RUN_SUMMARY_SELECT, SEVERITY_ORDER,
 };
 use crate::error::ApiError;
-use crate::ids_meta::{finding_key, PackMetadata};
+use crate::ids_meta::{finding_key, PackMetadata, CHECK_ENGINE_VERSION, CHECK_PARSER_VERSION};
+use crate::jobs::{IdsInput, WorkerInvocation};
 use crate::state::AppState;
+use crate::upload::sha256_hex;
 
 /// Affected objects embedded directly in the scorecard; the rest are paged.
 const SAMPLE_OBJECTS: i64 = 25;
@@ -53,28 +55,73 @@ pub async fn create_run(
         return Err(ApiError::bad_request("delivery has no models to check"));
     }
 
+    let parsed_ids = ids::Ids::parse(&pack_version.ids_xml)
+        .map_err(|err| ApiError::parse_failed(format!("pack version is not valid IDS: {err}")))?;
+    let spec_names: Vec<String> = parsed_ids.specifications.iter().map(|spec| spec.name.clone()).collect();
+    let metadata = PackMetadata::parse(pack_version.metadata_json.as_deref());
+    let mut scope: HashMap<String, Vec<String>> = HashMap::new();
+    for model in &models {
+        scope
+            .entry(model.discipline.clone())
+            .or_insert_with(|| metadata.specification_ids_for(&spec_names, &model.discipline));
+    }
+    let pack_metadata_sha256 = pack_version.metadata_json.as_deref().map(|text| sha256_hex(text.as_bytes()));
+    let engine_profile = serde_json::json!({
+        "worker": "0.1.0",
+        "ifcTester": "0.8.5",
+        "ifcOpenShell": "0.8.5",
+        "operation": "validate",
+    })
+    .to_string();
+    let scope_json = serde_json::to_string(&scope).unwrap_or_else(|_| "{}".to_owned());
+
     let run_id = new_id();
     let started_at = now_iso();
-    let provenance = InputProvenance::Incomplete { reason: UNPINNED_REASON.to_owned() };
+    let provenance = InputProvenance::Complete;
+    let mut tx = state.pool.begin().await?;
     sqlx::query(
         "INSERT INTO runs (id, project_id, delivery_id, pack_version_id, engine_version,
-             parser_version, status, started_at, input_provenance, input_provenance_reason)
-         VALUES (?1,?2,?3,?4,?5,?6,'running',?7,?8,?9)",
+             parser_version, status, started_at, input_provenance, input_provenance_reason,
+             ids_sha256, pack_metadata_sha256, scope_json, engine_profile_json)
+         VALUES (?1,?2,?3,?4,?5,?6,'running',?7,?8,?9,?10,?11,?12,?13)",
     )
     .bind(&run_id)
     .bind(&delivery.project_id)
     .bind(&delivery.id)
     .bind(&pack_version.id)
-    .bind(ids::ENGINE_VERSION)
-    .bind(ifc_model::PARSER_VERSION)
+    .bind(CHECK_ENGINE_VERSION)
+    .bind(CHECK_PARSER_VERSION)
     .bind(&started_at)
     .bind(provenance.status())
     .bind(provenance.reason())
-    .execute(&state.pool)
+    .bind(&pack_version.ids_sha256)
+    .bind(&pack_metadata_sha256)
+    .bind(&scope_json)
+    .bind(&engine_profile)
+    .execute(&mut *tx)
     .await?;
+    for (index, model) in models.iter().enumerate() {
+        sqlx::query(
+            "INSERT INTO run_models (run_id, model_revision_id, source_model_id, source_model_name,
+                 discipline, filename, content_sha256, byte_size, sort_index)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
+        )
+        .bind(&run_id)
+        .bind(&model.id)
+        .bind(&model.source_model_id)
+        .bind(&model.source_model_name)
+        .bind(&model.discipline)
+        .bind(&model.filename)
+        .bind(&model.content_sha256)
+        .bind(model.byte_size)
+        .bind(index as i64)
+        .execute(&mut *tx)
+        .await?;
+    }
+    tx.commit().await?;
 
     let clock = std::time::Instant::now();
-    match execute(&state, &run_id, &pack_version, &models).await {
+    match execute(&state, &run_id, &pack_version, &models, &metadata, &scope).await {
         Ok(()) => {
             sqlx::query(
                 "UPDATE runs SET status = 'completed', finished_at = ?2, duration_ms = ?3
@@ -105,110 +152,92 @@ pub async fn create_run(
     Ok(Json(detail))
 }
 
-/// Parse every model, evaluate the pinned pack, and persist findings.
+/// Invoke IfcTester per pinned model and persist grouped findings.
 async fn execute(
     state: &AppState,
     run_id: &str,
     pack_version: &PackVersionRow,
     models: &[ModelRow],
+    metadata: &PackMetadata,
+    scope: &HashMap<String, Vec<String>>,
 ) -> Result<(), ApiError> {
-    let ids = Ids::parse(&pack_version.ids_xml)
-        .map_err(|err| ApiError::parse_failed(format!("pack version is not valid IDS: {err}")))?;
-    let metadata = PackMetadata::parse(pack_version.metadata_json.as_deref());
+    let run_dir = state.data_dir.join("runs").join(run_id);
+    tokio::fs::create_dir_all(&run_dir)
+        .await
+        .map_err(|err| ApiError::internal(format!("cannot create run directory: {err}")))?;
+    let ids_path = run_dir.join("pack.ids");
+    tokio::fs::write(&ids_path, pack_version.ids_xml.as_bytes())
+        .await
+        .map_err(|err| ApiError::internal(format!("cannot write pinned IDS: {err}")))?;
+    let ids_path = ids_path
+        .canonicalize()
+        .map_err(|err| ApiError::internal(format!("cannot resolve pinned IDS: {err}")))?;
 
     let mut totals = Totals::default();
-    // finding_key -> accumulated finding
     let mut findings: HashMap<String, Accumulated> = HashMap::new();
+    let mut spec_rows: HashMap<String, SpecAccum> = HashMap::new();
 
     for model_row in models {
-        let bytes = state
-            .read_verified_blob(&model_row.storage_path, &model_row.content_sha256)
-            .await?;
-        let model = IfcModel::parse(&bytes)
-            .map_err(|err| ApiError::parse_failed(format!("{}: {err}", model_row.filename)))?;
-        let report = ids::evaluate(&model, &ids);
-
-        totals.pass += report.total_pass as i64;
-        totals.fail += report.total_fail as i64;
-        totals.not_applicable += report.total_not_applicable as i64;
-        totals.incomplete += report.total_incomplete as i64;
-
-        for spec in &report.specs {
-            sqlx::query(
-                "INSERT INTO run_specs (id, run_id, spec_identifier, spec_name, outcome,
-                     applicable_count, pass_count, fail_count, incomplete_count, notes_json)
-                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
-            )
-            .bind(new_id())
-            .bind(run_id)
-            .bind(spec.identifier.clone())
-            .bind(&spec.name)
-            .bind(outcome_str(spec.outcome))
-            .bind(spec.applicable_count as i64)
-            .bind(spec.pass_count as i64)
-            .bind(spec.fail_count as i64)
-            .bind(spec.incomplete_count as i64)
-            .bind(serde_json::to_string(&spec.notes).unwrap_or_else(|_| "[]".to_owned()))
-            .execute(&state.pool)
-            .await?;
-
-            let spec_key = spec.identifier.clone().unwrap_or_else(|| spec.name.clone());
-            let triage = metadata.triage(spec.identifier.as_deref(), &spec.name);
-
-            // A specification that fails as a whole (e.g. nothing matched a required
-            // applicability) still needs a finding, or the failure would vanish.
-            if spec.outcome == Outcome::Fail && spec.outcomes.is_empty() {
-                let requirement = spec
-                    .notes
-                    .first()
-                    .cloned()
-                    .unwrap_or_else(|| "specification-level failure".to_owned());
-                let key = finding_key(&spec_key, "specification", &requirement);
-                findings.entry(key.clone()).or_insert_with(|| Accumulated {
-                    key,
-                    spec_identifier: spec.identifier.clone(),
-                    spec_name: spec.name.clone(),
-                    severity: triage.severity.clone(),
-                    category_id: triage.category_id.clone(),
-                    category_label: triage.category_label.clone(),
-                    facet: "entity".to_owned(),
-                    title: triage.title.clone(),
-                    requirement,
-                    expected: None,
-                    instructions: spec.instructions.clone(),
-                    incomplete: false,
-                    objects: Vec::new(),
-                });
-                continue;
-            }
-
-            for outcome in &spec.outcomes {
-                let facet = outcome.facet.as_str().to_owned();
-                let key = finding_key(&spec_key, &facet, &outcome.requirement);
-                let entry = findings.entry(key.clone()).or_insert_with(|| Accumulated {
-                    key: key.clone(),
-                    spec_identifier: spec.identifier.clone(),
-                    spec_name: spec.name.clone(),
-                    severity: triage.severity.clone(),
-                    category_id: triage.category_id.clone(),
-                    category_label: triage.category_label.clone(),
-                    facet,
-                    title: triage.title.clone(),
-                    requirement: outcome.requirement.clone(),
-                    expected: outcome.expected.clone(),
-                    instructions: spec.instructions.clone(),
-                    incomplete: outcome.incomplete_reason.is_some(),
-                    objects: Vec::new(),
-                });
-                entry.objects.push(AffectedObject {
-                    model_id: model_row.id.clone(),
-                    express_id: outcome.express_id as i64,
-                    global_id: outcome.global_id.clone(),
-                    actual: outcome.actual.clone(),
-                    incomplete_reason: outcome.incomplete_reason.clone(),
-                });
-            }
+        let spec_ids = scope.get(&model_row.discipline).cloned().unwrap_or_default();
+        if spec_ids.is_empty() {
+            continue;
         }
+        let output_dir = run_dir.join(&model_row.id);
+        tokio::fs::create_dir_all(&output_dir)
+            .await
+            .map_err(|err| ApiError::internal(format!("cannot create model output dir: {err}")))?;
+        let artifacts = crate::jobs::invoke_worker(
+            state,
+            WorkerInvocation {
+                job_id: format!("{run_id}-{}", model_row.id),
+                revision_id: model_row.id.clone(),
+                content_sha256: model_row.content_sha256.clone(),
+                blob_path: state.blob_path(&model_row.content_sha256),
+                output_dir,
+                operation: "validate",
+                ids: Some(IdsInput {
+                    path: ids_path.clone(),
+                    sha256: pack_version.ids_sha256.clone(),
+                    specification_ids: Some(spec_ids),
+                }),
+                geometry: false,
+            },
+        )
+        .await
+        .map_err(|err| ApiError::parse_failed(format!("{}: {err}", model_row.filename)))?;
+
+        let outcomes = parse_outcomes(&artifacts.outcomes)
+            .map_err(|err| ApiError::parse_failed(format!("{}: {err}", model_row.filename)))?;
+        for outcome in outcomes {
+            fold_outcome(
+                &mut totals,
+                &mut findings,
+                &mut spec_rows,
+                metadata,
+                model_row,
+                outcome,
+            );
+        }
+    }
+
+    for spec in spec_rows.into_values() {
+        sqlx::query(
+            "INSERT INTO run_specs (id, run_id, spec_identifier, spec_name, outcome,
+                 applicable_count, pass_count, fail_count, incomplete_count, notes_json)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
+        )
+        .bind(new_id())
+        .bind(run_id)
+        .bind(spec.identifier)
+        .bind(&spec.name)
+        .bind(spec.outcome.as_str())
+        .bind(spec.applicable_count)
+        .bind(spec.pass_count)
+        .bind(spec.fail_count)
+        .bind(spec.incomplete_count)
+        .bind(serde_json::to_string(&spec.notes).unwrap_or_else(|_| "[]".to_owned()))
+        .execute(&state.pool)
+        .await?;
     }
 
     persist_findings(&state.pool, run_id, findings).await?;
@@ -225,6 +254,183 @@ async fn execute(
     .execute(&state.pool)
     .await?;
     Ok(())
+}
+
+#[derive(Deserialize)]
+struct OutcomeWire {
+    #[serde(rename = "specificationId")]
+    specification_id: Option<String>,
+    #[serde(rename = "specificationName")]
+    specification_name: String,
+    requirement: String,
+    status: String,
+    #[serde(rename = "applicableCount")]
+    applicable_count: i64,
+    #[serde(rename = "passedCount")]
+    passed_count: i64,
+    #[serde(rename = "failedCount")]
+    failed_count: i64,
+    failures: Vec<FailureWire>,
+}
+
+#[derive(Deserialize)]
+struct FailureWire {
+    #[serde(rename = "expressId")]
+    express_id: i64,
+    #[serde(rename = "globalId")]
+    global_id: Option<String>,
+    reason: String,
+}
+
+fn parse_outcomes(bytes: &[u8]) -> Result<Vec<OutcomeWire>, String> {
+    let text = std::str::from_utf8(bytes).map_err(|err| format!("outcomes are not utf-8: {err}"))?;
+    let mut rows = Vec::new();
+    for (index, line) in text.lines().filter(|line| !line.is_empty()).enumerate() {
+        let row: OutcomeWire = serde_json::from_str(line)
+            .map_err(|err| format!("outcomes.jsonl line {}: {err}", index + 1))?;
+        rows.push(row);
+    }
+    Ok(rows)
+}
+
+fn fold_outcome(
+    totals: &mut Totals,
+    findings: &mut HashMap<String, Accumulated>,
+    spec_rows: &mut HashMap<String, SpecAccum>,
+    metadata: &PackMetadata,
+    model_row: &ModelRow,
+    outcome: OutcomeWire,
+) {
+    match outcome.status.as_str() {
+        "passed" => totals.pass += 1,
+        "failed" => totals.fail += 1,
+        "not_applicable" => totals.not_applicable += 1,
+        _ => totals.incomplete += 1,
+    }
+
+    let spec_key = outcome
+        .specification_id
+        .clone()
+        .unwrap_or_else(|| outcome.specification_name.clone());
+    let spec = spec_rows.entry(spec_key.clone()).or_insert_with(|| SpecAccum {
+        identifier: outcome.specification_id.clone(),
+        name: outcome.specification_name.clone(),
+        outcome: SpecRollup::Pass,
+        applicable_count: 0,
+        pass_count: 0,
+        fail_count: 0,
+        incomplete_count: 0,
+        notes: Vec::new(),
+    });
+    spec.applicable_count += outcome.applicable_count;
+    spec.pass_count += outcome.passed_count;
+    spec.fail_count += outcome.failed_count;
+    match outcome.status.as_str() {
+        "passed" => {}
+        "failed" => spec.outcome.worsen(SpecRollup::Fail),
+        "not_applicable" => spec.outcome.worsen(SpecRollup::NotApplicable),
+        other => {
+            spec.outcome.worsen(SpecRollup::ReviewIncomplete);
+            spec.incomplete_count += 1;
+            spec.notes.push(format!("{}: {other}", model_row.filename));
+        }
+    }
+
+    if outcome.status == "passed" || outcome.status == "not_applicable" {
+        return;
+    }
+
+    let triage = metadata.triage(outcome.specification_id.as_deref(), &outcome.specification_name);
+    let incomplete = outcome.status == "incomplete";
+    let facet = facet_for(&outcome.requirement);
+    let key = finding_key(&spec_key, facet, &outcome.requirement);
+    let entry = findings.entry(key.clone()).or_insert_with(|| Accumulated {
+        key,
+        spec_identifier: outcome.specification_id.clone(),
+        spec_name: outcome.specification_name.clone(),
+        severity: triage.severity,
+        category_id: triage.category_id,
+        category_label: triage.category_label,
+        facet: facet.to_owned(),
+        title: triage.title,
+        requirement: outcome.requirement.clone(),
+        expected: None,
+        instructions: None,
+        incomplete,
+        objects: Vec::new(),
+    });
+    entry.incomplete |= incomplete;
+    if outcome.failures.is_empty() && outcome.status == "failed" {
+        return;
+    }
+    for failure in outcome.failures {
+        entry.objects.push(AffectedObject {
+            model_id: model_row.id.clone(),
+            express_id: failure.express_id,
+            global_id: failure.global_id,
+            actual: Some(failure.reason.clone()),
+            incomplete_reason: if incomplete { Some(failure.reason) } else { None },
+        });
+    }
+}
+
+fn facet_for(requirement: &str) -> &'static str {
+    let text = requirement.to_ascii_lowercase();
+    if text.contains("classif") {
+        "classification"
+    } else if text.contains("material") {
+        "material"
+    } else if text.contains("part of") {
+        "part_of"
+    } else if text.contains("property") || text.contains("pset") {
+        "property"
+    } else if text.contains("attribute") || text.contains("shall be") {
+        "attribute"
+    } else {
+        "entity"
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum SpecRollup {
+    Pass,
+    NotApplicable,
+    ReviewIncomplete,
+    Fail,
+}
+
+impl SpecRollup {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Pass => "pass",
+            Self::NotApplicable => "not_applicable",
+            Self::ReviewIncomplete => "review_incomplete",
+            Self::Fail => "fail",
+        }
+    }
+
+    fn worsen(&mut self, other: Self) {
+        let rank = |value: Self| match value {
+            Self::Pass => 0,
+            Self::NotApplicable => 1,
+            Self::ReviewIncomplete => 2,
+            Self::Fail => 3,
+        };
+        if rank(other) > rank(*self) {
+            *self = other;
+        }
+    }
+}
+
+struct SpecAccum {
+    identifier: Option<String>,
+    name: String,
+    outcome: SpecRollup,
+    applicable_count: i64,
+    pass_count: i64,
+    fail_count: i64,
+    incomplete_count: i64,
+    notes: Vec<String>,
 }
 
 #[derive(Default)]
@@ -324,15 +530,6 @@ async fn persist_findings(
     Ok(())
 }
 
-fn outcome_str(outcome: Outcome) -> &'static str {
-    match outcome {
-        Outcome::Pass => "pass",
-        Outcome::Fail => "fail",
-        Outcome::NotApplicable => "not_applicable",
-        Outcome::ReviewIncomplete => "review_incomplete",
-    }
-}
-
 pub async fn get_run(
     State(state): State<AppState>,
     Path(run_id): Path<String>,
@@ -369,8 +566,7 @@ pub async fn run_detail(pool: &SqlitePool, run_id: &str) -> Result<RunDetail, Ap
     let row = fetch_run_row(pool, run_id).await?;
     let (finding_count, failing_object_count) = run_counts(pool, run_id).await?;
 
-    let models: Vec<ModelInfo> =
-        crate::diff::load_models(pool, &row.delivery_id).await?.iter().map(model_json).collect();
+    let models: Vec<ModelInfo> = load_run_models(pool, &row).await?.iter().map(model_json).collect();
 
     let finding_rows: Vec<FindingRow> = sqlx::query_as(
         "SELECT id, run_id, finding_key, spec_identifier, spec_name, severity, category_id,
@@ -517,6 +713,10 @@ fn clone_finding(finding: &Finding) -> Finding {
             .map(|o| FindingObject {
                 object_id: o.object_id.clone(),
                 model_id: o.model_id.clone(),
+                object_ref: crate::dto::ObjectRefOut {
+                    revision_id: o.object_ref.revision_id.clone(),
+                    object_id: o.object_ref.object_id.clone(),
+                },
                 discipline: o.discipline.clone(),
                 express_id: o.express_id,
                 global_id: o.global_id.clone(),
@@ -537,8 +737,8 @@ pub async fn finding_objects(
     offset: i64,
 ) -> Result<Vec<FindingObject>, ApiError> {
     let rows: Vec<FindingObjectRow> = sqlx::query_as(
-        "SELECT fo.finding_id, fo.model_id, fo.object_id, fo.express_id, fo.global_id,
-                fo.actual, fo.incomplete_reason,
+        "SELECT fo.finding_id, fo.model_id, fo.object_id, o.ref_object_id AS ref_object_id,
+                fo.express_id, fo.global_id, fo.actual, fo.incomplete_reason,
                 sm.discipline AS discipline, o.ifc_type AS ifc_type, o.name AS name,
                 o.storey AS storey
            FROM finding_objects fo
@@ -554,19 +754,28 @@ pub async fn finding_objects(
     .fetch_all(pool)
     .await?;
 
-    Ok(rows
-        .into_iter()
-        .map(|row| FindingObject {
-            object_id: row.object_id,
-            model_id: row.model_id,
-            discipline: row.discipline.unwrap_or_else(|| "OTHER".to_owned()),
-            express_id: row.express_id,
-            global_id: row.global_id,
-            ifc_type: row.ifc_type.unwrap_or_else(|| "UNKNOWN".to_owned()),
-            name: row.name,
-            storey: row.storey,
-            actual: row.actual,
-            incomplete_reason: row.incomplete_reason,
-        })
-        .collect())
+    Ok(rows.into_iter().map(|row| finding_object_json(&row)).collect())
+}
+
+async fn load_run_models(pool: &SqlitePool, row: &RunRow) -> Result<Vec<ModelRow>, ApiError> {
+    if row.input_provenance == "complete" {
+        let pinned: Vec<ModelRow> = sqlx::query_as(
+            "SELECT mr.id, r.delivery_id, rm.discipline, rm.source_model_id, rm.source_model_name,
+                    rm.filename, rm.content_sha256, rm.byte_size, mr.schema_label, mr.entity_count,
+                    mr.product_count, mr.length_to_metre, mr.storage_path, mr.header_json, mr.parse_ms,
+                    mr.uploaded_at
+               FROM run_models rm
+               JOIN runs r ON r.id = rm.run_id
+               JOIN model_revisions mr ON mr.id = rm.model_revision_id
+              WHERE rm.run_id = ?1
+              ORDER BY rm.sort_index",
+        )
+        .bind(&row.id)
+        .fetch_all(pool)
+        .await?;
+        if !pinned.is_empty() {
+            return Ok(pinned);
+        }
+    }
+    crate::diff::load_models(pool, &row.delivery_id).await
 }

@@ -203,6 +203,8 @@ export interface RunSummary {
 export interface FindingObject {
   objectId: string | null;
   modelId: string;
+  /** Shared occurrence identity; same shape as ObjectRow.ref. */
+  ref: ObjectRef;
   discipline: Discipline;
   expressId: number;
   globalId: string | null;
@@ -273,10 +275,9 @@ export interface RunDetail {
   specs: SpecResultRow[];
   reviewIncomplete: Finding[];
   /**
-   * Whether `models` are proven inputs of this run. Incomplete means they are
-   * reconstructed from current delivery membership and must not be treated as
-   * verified historical inputs. Every run the service creates today is
-   * incomplete; pinning a run's exact inputs is not implemented yet.
+   * Whether `models` are proven inputs of this run. Complete means they were
+   * snapshotted onto the run before evaluation. Incomplete means they are
+   * reconstructed from current delivery membership (historical runs only).
    */
   inputProvenance: RunInputProvenance;
 }
@@ -302,16 +303,19 @@ export interface ObjectPage {
   objects: ObjectRow[];
 }
 
+export interface ObjectPropertyValue {
+  value: string | number | boolean | null;
+  originalUnit?: string | null;
+  siValue?: number | null;
+  dimension?: "length" | "area" | "volume";
+}
+
 export interface ObjectProperty {
   pset: string;
   name: string;
-  value: string | null;
-  /** "length" | "area" | "volume" | null — the worker's dimension, not an IFC measure type name. */
-  dataType: string | null;
-  unit: string | null;
-  numeric: number | null;
-  /** Always false: the worker does not distinguish occurrence- from type-level properties. */
-  inherited: boolean;
+  values: ObjectPropertyValue[];
+  ordered: boolean;
+  origin: "occurrence" | "type";
 }
 
 export interface ObjectDetail extends ObjectRow {

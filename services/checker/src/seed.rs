@@ -53,7 +53,7 @@ impl std::fmt::Display for SeedSummary {
 }
 
 async fn seed(data_dir: &Path, packs_dir: &Path) -> anyhow::Result<SeedSummary> {
-    let state = AppState::open(data_dir).await?;
+    let state = AppState::open_for_seed(data_dir).await?;
 
     ensure_tenant(&state.pool, DEMO_TENANT_ID, DEMO_TENANT_NAME).await?;
     ensure_project(&state.pool, DEMO_PROJECT_ID, DEMO_TENANT_ID, DEMO_PROJECT_NAME).await?;
@@ -148,18 +148,36 @@ async fn seed_pack_versions(
         if existing > 0 {
             continue;
         }
-        let parsed = match ids::Ids::parse(&ids_xml) {
-            Ok(parsed) => parsed,
+        let spec_count = match crate::ids_meta::validate_ids_with_ifctester(&ids_xml) {
+            Ok(count) => count as i64,
             Err(err) => {
-                eprintln!("skipping {}: not a valid IDS document: {err}", path.display());
+                eprintln!("skipping {}: {err}", path.display());
+                continue;
+            }
+        };
+        let metadata_json = match load_sibling_metadata(&path) {
+            Ok(value) => value,
+            Err(err) => {
+                eprintln!("skipping {}: {err}", path.display());
                 continue;
             }
         };
         let notes = path.file_name().map(|name| name.to_string_lossy().into_owned());
-        insert_pack_version(state, pack_id, &ids_xml, None, notes, parsed.specifications.len() as i64)
+        insert_pack_version(state, pack_id, &ids_xml, metadata_json, notes, spec_count)
             .await
             .map_err(|err| anyhow::anyhow!(err.message))?;
         added += 1;
     }
     Ok(added)
+}
+
+fn load_sibling_metadata(ids_path: &Path) -> anyhow::Result<Option<String>> {
+    let meta_path = ids_path.with_extension("metadata.json");
+    if !meta_path.is_file() {
+        return Ok(None);
+    }
+    let text = std::fs::read_to_string(&meta_path)?;
+    crate::ids_meta::PackMetadata::try_parse(Some(&text))
+        .map_err(|err| anyhow::anyhow!("{}: {err}", meta_path.display()))?;
+    Ok(Some(text))
 }

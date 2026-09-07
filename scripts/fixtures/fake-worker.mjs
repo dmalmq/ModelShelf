@@ -198,11 +198,98 @@ async function main() {
       return;
     }
     case "hang": {
+      mkdirSync(outputDir, { recursive: true });
+      writeFileSync(join(outputDir, "worker.pid"), String(process.pid));
       emit(progressEvent("loading"));
       // Bounded, not infinite: if orphaned by a killed parent it still exits on
       // its own rather than lingering forever.
       await sleep(delayMs > 0 ? delayMs : 5000);
       process.exit(1);
+      return;
+    }
+    case "symlink-escape": {
+      mkdirSync(outputDir, { recursive: true });
+      const outsidePath = join("/tmp", `fake-worker-symlink-${jobId}.json`);
+      writeArtifact(outsidePath, fakeSemanticJson());
+      const linkPath = join(outputDir, "semantic.json");
+      const { symlinkSync } = await import("node:fs");
+      try {
+        symlinkSync(outsidePath, linkPath);
+      } catch {
+        process.exit(2);
+        return;
+      }
+      const semanticInfo = { path: linkPath, sha256: sha256Hex(fakeSemanticJson()), size: Buffer.byteLength(fakeSemanticJson()) };
+      const descriptorInfo = writeArtifact(join(outputDir, "descriptor.json"), fakeDescriptorJson(semanticInfo.sha256));
+      const outcomesInfo = writeArtifact(join(outputDir, "outcomes.jsonl"), "");
+      const artifacts = {
+        descriptor: { ...descriptorInfo, recordCount: 1 },
+        semantic: { ...semanticInfo, recordCount: 1 },
+        renderManifest: null,
+        geometry: null,
+        outcomes: { ...outcomesInfo, recordCount: 0 },
+      };
+      const manifest = {
+        protocolVersion: 2,
+        jobId,
+        operation: "inspect",
+        revisionId,
+        modelSha256: model.sha256,
+        idsSha256: null,
+        versions: {
+          worker: "fake", ifcOpenShell: "fake", ifcTester: "fake",
+          extraction: "fake", scopeSemantics: "fake",
+        },
+        artifacts,
+        diagnostics: [],
+      };
+      const manifestInfo = writeArtifact(join(outputDir, "manifest.json"), JSON.stringify(manifest));
+      emit({ protocolVersion: 2, jobId, event: "result", manifest: manifestInfo });
+      process.exit(0);
+      return;
+    }
+    case "bad-render-schema": {
+      mkdirSync(outputDir, { recursive: true });
+      const semanticInfo = writeArtifact(join(outputDir, "semantic.json"), fakeSemanticJson());
+      const renderInfo = writeArtifact(
+        join(outputDir, "render-manifest.json"),
+        JSON.stringify({ schemaVersion: "model-v1", revisionId: "not-this-revision", format: "prepared-scene-v1", instances: [] }),
+      );
+      const geometryInfo = writeArtifact(join(outputDir, "geometry.jsonl"), "");
+      const descriptor = JSON.parse(fakeDescriptorJson(semanticInfo.sha256));
+      descriptor.artifacts.render = {
+        status: "available",
+        artifactVersion: "1",
+        contentHash: geometryInfo.sha256,
+        format: "prepared-scene-v1",
+        primitiveCount: 0,
+      };
+      const descriptorInfo = writeArtifact(join(outputDir, "descriptor.json"), `${JSON.stringify(descriptor)}\n`);
+      const outcomesInfo = writeArtifact(join(outputDir, "outcomes.jsonl"), "");
+      const artifacts = {
+        descriptor: { ...descriptorInfo, recordCount: 1 },
+        semantic: { ...semanticInfo, recordCount: 1 },
+        renderManifest: { ...renderInfo, recordCount: 0 },
+        geometry: { ...geometryInfo, recordCount: 0 },
+        outcomes: { ...outcomesInfo, recordCount: 0 },
+      };
+      const manifest = {
+        protocolVersion: 2,
+        jobId,
+        operation: "inspect",
+        revisionId,
+        modelSha256: model.sha256,
+        idsSha256: null,
+        versions: {
+          worker: "fake", ifcOpenShell: "fake", ifcTester: "fake",
+          extraction: "fake", scopeSemantics: "fake",
+        },
+        artifacts,
+        diagnostics: [],
+      };
+      const manifestInfo = writeArtifact(join(outputDir, "manifest.json"), JSON.stringify(manifest));
+      emit({ protocolVersion: 2, jobId, event: "result", manifest: manifestInfo });
+      process.exit(0);
       return;
     }
     default: {

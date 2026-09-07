@@ -254,6 +254,12 @@ class Instance(BaseModel):
     )
     instanceId: constr(min_length=1)
     ref: ObjectRef
+    placement: list[float] | None = Field(
+        None,
+        description='Object-to-project 3x4 row-major transform in metres, same layout as SemanticObject.placement. Present when placement was converted so a renderer can position object-local vertices without loading SemanticModel. Omitted when the source placement cannot be interpreted.',
+        max_length=12,
+        min_length=12,
+    )
     boundingBox: BoundingBox | None = None
 
 

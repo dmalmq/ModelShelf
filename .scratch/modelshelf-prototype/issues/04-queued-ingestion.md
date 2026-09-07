@@ -5,7 +5,7 @@ Parent: ../map.md
 Type: task
 Mode: AFK
 Labels: wayfinder:task, ready-for-agent
-Status: open
+Status: resolved
 Assignee: unassigned
 Blocked by: 02, 03
 Wave: 1
@@ -124,11 +124,11 @@ Evidence: `.omo/evidence/modelshelf-prototype/task-2/run-*/` (one subdirectory p
 
 Reopened by review. The historical Answer above is retained; completion requires the corrections below. Read [the review through ticket 05](../../../docs/reviews/tickets-01-05.md) and [the earlier follow-up](../../../docs/reviews/tickets-01-03-follow-up.md) for evidence and verification.
 
-- [ ] Validate render schemas, counts, mappings and descriptor identity, not only hashes.
-- [ ] Preserve full structured property values, ordering and SI metadata through persistence/API.
-- [ ] Move restart recovery out of AppState::open and require exclusive service ownership; seed must not invalidate live work.
-- [ ] Supervise descendant worker lifetime and timeouts; fence publication by attempt and retain separate retry output directories.
-- [ ] Reject symlink-based artifact path escapes.
-- [ ] Do not require custom IFC parser success to publish a successful authoritative worker result.
+- [x] Validate render schemas, counts, mappings and descriptor identity, not only hashes.
+- [x] Preserve full structured property values, ordering and SI metadata through persistence/API.
+- [x] Move restart recovery out of AppState::open and require exclusive service ownership; seed must not invalidate live work.
+- [x] Supervise descendant worker lifetime and timeouts; fence publication by attempt and retain separate retry output directories.
+- [x] Reject symlink-based artifact path escapes.
+- [x] Do not require custom IFC parser success to publish a successful authoritative worker result.
 
 Coordinate shared schema and jobs.rs edits with the owners of related tickets. Append new evidence and close only after these checks pass.

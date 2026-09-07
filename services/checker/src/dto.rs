@@ -189,6 +189,7 @@ pub struct PropRow {
     pub unit: Option<String>,
     pub numeric: Option<f64>,
     pub inherited: i64,
+    pub record_json: Option<String>,
 }
 
 #[derive(sqlx::FromRow)]
@@ -254,6 +255,7 @@ pub struct FindingObjectRow {
     pub finding_id: String,
     pub model_id: String,
     pub object_id: Option<String>,
+    pub ref_object_id: Option<String>,
     pub express_id: i64,
     pub global_id: Option<String>,
     pub actual: Option<String>,
@@ -464,6 +466,8 @@ pub struct RunSummary {
 pub struct FindingObject {
     pub object_id: Option<String>,
     pub model_id: String,
+    #[serde(rename = "ref")]
+    pub object_ref: ObjectRefOut,
     pub discipline: String,
     pub express_id: i64,
     pub global_id: Option<String>,
@@ -527,7 +531,7 @@ pub struct SpecResultRowOut {
     pub notes: Vec<String>,
 }
 
-/// Why a run created today cannot claim its listed models are its proven inputs.
+/// Why a historical run cannot claim its listed models are its proven inputs.
 pub const UNPINNED_REASON: &str =
     "the listed models are this delivery's current membership, not a recorded snapshot of what \
      this run evaluated; pinning a run's exact inputs is not implemented yet";
@@ -642,14 +646,24 @@ pub struct ObjectPage {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ObjectPropertyValue {
+    pub value: serde_json::Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub original_unit: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub si_value: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dimension: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ObjectProperty {
     pub pset: String,
     pub name: String,
-    pub value: Option<String>,
-    pub data_type: Option<String>,
-    pub unit: Option<String>,
-    pub numeric: Option<f64>,
-    pub inherited: bool,
+    pub values: Vec<ObjectPropertyValue>,
+    pub ordered: bool,
+    pub origin: String,
 }
 
 #[derive(Serialize)]
@@ -1040,9 +1054,13 @@ pub fn object_row_json(row: &ObjectRowDb) -> ObjectRowOut {
 }
 
 pub fn finding_object_json(row: &FindingObjectRow) -> FindingObject {
+    let object_id = row.ref_object_id.clone().unwrap_or_else(|| {
+        model_contracts::express_id_to_object_id(&row.model_id, row.express_id as u64)
+    });
     FindingObject {
         object_id: row.object_id.clone(),
         model_id: row.model_id.clone(),
+        object_ref: ObjectRefOut { revision_id: row.model_id.clone(), object_id },
         discipline: row.discipline.clone().unwrap_or_else(|| "OTHER".to_string()),
         express_id: row.express_id,
         global_id: row.global_id.clone(),

@@ -1,7 +1,7 @@
 """Orchestrates one `operation: inspect` job: verify the input, extract every
 `IfcProduct` into shared semantic/render artifacts, and publish a descriptor
-plus the worker job manifest. `outcomes.jsonl` is written empty here — IDS
-checking (`operation: validate`) is a later ticket's scope.
+plus the worker job manifest. `outcomes.jsonl` is written empty here; IDS
+scoring is `operation: validate` in `ifc_worker.validate`.
 """
 
 from __future__ import annotations
@@ -247,7 +247,7 @@ def _extract_object(  # noqa: PLR0913
     express_id = product.id()
     object_id = express_id_to_object_id(revision_id, express_id)
     ref = ObjectRef(revisionId=revision_id, objectId=object_id)
-    global_id = getattr(product, "GlobalId", None)
+    global_id = getattr(product, "GlobalId", None) or None
     native = NativeIds(expressId=express_id, globalId=global_id)
     placement = object_placement(product, ifc_file)
     if getattr(product, "ObjectPlacement", None) is not None and placement is None:
@@ -273,5 +273,5 @@ def _extract_object(  # noqa: PLR0913
         vertices=extracted.vertices,
         triangles=extracted.triangles,
     )
-    instance = Instance(instanceId=instance_id, ref=ref)
+    instance = Instance(instanceId=instance_id, ref=ref, placement=placement)
     return semantic, chunk, instance

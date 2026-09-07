@@ -13,6 +13,21 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+def test_ifc2x3_type_properties_are_inherited(tmp_path: Path) -> None:
+    from tests.ifc_fixtures import write_ifc2x3_type_properties
+
+    path = write_ifc2x3_type_properties(tmp_path / "ifc2x3-type.ifc")
+    ifc_file = ifcopenshell.open(str(path))
+    wall = ifc_file.by_type("IfcWall")[0]
+    diagnostics: list[str] = []
+    records = extract_properties(wall, ifc_file, diagnostics)
+    by_name = {record.name: record for record in records}
+    load = by_name["LoadBearing"]
+    assert load.values[0].value is True
+    assert load.origin.value == "type"
+    assert not diagnostics
+
+
 def test_list_values_keep_authoring_order_and_type_properties_are_inherited(tmp_path: Path) -> None:
     path = write_list_and_inherited_properties(tmp_path / "inherit.ifc")
     ifc_file = ifcopenshell.open(str(path))

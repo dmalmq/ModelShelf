@@ -2,7 +2,7 @@
 
 Shared occurrence records live in ``model_contracts`` (SemanticModel,
 GeometryChunk, ModelDescriptor, RenderManifest). Outcomes stay here because
-IDS evaluation is a later ticket and is not a shared model contract.
+IDS evaluation lives in `ifc_worker.validate` and is not a shared model contract.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ class OutcomeRecord(StrictModel):
     specificationName: str
     requirementIndex: int | None
     requirement: str
-    status: Literal["passed", "failed", "incomplete"]
+    status: Literal["passed", "failed", "incomplete", "not_applicable"]
     applicableCount: int
     passedCount: int
     failedCount: int

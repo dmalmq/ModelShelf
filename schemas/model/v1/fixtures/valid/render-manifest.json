@@ -6,6 +6,7 @@
     {
       "instanceId": "inst-0",
       "ref": { "revisionId": "rev-arch-01", "objectId": "occ_823c7adb931b5478" },
+      "placement": [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0],
       "boundingBox": { "min": [0.0, 0.0, 0.0], "max": [5.0, 0.2, 3.0] }
     },
     {

@@ -23,6 +23,13 @@
       "properties": {
         "instanceId": { "type": "string", "minLength": 1 },
         "ref": { "$ref": "object-ref.schema.json" },
+        "placement": {
+          "description": "Object-to-project 3x4 row-major transform in metres, same layout as SemanticObject.placement. Present when placement was converted so a renderer can position object-local vertices without loading SemanticModel. Omitted when the source placement cannot be interpreted.",
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 12,
+          "maxItems": 12
+        },
         "boundingBox": {
           "type": "object",
           "additionalProperties": false,

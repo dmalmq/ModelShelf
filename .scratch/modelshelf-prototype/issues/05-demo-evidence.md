@@ -5,7 +5,7 @@ Parent: ../map.md
 Type: task
 Mode: AFK
 Labels: wayfinder:task, ready-for-agent
-Status: open
+Status: resolved
 Assignee: unassigned
 Blocked by: none
 Wave: 1
@@ -126,10 +126,22 @@ Evidence: `.omo/evidence/modelshelf-prototype/task-5/` (`evaluate-v1-real-models
 
 Reopened by review. The historical Answer above is retained; completion requires the corrections below. Read [the review through ticket 05](../../../docs/reviews/tickets-01-05.md) and [the earlier follow-up](../../../docs/reviews/tickets-01-03-follow-up.md) for evidence and verification.
 
-- [ ] Make the oracle enumerate exact IDS outcomes and affected membership: 135 failing walls per revision, not only the 120 repeated group; correct distinct tracked count to 141.
-- [ ] Record intended rotation changes and ambiguous match confidence independently of current flawed engine behavior.
-- [ ] Correct diameter failure rationale: 62 ducts, 45 pipes, 43 cable trays; v2 excludes only those 43 trays.
-- [ ] Preserve first retrieval dates on verified-cache reruns; record verification time separately.
-- [ ] Make fixture regeneration deterministic and isolated; fix root invocation documentation.
+- [x] Make the oracle enumerate exact IDS outcomes and affected membership: 135 failing walls per revision, not only the 120 repeated group; correct distinct tracked count to 141.
+- [x] Record intended rotation changes and ambiguous match confidence independently of current flawed engine behavior.
+- [x] Correct diameter failure rationale: 62 ducts, 45 pipes, 43 cable trays; v2 excludes only those 43 trays.
+- [x] Preserve first retrieval dates on verified-cache reruns; record verification time separately.
+- [x] Make fixture regeneration deterministic and isolated; fix root invocation documentation.
+
+### 2026-09-07 correction
+
+Oracle schema `demo-fixtures-oracle-v2` uses wall names as stable keys. IfcTester is the authority for affected sets (135 fail / 3 pass per revision). Rotations are intended `moved` with `engineLimitation.modeldiff = unchanged`. Duplicate and empty GlobalIds are `intendedCorrespondence: uncertain`. Tracked object count is 141.
+
+Generator: `uv run --project services/ifc-worker python scripts/generate-demo-fixtures.py [--output-dir DIR]`. Seeded GUIDs and frozen IFC timestamps. Checker: `python scripts/check-demo-oracle.py --prove-regen`.
+
+Pack-change writeup in `packs/demo/checks.md` corrected to 62 ducts, 45 pipes, 43 trays.
+
+`scripts/fetch-demo-models.mjs` keeps the original `retrievedAt` on cache hits and writes `lastVerifiedAt`.
+
+Evidence: oracle checker stdout in this session; `verify-api` revisions/worker-failure after the property and lifetime follow-ups.
 
 Coordinate shared schema and jobs.rs edits with the owners of related tickets. Append new evidence and close only after these checks pass.
