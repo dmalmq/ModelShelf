@@ -50,6 +50,7 @@ export class RendererOwner implements ViewerRenderer {
   private readonly revisionByMesh = new Map<THREE.BatchedMesh, RevisionId>();
   private readonly records = new Map<ObjectRefKey, SelectionRecord>();
   private readonly targetRecords = new Map<string, SelectionRecord>();
+  private readonly trianglesByRevision = new Map<RevisionId, number>();
   private readonly visibleByDiscipline: Record<Discipline, boolean> = {
     ARCH: true,
     STRUCT: true,
@@ -142,6 +143,10 @@ export class RendererOwner implements ViewerRenderer {
       geometry.setIndex(new THREE.BufferAttribute(transfer.indices, 1));
       const geometryId = resource.mesh.addGeometry(geometry);
       resource.geometryIds.set(transfer.geometryExpressId, geometryId);
+      this.trianglesByRevision.set(
+        revisionId,
+        (this.trianglesByRevision.get(revisionId) ?? 0) + Math.floor(transfer.indices.length / 3),
+      );
       geometry.dispose();
     }
 
@@ -180,6 +185,7 @@ export class RendererOwner implements ViewerRenderer {
   removeRevision(revisionId: RevisionId): void {
     const resource = this.resources.get(revisionId);
     if (resource) {
+      this.trianglesByRevision.delete(revisionId);
       resource.mesh.removeFromParent();
       resource.mesh.dispose();
       resource.root.removeFromParent();
@@ -339,7 +345,9 @@ export class RendererOwner implements ViewerRenderer {
 
   resourceStats(): ViewerResourceStats {
     let geometries = 0;
+    let triangles = 0;
     for (const resource of this.resources.values()) geometries += resource.geometryIds.size;
+    for (const count of this.trianglesByRevision.values()) triangles += count;
     return {
       workers: 0,
       renderLoops: this.disposed ? 0 : 1,
@@ -351,6 +359,7 @@ export class RendererOwner implements ViewerRenderer {
       gpuTextures: this.renderer.info.memory.textures,
       shaderPrograms: this.renderer.info.programs?.length ?? 0,
       renderFrame: this.renderer.info.render.frame,
+      triangles: this.disposed ? 0 : triangles,
     };
   }
 
