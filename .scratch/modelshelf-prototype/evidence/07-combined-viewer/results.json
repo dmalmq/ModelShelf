@@ -1,0 +1,574 @@
+{
+  "passed": true,
+  "checks": [
+    "two successful real models remain ready when MEP fails",
+    "the failed source has its own model state",
+    "successful model roots remain visible after a sibling failure",
+    "successful models establish the shared origin before retry",
+    "the combined delivery contains three model revisions",
+    "download and parse progress identifies every source revision",
+    "three batched model resources are active",
+    "IFC parsing uses one dedicated browser Worker",
+    "the browser loaded the IFC Worker bundle",
+    "one renderer owns the combined scene",
+    "one render loop drives the combined scene",
+    "model revisions share one material",
+    "one browser Worker remains active after StrictMode remount",
+    "Three.js observes uploaded GPU geometry",
+    "Three.js observes BatchedMesh GPU textures",
+    "Three.js observes compiled shader programs",
+    "Three.js observes rendered frames",
+    "thousands of selectable objects remain behind revision-level BatchedMesh resources",
+    "retry keeps the established common origin frozen",
+    "the delivery resolves one common origin",
+    "every model root receives the same common-origin offset",
+    "ARCH exposes drawable bounds",
+    "ARCH geometry remains at building-scale metres",
+    "ARCH geometry avoids a second unit expansion",
+    "STRUCT exposes drawable bounds",
+    "STRUCT geometry remains at building-scale metres",
+    "STRUCT geometry avoids a second unit expansion",
+    "MEP exposes drawable bounds",
+    "MEP geometry remains at building-scale metres",
+    "MEP geometry avoids a second unit expansion",
+    "discipline bounds occupy one shared project frame",
+    "discipline bounds occupy one shared project frame",
+    "discipline bounds occupy one shared project frame",
+    "left drag orbits the camera",
+    "right drag pans the camera",
+    "wheel input zooms the camera",
+    "canvas raycasting selects a revision-qualified ObjectRef",
+    "combined first unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":194}",
+    "combined first unload releases uploaded GPU geometry and shader programs",
+    "combined first unload releases every BatchedMesh GPU texture",
+    "combined first unload closes the observed browser Worker",
+    "combined first unload stops the observed render loop",
+    "combined repeated unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":194}",
+    "combined repeated unload releases uploaded GPU geometry and shader programs",
+    "combined repeated unload releases every BatchedMesh GPU texture",
+    "combined repeated unload closes the observed browser Worker",
+    "combined repeated unload stops the observed render loop",
+    "duplicate GlobalId rows retain different revisions",
+    "duplicate GlobalId rows receive different opaque object IDs",
+    "ObjectRef mapping matches the contract for duplicate-a",
+    "ObjectRef mapping matches the contract for duplicate-b",
+    "one ObjectRef can address several placed geometry instances",
+    "the first duplicate GlobalId revision selects independently",
+    "the second duplicate GlobalId revision selects independently",
+    "duplicate unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":45}",
+    "duplicate unload releases uploaded GPU geometry and shader programs",
+    "duplicate unload releases every BatchedMesh GPU texture",
+    "duplicate unload closes the observed browser Worker",
+    "duplicate unload stops the observed render loop",
+    "remount reacquires one Worker and batched GPU resources",
+    "duplicate remount unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":32}",
+    "duplicate remount unload releases uploaded GPU geometry and shader programs",
+    "duplicate remount unload releases every BatchedMesh GPU texture",
+    "duplicate remount unload closes the observed browser Worker",
+    "duplicate remount unload stops the observed render loop",
+    "a valid revision with no drawable geometry reaches ready",
+    "an empty drawable revision exposes no selectable objects",
+    "empty revision unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":23}",
+    "empty revision unload releases uploaded GPU geometry and shader programs",
+    "empty revision unload releases every BatchedMesh GPU texture",
+    "empty revision unload closes the observed browser Worker",
+    "empty revision unload stops the observed render loop"
+  ],
+  "samples": {
+    "ARCH": {
+      "path": "/home/daniel/orca/workspaces/ModelShelf/durable-jobs-hardening/samples/ifc/blcj-s1000-architecture.ifc",
+      "sha256": "0f674223f596c483c5abea0b58fe6c05ef3c68692409c977782040ffa501cca4",
+      "size": 36232021
+    },
+    "STRUCT": {
+      "path": "/home/daniel/orca/workspaces/ModelShelf/durable-jobs-hardening/samples/ifc/blcj-s1000-structure.ifc",
+      "sha256": "64084908b3eda8f2a34cb0e5d51532b98882d62aa42839b9fa9b27e1ca1e75d5",
+      "size": 836678
+    },
+    "MEP": {
+      "path": "/home/daniel/orca/workspaces/ModelShelf/durable-jobs-hardening/samples/ifc/blcj-s1000-mep.ifc",
+      "sha256": "46eae66e578211012ee8c6d3d03eb3876670852cc62d452f40bc98c5215c08c2",
+      "size": 48736361
+    }
+  },
+  "fixtureRequests": [
+    "/api/deliveries/combined",
+    "/api/models/combined-arch/file",
+    "/api/models/combined-struct/file",
+    "/api/models/combined-mep/file",
+    "/api/models/combined-mep/file",
+    "/api/deliveries/duplicate",
+    "/api/models/duplicate-a/file",
+    "/api/models/duplicate-b/file",
+    "/api/deliveries/duplicate",
+    "/api/models/duplicate-a/file",
+    "/api/models/duplicate-b/file",
+    "/api/deliveries/empty",
+    "/api/models/empty-model/file"
+  ],
+  "workerUrls": [
+    "http://127.0.0.1:44913/_next/static/chunks/_app-pages-browser_src_components_viewer_ifc-loader_worker_ts.js",
+    "http://127.0.0.1:44913/_next/static/chunks/_app-pages-browser_src_components_viewer_ifc-loader_worker_ts.js",
+    "http://127.0.0.1:44913/_next/static/chunks/_app-pages-browser_src_components_viewer_ifc-loader_worker_ts.js",
+    "http://127.0.0.1:44913/_next/static/chunks/_app-pages-browser_src_components_viewer_ifc-loader_worker_ts.js"
+  ],
+  "partial": {
+    "snapshot": {
+      "delivery": {
+        "delivery": {
+          "id": "combined",
+          "projectId": "viewer-verifier",
+          "label": "BLCJ S1000 combined delivery",
+          "deliveryDate": "2026-09-07",
+          "createdAt": "2026-09-07T00:00:00Z",
+          "finalizedAt": "2026-09-07T00:00:00Z",
+          "modelCount": 3,
+          "productCount": 0
+        },
+        "models": [
+          {
+            "id": "combined-arch",
+            "deliveryId": "combined",
+            "discipline": "ARCH",
+            "sourceModelId": "combined-arch-source",
+            "sourceModelName": "Architecture",
+            "filename": "blcj-s1000-architecture.ifc",
+            "contentSha256": "0f674223f596c483c5abea0b58fe6c05ef3c68692409c977782040ffa501cca4",
+            "byteSize": 36232021,
+            "schemaLabel": "IFC2X3",
+            "entityCount": 0,
+            "productCount": 0,
+            "lengthToMetre": 0.001,
+            "parseMs": null,
+            "uploadedAt": "2026-09-07T00:00:00Z",
+            "originatingSystem": "viewer verifier"
+          },
+          {
+            "id": "combined-struct",
+            "deliveryId": "combined",
+            "discipline": "STRUCT",
+            "sourceModelId": "combined-struct-source",
+            "sourceModelName": "Structure",
+            "filename": "blcj-s1000-structure.ifc",
+            "contentSha256": "64084908b3eda8f2a34cb0e5d51532b98882d62aa42839b9fa9b27e1ca1e75d5",
+            "byteSize": 836678,
+            "schemaLabel": "IFC2X3",
+            "entityCount": 0,
+            "productCount": 0,
+            "lengthToMetre": 0.001,
+            "parseMs": null,
+            "uploadedAt": "2026-09-07T00:00:00Z",
+            "originatingSystem": "viewer verifier"
+          },
+          {
+            "id": "combined-mep",
+            "deliveryId": "combined",
+            "discipline": "MEP",
+            "sourceModelId": "combined-mep-source",
+            "sourceModelName": "MEP",
+            "filename": "blcj-s1000-mep.ifc",
+            "contentSha256": "46eae66e578211012ee8c6d3d03eb3876670852cc62d452f40bc98c5215c08c2",
+            "byteSize": 48736361,
+            "schemaLabel": "IFC2X3",
+            "entityCount": 0,
+            "productCount": 0,
+            "lengthToMetre": 0.001,
+            "parseMs": null,
+            "uploadedAt": "2026-09-07T00:00:00Z",
+            "originatingSystem": "viewer verifier"
+          }
+        ],
+        "runs": [],
+        "locked": true
+      },
+      "models": [
+        {
+          "status": "ready",
+          "model": {
+            "id": "combined-arch",
+            "deliveryId": "combined",
+            "discipline": "ARCH",
+            "sourceModelId": "combined-arch-source",
+            "sourceModelName": "Architecture",
+            "filename": "blcj-s1000-architecture.ifc",
+            "contentSha256": "0f674223f596c483c5abea0b58fe6c05ef3c68692409c977782040ffa501cca4",
+            "byteSize": 36232021,
+            "schemaLabel": "IFC2X3",
+            "entityCount": 0,
+            "productCount": 0,
+            "lengthToMetre": 0.001,
+            "parseMs": null,
+            "uploadedAt": "2026-09-07T00:00:00Z",
+            "originatingSystem": "viewer verifier",
+            "revisionId": "combined-arch",
+            "fileUrl": "/api/models/combined-arch/file"
+          },
+          "objectCount": 1968,
+          "bounds": {
+            "min": [
+              -2.3536347673649995,
+              -2.55,
+              -21.200929258404997
+            ],
+            "max": [
+              28.979123654299997,
+              25.82,
+              12.78088434445
+            ]
+          }
+        },
+        {
+          "status": "ready",
+          "model": {
+            "id": "combined-struct",
+            "deliveryId": "combined",
+            "discipline": "STRUCT",
+            "sourceModelId": "combined-struct-source",
+            "sourceModelName": "Structure",
+            "filename": "blcj-s1000-structure.ifc",
+            "contentSha256": "64084908b3eda8f2a34cb0e5d51532b98882d62aa42839b9fa9b27e1ca1e75d5",
+            "byteSize": 836678,
+            "schemaLabel": "IFC2X3",
+            "entityCount": 0,
+            "productCount": 0,
+            "lengthToMetre": 0.001,
+            "parseMs": null,
+            "uploadedAt": "2026-09-07T00:00:00Z",
+            "originatingSystem": "viewer verifier",
+            "revisionId": "combined-struct",
+            "fileUrl": "/api/models/combined-struct/file"
+          },
+          "objectCount": 308,
+          "bounds": {
+            "min": [
+              -0.4500000000000558,
+              -2.0600000000000027,
+              -19.65000000000009
+            ],
+            "max": [
+              13.45,
+              16.5,
+              0.4500000000000055
+            ]
+          }
+        },
+        {
+          "status": "failed",
+          "model": {
+            "id": "combined-mep",
+            "deliveryId": "combined",
+            "discipline": "MEP",
+            "sourceModelId": "combined-mep-source",
+            "sourceModelName": "MEP",
+            "filename": "blcj-s1000-mep.ifc",
+            "contentSha256": "46eae66e578211012ee8c6d3d03eb3876670852cc62d452f40bc98c5215c08c2",
+            "byteSize": 48736361,
+            "schemaLabel": "IFC2X3",
+            "entityCount": 0,
+            "productCount": 0,
+            "lengthToMetre": 0.001,
+            "parseMs": null,
+            "uploadedAt": "2026-09-07T00:00:00Z",
+            "originatingSystem": "viewer verifier",
+            "revisionId": "combined-mep",
+            "fileUrl": "/api/models/combined-mep/file"
+          },
+          "stage": "download",
+          "message": "IFC download failed with HTTP 503",
+          "retryable": true
+        }
+      ],
+      "selected": null,
+      "origin": [
+        13,
+        12,
+        -4
+      ],
+      "initialReady": true,
+      "disposed": false
+    },
+    "resources": {
+      "workers": 1,
+      "renderLoops": 1,
+      "renderers": 1,
+      "batches": 2,
+      "geometries": 5256,
+      "materials": 1,
+      "gpuGeometries": 2,
+      "gpuTextures": 7,
+      "shaderPrograms": 1,
+      "renderFrame": 86
+    },
+    "renderer": {
+      "cameraPosition": [
+        30.141625438848394,
+        22.00666021471131,
+        29.61885865436142
+      ],
+      "cameraTarget": [
+        0.3127446256833082,
+        -0.3650003951624967,
+        -0.21002215880366748
+      ],
+      "roots": [
+        {
+          "revisionId": "combined-arch",
+          "offset": [
+            -13,
+            -12,
+            4
+          ],
+          "visible": true
+        },
+        {
+          "revisionId": "combined-struct",
+          "offset": [
+            -13,
+            -12,
+            4
+          ],
+          "visible": true
+        }
+      ]
+    }
+  },
+  "combined": {
+    "origin": [
+      13,
+      12,
+      -4
+    ],
+    "activeWorkers": 1,
+    "resources": {
+      "workers": 1,
+      "renderLoops": 1,
+      "renderers": 1,
+      "batches": 3,
+      "geometries": 9881,
+      "materials": 1,
+      "gpuGeometries": 3,
+      "gpuTextures": 10,
+      "shaderPrograms": 1,
+      "renderFrame": 114
+    },
+    "modelBounds": [
+      {
+        "revisionId": "combined-arch",
+        "status": "ready",
+        "objectCount": 1968,
+        "bounds": {
+          "min": [
+            -2.3536347673649995,
+            -2.55,
+            -21.200929258404997
+          ],
+          "max": [
+            28.979123654299997,
+            25.82,
+            12.78088434445
+          ]
+        }
+      },
+      {
+        "revisionId": "combined-struct",
+        "status": "ready",
+        "objectCount": 308,
+        "bounds": {
+          "min": [
+            -0.4500000000000558,
+            -2.0600000000000027,
+            -19.65000000000009
+          ],
+          "max": [
+            13.45,
+            16.5,
+            0.4500000000000055
+          ]
+        }
+      },
+      {
+        "revisionId": "combined-mep",
+        "status": "ready",
+        "objectCount": 2999,
+        "bounds": {
+          "min": [
+            -3.630796533515625,
+            -3.6665500023049953,
+            -18.644309671000002
+          ],
+          "max": [
+            14.653727541218752,
+            21.26,
+            6.154728570304993
+          ]
+        }
+      }
+    ],
+    "cameraAfterInput": {
+      "cameraPosition": [
+        -6.85570246075382,
+        26.943641858170032,
+        24.158842378321236
+      ],
+      "cameraTarget": [
+        -2.025336124411037,
+        0.6662180167631531,
+        -1.3616206856230475
+      ],
+      "roots": [
+        {
+          "revisionId": "combined-arch",
+          "offset": [
+            -13,
+            -12,
+            4
+          ],
+          "visible": true
+        },
+        {
+          "revisionId": "combined-struct",
+          "offset": [
+            -13,
+            -12,
+            4
+          ],
+          "visible": true
+        },
+        {
+          "revisionId": "combined-mep",
+          "offset": [
+            -13,
+            -12,
+            4
+          ],
+          "visible": true
+        }
+      ]
+    },
+    "pickedRef": {
+      "revisionId": "combined-arch",
+      "objectId": "occ_29c720a574b0ae62"
+    }
+  },
+  "duplicate": {
+    "globalId": "24L2xt4x166hln6nV88hpI",
+    "refs": [
+      {
+        "ref": {
+          "revisionId": "duplicate-a",
+          "objectId": "occ_46b2bc3c90e92e21"
+        },
+        "expressId": 143,
+        "targetCount": 1
+      },
+      {
+        "ref": {
+          "revisionId": "duplicate-b",
+          "objectId": "occ_10bdfc77e8028735"
+        },
+        "expressId": 143,
+        "targetCount": 1
+      }
+    ]
+  },
+  "empty": {
+    "model": {
+      "status": "ready",
+      "model": {
+        "id": "empty-model",
+        "deliveryId": "empty",
+        "discipline": "OTHER",
+        "sourceModelId": "empty-model-source",
+        "sourceModelName": "Empty IFC",
+        "filename": "inline:empty.ifc",
+        "contentSha256": "df963e2b4946a966d6ded7954b6399c757d32096827788cf5626bfc62782fdf7",
+        "byteSize": 705,
+        "schemaLabel": "IFC4",
+        "entityCount": 0,
+        "productCount": 0,
+        "lengthToMetre": 0.001,
+        "parseMs": null,
+        "uploadedAt": "2026-09-07T00:00:00Z",
+        "originatingSystem": "viewer verifier",
+        "revisionId": "empty-model",
+        "fileUrl": "/api/models/empty-model/file"
+      },
+      "objectCount": 0,
+      "bounds": null
+    },
+    "resources": {
+      "workers": 1,
+      "renderLoops": 1,
+      "renderers": 1,
+      "batches": 1,
+      "geometries": 0,
+      "materials": 1,
+      "gpuGeometries": 1,
+      "gpuTextures": 2,
+      "shaderPrograms": 1,
+      "renderFrame": 23
+    }
+  },
+  "disposalRuns": [
+    {
+      "workers": 0,
+      "renderLoops": 0,
+      "renderers": 0,
+      "batches": 0,
+      "geometries": 0,
+      "materials": 0,
+      "gpuGeometries": 0,
+      "gpuTextures": 1,
+      "shaderPrograms": 0,
+      "renderFrame": 194
+    },
+    {
+      "workers": 0,
+      "renderLoops": 0,
+      "renderers": 0,
+      "batches": 0,
+      "geometries": 0,
+      "materials": 0,
+      "gpuGeometries": 0,
+      "gpuTextures": 1,
+      "shaderPrograms": 0,
+      "renderFrame": 194
+    },
+    {
+      "workers": 0,
+      "renderLoops": 0,
+      "renderers": 0,
+      "batches": 0,
+      "geometries": 0,
+      "materials": 0,
+      "gpuGeometries": 0,
+      "gpuTextures": 1,
+      "shaderPrograms": 0,
+      "renderFrame": 45
+    },
+    {
+      "workers": 0,
+      "renderLoops": 0,
+      "renderers": 0,
+      "batches": 0,
+      "geometries": 0,
+      "materials": 0,
+      "gpuGeometries": 0,
+      "gpuTextures": 1,
+      "shaderPrograms": 0,
+      "renderFrame": 32
+    },
+    {
+      "workers": 0,
+      "renderLoops": 0,
+      "renderers": 0,
+      "batches": 0,
+      "geometries": 0,
+      "materials": 0,
+      "gpuGeometries": 0,
+      "gpuTextures": 1,
+      "shaderPrograms": 0,
+      "renderFrame": 23
+    }
+  ]
+}

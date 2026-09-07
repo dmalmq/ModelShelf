@@ -34,6 +34,7 @@ A runnable local ModelShelf prototype that combines architectural, structural, a
 - [Process model revisions through durable jobs](issues/04-queued-ingestion.md) — resolved 2026-09-07: exclusive lock, worker PDEATHSIG/`exec`, attempt dirs, symlink containment, worker-only publish, artifact schema validation, shared Property round-trip. `verify-api --scenario worker-failure` checks the old worker is gone after checker SIGKILL.
 - [Prepare reproducible Japanese and synthetic demo evidence](issues/05-demo-evidence.md) — resolved 2026-09-07: oracle v2 with IfcTester affected sets (135/3), intended vs engineLimitation, deterministic seed, `--output-dir`, pack-change counts corrected (62 ducts / 45 pipes / 43 trays).
 - [Run scoped IDS checks against pinned delivery inputs](issues/06-scoped-ids-runs.md) — resolved 2026-09-07: IfcTester scores runs; membership/hashes/pack digest/scope/engine profile freeze on `run_models`; findings carry ObjectRefs; `verify-api --scenario checks` passed.
+- [Open a combined delivery in the browser](issues/07-combined-viewer.md) — resolved 2026-09-07: three real BLCJ revisions share one aligned batched scene, source-specific failure and retry, revision-qualified ObjectRef selection, and verified Worker/GPU lifecycle disposal.
 
 ## Not yet specified
 
