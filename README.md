@@ -1,6 +1,6 @@
 # ModelShelf
 
-A local BIM delivery checker: Rust/Axum service, SQLite storage, a Next.js frontend, and (later) an IfcOpenShell/IfcTester worker. See [`CONTEXT.md`](CONTEXT.md) for domain terms and [`.scratch/modelshelf-prototype/`](.scratch/modelshelf-prototype/) for the prototype ticket set.
+A local BIM delivery checker: Rust/Axum service, SQLite storage, a Next.js frontend, and (later) an IfcOpenShell/IfcTester worker. See [`VISION.md`](VISION.md) for the accept/resist policy. See [`CONTEXT.md`](CONTEXT.md) for domain terms and [`.scratch/modelshelf-prototype/`](.scratch/modelshelf-prototype/) for the prototype ticket set.
 
 ## Backend service (`modelshelf-checker`)
 

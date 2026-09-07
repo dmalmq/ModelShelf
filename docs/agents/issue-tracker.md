@@ -2,7 +2,7 @@
 
 Use local Markdown for this effort. No external issues have been created.
 
-ModelShelf prototype tickets live in `.scratch/modelshelf-prototype/issues/`, with one file per issue. The canonical Wayfinder index is `.scratch/modelshelf-prototype/map.md`. Read `HANDOFF.md` in that directory before starting work.
+ModelShelf prototype tickets live in `.scratch/modelshelf-prototype/issues/`, with one file per issue. The canonical Wayfinder index is `.scratch/modelshelf-prototype/map.md`. Read `HANDOFF.md` in that directory and [`VISION.md`](../../VISION.md) before starting work.
 
 ## Wayfinding operations
 

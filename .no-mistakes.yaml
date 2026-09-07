@@ -18,6 +18,7 @@ ignore_patterns:
 
 document:
   instructions: |
+    VISION.md owns accept/resist policy.
     CONTEXT.md owns domain terms.
     docs/adr owns module boundaries.
     docs/contracts owns HTTP and worker envelopes.
