@@ -62,4 +62,4 @@ The prototype supports IFC, including IFC exported from Revit or Archicad. Nativ
 
 ## Consequences
 
-The renderer can be reused and tested independently, while ModelShelf remains a straightforward local application. This adds contract generation and a standalone example now, but avoids separate services, a generic plugin framework, and native-format integrations without a current consumer. Existing live data and unrelated work remain untouched; migrate source-ID consumers under the affected implementation tickets.
+The renderer can be reused and tested independently, while ModelShelf remains a straightforward local application. This adds contract generation now and a standalone example after the combined ModelShelf view exists, but avoids separate services, a generic plugin framework, and native-format integrations without a current consumer. Existing live data and unrelated work remain untouched; migrate source-ID consumers under the affected implementation tickets.
