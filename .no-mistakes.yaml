@@ -36,13 +36,9 @@ review:
     - path: "services/ifc-worker/**"
       instructions: |
         The worker is authoritative for IFC meaning. Unsupported evaluation is incomplete, never a pass. Keep job envelopes out of the shared model schema.
-    - path: "apps/web/**"
+    - path: "apps/web/src/components/viewer/**"
       instructions: |
         The viewer does not own checking policy, finding color, or which revision is better. Selection uses opaque ObjectRefs.
     - path: "services/checker/**"
       instructions: |
         Revisions, original bytes, and finalized delivery membership stay immutable. Unpinned run inputs stay incomplete. Do not guess lineage.
-
-protected_paths:
-  - "samples/ifc/**"
-  - "packs/demo/fixtures/**"
