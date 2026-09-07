@@ -275,7 +275,8 @@ export interface RunDetail {
   /**
    * Whether `models` are proven inputs of this run. Incomplete means they are
    * reconstructed from current delivery membership and must not be treated as
-   * verified historical inputs.
+   * verified historical inputs. Every run the service creates today is
+   * incomplete; pinning a run's exact inputs is not implemented yet.
    */
   inputProvenance: RunInputProvenance;
 }

@@ -236,6 +236,17 @@ async function runRevisionsScenario(base, dataDir, check, log) {
   );
   const fileRes = await fetch(`${base}/api/models/${rev1Id}/file`);
   check("the original uploaded IFC is retrievable byte-for-byte via /file", fileRes.status === 200 && Number(fileRes.headers.get("content-length")) > 0, `status=${fileRes.status}`);
+
+  const idsXml = await readFileAsync(join(REPO_ROOT, "packs", "demo", "blcj-s1000-v1.ids"), "utf8");
+  const packVersion = (await api(base, "POST", "/api/packs/demo-pack/versions", { idsXml })).json;
+  const run = await api(base, "POST", "/api/runs", { deliveryId: delivery1.id, packVersionId: packVersion.id });
+  log("run-input-provenance.json", run.json);
+  const provenance = run.json?.inputProvenance;
+  check(
+    "a newly created run reports incomplete input provenance with a stated reason",
+    run.status === 200 && provenance?.status === "incomplete" && typeof provenance?.reason === "string" && provenance.reason.length > 0,
+    JSON.stringify({ status: run.status, provenance }),
+  );
 }
 
 async function runRevisionsScenarioTop(runDir, check, log) {

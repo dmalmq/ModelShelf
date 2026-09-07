@@ -1,0 +1,313 @@
+warning: method `is_product` is never used
+   --> crates/ifc-model/src/lib.rs:730:8
+    |
+432 | impl IfcModel {
+    | ------------- method in this implementation
+...
+730 |     fn is_product(&self, e: &Entity) -> bool {
+    |        ^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `ifc-model` (lib) generated 1 warning
+warning: `ifc-model` (lib test) generated 1 warning (1 duplicate)
+warning: use of deprecated method `quick_xml::events::attributes::Attribute::<'a>::unescape_value`: use `Self::normalized_value()`
+   --> crates/ids/src/xml.rs:111:14
+    |
+111 |             .unescape_value()
+    |              ^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+
+warning: variable does not need to be mutable
+   --> crates/ids/src/lib.rs:606:9
+    |
+606 |     let mut patterns: Vec<String> = Vec::new();
+    |         ----^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: `ids` (lib) generated 2 warnings (run `cargo fix --lib -p ids` to apply 1 suggestion)
+warning: `ids` (lib test) generated 2 warnings (2 duplicates)
+warning: field `run_id` is never read
+   --> services/checker/src/dto.rs:221:9
+    |
+219 | pub struct RunSpecRow {
+    |            ---------- field in this struct
+220 |     pub id: String,
+221 |     pub run_id: String,
+    |         ^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: fields `run_id` and `sort_index` are never read
+   --> services/checker/src/dto.rs:235:9
+    |
+233 | pub struct FindingRow {
+    |            ---------- fields in this struct
+234 |     pub id: String,
+235 |     pub run_id: String,
+    |         ^^^^^^
+...
+249 |     pub sort_index: i64,
+    |         ^^^^^^^^^^
+
+warning: field `finding_id` is never read
+   --> services/checker/src/dto.rs:254:9
+    |
+253 | pub struct FindingObjectRow {
+    |            ---------------- field in this struct
+254 |     pub finding_id: String,
+    |         ^^^^^^^^^^
+
+warning: function `run_extras` is never used
+   --> services/checker/src/dto.rs:996:14
+    |
+996 | pub async fn run_extras(pool: &sqlx::SqlitePool, run_id: &str) -> Result<(i64, i64), sqlx::Error> {
+    |              ^^^^^^^^^^
+
+warning: function `run_summary_for` is never used
+    --> services/checker/src/dto.rs:1014:14
+     |
+1014 | pub async fn run_summary_for(pool: &sqlx::SqlitePool, row: &RunRow) -> Result<RunSummary, sqlx::Error> {
+     |              ^^^^^^^^^^^^^^^
+
+warning: function `object_row_json` is never used
+    --> services/checker/src/dto.rs:1019:8
+     |
+1019 | pub fn object_row_json(row: &ObjectRowDb) -> ObjectRowOut {
+     |        ^^^^^^^^^^^^^^^
+
+warning: function `finding_object_json` is never used
+    --> services/checker/src/dto.rs:1042:8
+     |
+1042 | pub fn finding_object_json(row: &FindingObjectRow) -> FindingObject {
+     |        ^^^^^^^^^^^^^^^^^^^
+
+warning: function `finding_json` is never used
+    --> services/checker/src/dto.rs:1057:8
+     |
+1057 | pub fn finding_json(row: &FindingRow, sample_objects: Vec<FindingObject>) -> Finding {
+     |        ^^^^^^^^^^^^
+
+warning: function `spec_row_json` is never used
+    --> services/checker/src/dto.rs:1077:8
+     |
+1077 | pub fn spec_row_json(row: &RunSpecRow) -> SpecResultRowOut {
+     |        ^^^^^^^^^^^^^
+
+warning: function `facet_kind_name` is never used
+    --> services/checker/src/dto.rs:1096:8
+     |
+1096 | pub fn facet_kind_name(kind: ids::FacetKind) -> &'static str {
+     |        ^^^^^^^^^^^^^^^
+
+warning: function `outcome_name` is never used
+    --> services/checker/src/dto.rs:1107:8
+     |
+1107 | pub fn outcome_name(outcome: ids::Outcome) -> &'static str {
+     |        ^^^^^^^^^^^^
+
+warning: function `change_kind_name` is never used
+    --> services/checker/src/dto.rs:1116:8
+     |
+1116 | pub fn change_kind_name(kind: modeldiff::ChangeKind) -> &'static str {
+     |        ^^^^^^^^^^^^^^^^
+
+warning: function `finding_delta_name` is never used
+    --> services/checker/src/dto.rs:1128:8
+     |
+1128 | pub fn finding_delta_name(delta: modeldiff::FindingDelta) -> &'static str {
+     |        ^^^^^^^^^^^^^^^^^^
+
+warning: function `finding_key` is never used
+    --> services/checker/src/dto.rs:1138:8
+     |
+1138 | pub fn finding_key(spec_key: &str, facet: &str, requirement: &str) -> String {
+     |        ^^^^^^^^^^^
+
+warning: function `make_ids` is never used
+    --> services/checker/src/dto.rs:1148:8
+     |
+1148 | pub fn make_ids(spec_key_count: usize) -> Vec<String> {
+     |        ^^^^^^^^
+
+warning: function `timestamp_now` is never used
+    --> services/checker/src/dto.rs:1152:8
+     |
+1152 | pub fn timestamp_now() -> String {
+     |        ^^^^^^^^^^^^^
+
+warning: field `notes` is never read
+  --> services/checker/src/ids_meta.rs:44:9
+   |
+42 | pub struct PackMetadata {
+   |            ------------ field in this struct
+43 |     #[serde(default)]
+44 |     pub notes: Option<String>,
+   |         ^^^^^
+   |
+   = note: `PackMetadata` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: field `note` is never read
+  --> services/checker/src/ids_meta.rs:61:9
+   |
+55 | pub struct Triage {
+   |            ------ field in this struct
+...
+61 |     pub note: Option<String>,
+   |         ^^^^
+   |
+   = note: `Triage` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: `modelshelf-checker` (bin "modelshelf-checker" test) generated 18 warnings
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.10s
+     Running unittests src/lib.rs (/tmp/claude-1000/-home-daniel-orca-workspaces-ModelShelf-timingila/b1e0cb5d-358d-4bb8-8d48-c8234e62d1f5/scratchpad/target/debug/deps/fingerprint-109643421f496448)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/fingerprints.rs (/tmp/claude-1000/-home-daniel-orca-workspaces-ModelShelf-timingila/b1e0cb5d-358d-4bb8-8d48-c8234e62d1f5/scratchpad/target/debug/deps/fingerprints-e7b75ac243350232)
+
+running 7 tests
+test quantize_is_symmetric_and_kills_negative_zero ... ok
+test objects_without_geometry_or_placement_get_stable_tokens ... ok
+test a_move_changes_only_the_placement_fingerprint ... ok
+test a_profile_change_moves_only_the_shape_fingerprint ... ok
+test a_property_change_moves_only_the_property_fingerprint ... ok
+test same_content_hashes_identically_across_formatting_and_numbering ... ok
+test snapshots_of_the_sample_are_deterministic ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.52s
+
+     Running unittests src/lib.rs (/tmp/claude-1000/-home-daniel-orca-workspaces-ModelShelf-timingila/b1e0cb5d-358d-4bb8-8d48-c8234e62d1f5/scratchpad/target/debug/deps/ids-6a0c286c37f373d8)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/conformance.rs (/tmp/claude-1000/-home-daniel-orca-workspaces-ModelShelf-timingila/b1e0cb5d-358d-4bb8-8d48-c8234e62d1f5/scratchpad/target/debug/deps/conformance-6c5019f3474760e7)
+
+running 1 test
+test official_ids_corpus ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/tmp/claude-1000/-home-daniel-orca-workspaces-ModelShelf-timingila/b1e0cb5d-358d-4bb8-8d48-c8234e62d1f5/scratchpad/target/debug/deps/ifc_model-977842ebeeb6d14b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/sample.rs (/tmp/claude-1000/-home-daniel-orca-workspaces-ModelShelf-timingila/b1e0cb5d-358d-4bb8-8d48-c8234e62d1f5/scratchpad/target/debug/deps/sample-f69540896a413771)
+
+running 7 tests
+test parses_conformance_corpus_without_errors ... ok
+test malformed_input_is_an_error_not_a_panic ... ok
+test schema_versions_match_by_family_only ... ok
+test decodes_step_strings_and_values ... ok
+test resolves_properties_placement_and_storey_for_a_wall ... ok
+test spaces_resolve_long_names_and_predefined_types ... ok
+test parses_the_sample_building ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.16s
+
+     Running unittests src/lib.rs (/tmp/claude-1000/-home-daniel-orca-workspaces-ModelShelf-timingila/b1e0cb5d-358d-4bb8-8d48-c8234e62d1f5/scratchpad/target/debug/deps/model_contracts-497bec7a8391f78a)
+
+running 2 tests
+test tests::same_express_id_in_two_revisions_maps_to_different_object_ids ... ok
+test tests::matches_the_golden_fixture_shared_with_python_and_typescript ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/fixtures.rs (/tmp/claude-1000/-home-daniel-orca-workspaces-ModelShelf-timingila/b1e0cb5d-358d-4bb8-8d48-c8234e62d1f5/scratchpad/target/debug/deps/fixtures-56ea0fe36404b7d0)
+
+running 8 tests
+test valid_object_ref_parses ... ok
+test duplicate_objectid_fixture_passes_schema_but_fails_the_boundary_check ... ok
+test mismatched_revision_fixture_passes_schema_but_fails_the_boundary_check ... ok
+test duplicated_global_ids_remain_distinct_occurrences ... ok
+test bad_transform_fixture_passes_deserialize_but_fails_the_positive_scale_boundary_check ... ok
+test format_neutral_prepared_scene_fixture_parses_without_ifc_metadata ... ok
+test every_invalid_schema_fixture_is_rejected ... ok
+test valid_model_descriptor_semantic_model_render_manifest_all_parse ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (/tmp/claude-1000/-home-daniel-orca-workspaces-ModelShelf-timingila/b1e0cb5d-358d-4bb8-8d48-c8234e62d1f5/scratchpad/target/debug/deps/modeldiff-e2038192a120a742)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/diff.rs (/tmp/claude-1000/-home-daniel-orca-workspaces-ModelShelf-timingila/b1e0cb5d-358d-4bb8-8d48-c8234e62d1f5/scratchpad/target/debug/deps/diff-7a5e262eaf971c3a)
+
+running 14 tests
+test added_and_removed ... ok
+test changes_are_sorted_by_kind_then_type_then_express_id ... ok
+test duplicate_global_ids_pair_by_express_id_and_carry_notes ... ok
+test diff_findings_all_deltas ... ok
+test heuristic_below_floor_becomes_add_and_remove ... ok
+test heuristic_matches_object_without_global_id ... ok
+test heuristic_match_after_global_id_change ... ok
+test heuristic_resolves_competition_greedily_and_deterministically ... ok
+test mixed_change_when_several_aspects_differ ... ok
+test property_change_reports_exact_values ... ok
+test shape_change ... ok
+test supra_threshold_move_is_moved ... ok
+test sub_threshold_move_is_unchanged_with_note ... ok
+test unchanged_pair ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/main.rs (/tmp/claude-1000/-home-daniel-orca-workspaces-ModelShelf-timingila/b1e0cb5d-358d-4bb8-8d48-c8234e62d1f5/scratchpad/target/debug/deps/modelshelf_checker-d1c263488a641b3e)
+
+running 12 tests
+test db::tests::an_unrecognized_stored_provenance_resolves_to_incomplete ... ok
+test db::tests::migrates_a_fresh_empty_database_to_the_latest_version ... ok
+test db::tests::objects_foreign_key_targets_model_revisions_and_is_actually_enforced ... ok
+test db::tests::a_run_inserted_without_naming_input_provenance_defaults_to_incomplete ... ok
+test db::tests::colliding_legacy_model_id_prefixes_keep_distinct_sources ... ok
+test db::tests::migrates_populated_v1_data_preserving_old_rows_and_synthesizing_v2_rows ... ok
+test db::tests::a_failing_migration_rolls_back_completely_and_a_retry_succeeds_without_duplication ... ok
+test db::tests::version_5_downgrades_the_unprovable_complete_claim_and_keeps_historical_reasons ... ok
+test db::tests::repairs_already_version_2_finding_links_and_retries_after_fault ... ok
+test db::tests::a_fault_during_object_ref_backfill_also_rolls_back_the_whole_version ... ok
+test db::tests::a_fault_during_the_provenance_default_swap_rolls_back_the_whole_version ... ok
+test db::tests::migrates_finding_links_and_keeps_them_insertable ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.36s
+
+   Doc-tests fingerprint
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests ids
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests ifc_model
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests model_contracts
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests modeldiff
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
