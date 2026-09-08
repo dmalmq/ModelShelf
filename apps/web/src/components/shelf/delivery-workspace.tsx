@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CombinedDeliveryViewer } from "@/components/viewer/combined-delivery-viewer";
+import { ReviewScreen } from "@/components/review/review-screen";
 import {
   DISCIPLINES,
   addDeliveryMember,
@@ -586,6 +587,13 @@ export function DeliveryWorkspace({ deliveryId }: { readonly deliveryId: string 
             />
           </div>
         )}
+      </section>
+
+      <section aria-label="Findings review">
+        <h2 className="mb-2 text-sm font-semibold">Findings review / 指摘レビュー</h2>
+        <div className="overflow-hidden rounded-xl border border-border">
+          <ReviewScreen deliveryId={deliveryId} />
+        </div>
       </section>
     </div>
   );

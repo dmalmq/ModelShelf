@@ -1,0 +1,215 @@
+// Complete review screen. The panel below is hosted inside the viewer's
+// Findings tab (via the generic `inspector` seam), replacing the first-loop
+// flat list — one list, never two. Composition order is fixed: run header
+// (rule totals vs distinct objects vs N/A vs incomplete, never a percentage),
+// provenance notice (only when incomplete), scorecard tree (bands then
+// categories then requirement rows), evidence, incomplete section, spec table,
+// pack history / run creation. One reducer owns run lifecycle + selection +
+// filters + members so finding and run switches clear dependents atomically.
+"use client";
+
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { ProvenanceNotice } from "../domain/provenance-notice";
+import type { DeliveryDetail, Finding, RunDetail, Severity } from "@/lib/types";
+import { fetchDelivery } from "../viewer/delivery-api";
+import { fetchRunDetail } from "../viewer/findings-api";
+import type { DeliveryViewerController } from "../viewer/types";
+import { CombinedDeliveryViewer } from "../viewer/combined-delivery-viewer";
+import { EvidencePanel } from "./evidence-panel";
+import { PackSelection } from "./pack-selection";
+import { initialReviewState, reviewReducer } from "./review-state";
+import { IncompleteSection, ScorecardTree, SpecTable } from "./scorecard";
+import { TotalsHeader } from "./totals-header";
+import { clearFindingFromViewer } from "./viewer-bridge";
+
+function flattenFindings(detail: RunDetail): Finding[] {
+  return detail.scorecard.flatMap((band) => band.categories.flatMap((category) => category.findings));
+}
+
+export function ReviewScreen({ deliveryId }: { deliveryId: string }): React.JSX.Element {
+  const [delivery, setDelivery] = useState<DeliveryDetail | null>(null);
+  const [deliveryError, setDeliveryError] = useState<string | null>(null);
+  const [state, dispatch] = useReducer(reviewReducer, initialReviewState);
+  const [viewer, setViewer] = useState<DeliveryViewerController | null>(null);
+  const viewerRef = useRef<DeliveryViewerController | null>(null);
+  const runAbort = useRef<AbortController | null>(null);
+  const [creating, setCreating] = useState(false);
+
+  const handleController = useCallback((controller: DeliveryViewerController | null) => {
+    viewerRef.current = controller;
+    setViewer(controller);
+  }, []);
+
+  useEffect(() => {
+    const abort = new AbortController();
+    setDelivery(null);
+    setDeliveryError(null);
+    dispatch({ type: "RESET_RUN" });
+    void fetchDelivery(deliveryId, abort.signal)
+      .then((loaded) => {
+        if (abort.signal.aborted) return;
+        setDelivery(loaded);
+      })
+      .catch((reason: unknown) => {
+        if (abort.signal.aborted) return;
+        setDeliveryError(reason instanceof Error ? reason.message : "Delivery could not be loaded");
+      });
+    return () => abort.abort();
+  }, [deliveryId]);
+
+  const loadRun = useCallback((runId: string) => {
+    // A superseded response must never overwrite a newer selection.
+    runAbort.current?.abort();
+    const abort = new AbortController();
+    runAbort.current = abort;
+    dispatch({ type: "RUN_LOADING", runId });
+    void fetchRunDetail(runId, abort.signal)
+      .then((detail) => {
+        if (abort.signal.aborted) return;
+        dispatch({ type: "RUN_READY", runId, detail });
+      })
+      .catch((reason: unknown) => {
+        if (abort.signal.aborted) return;
+        dispatch({ type: "RUN_FAILED", error: reason instanceof Error ? reason.message : "Run could not be loaded" });
+      });
+    return () => abort.abort();
+  }, []);
+
+  // Initial run: ?run= wins, else the latest completed run, else the latest run.
+  useEffect(() => {
+    if (!delivery || state.lifecycle !== "idle") return;
+    const param = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("run");
+    const runs = [...delivery.runs].sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1));
+    const initial =
+      (param && runs.some((run) => run.id === param) && param) ??
+      runs.find((run) => run.status === "completed")?.id ??
+      runs[0]?.id ??
+      null;
+    if (initial) loadRun(initial);
+  }, [delivery, state.lifecycle, loadRun]);
+
+  const findings = state.detail ? flattenFindings(state.detail) : [];
+  const selectedFinding = findings.find((finding) => finding.id === state.selection.findingId) ?? null;
+
+  function handleSelect(band: Severity | null, categoryId: string | null, findingId: string | null): void {
+    if (findingId === null && viewerRef.current) {
+      try {
+        clearFindingFromViewer(viewerRef.current);
+      } catch {
+        // Viewer not ready yet; the panel simply lists without highlights.
+      }
+    }
+    dispatch({ type: "SELECT_FINDING", band, categoryId, findingId });
+  }
+
+  function handleRunCreated(detail: RunDetail): void {
+    // A new run is immutable history from birth: patch the local delivery copy
+    // so the run selector preserves both old and new results without refetch.
+    setDelivery((current) =>
+      current ? { ...current, runs: [...current.runs, detail.run] } : current,
+    );
+    dispatch({ type: "RUN_READY", runId: detail.run.id, detail });
+  }
+
+  if (deliveryError) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-background p-6">
+        <div className="max-w-lg border border-border bg-card p-6">
+          <h1 className="text-xl font-semibold">Delivery unavailable / デリバリーを開けません</h1>
+          <p className="mt-2 text-sm text-destructive">{deliveryError}</p>
+          <button
+            type="button"
+            className="mt-5 border border-border px-3 py-1.5 text-sm"
+            onClick={() => window.location.reload()}
+          >
+            Retry / 再試行
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <div data-review-screen>
+      <CombinedDeliveryViewer
+        deliveryId={deliveryId}
+        onController={handleController}
+        inspector={
+          !delivery ? (
+            <p className="text-xs text-muted-foreground" role="status">
+              Loading delivery / デリバリーを読み込み中
+            </p>
+          ) : (
+            <div className="space-y-4" data-review-panel>
+              <PackSelection
+                delivery={delivery}
+                selectedRunId={state.runId}
+                creating={creating}
+                onSelectRun={loadRun}
+                onRunCreated={handleRunCreated}
+                onCreatingChange={setCreating}
+              />
+
+              {state.lifecycle === "loading" || (state.lifecycle === "idle" && state.runId) ? (
+                <p className="text-xs text-muted-foreground" role="status">
+                  Loading run findings…
+                </p>
+              ) : state.lifecycle === "failed" ? (
+                <div className="border border-destructive/40 p-3 text-xs" data-run-failed>
+                  <p className="font-medium">ランを読み込めません / Run could not be loaded</p>
+                  <p className="mt-1 text-destructive">{state.error}</p>
+                  <div className="mt-2 flex gap-1.5">
+                    {state.runId && (
+                      <button
+                        type="button"
+                        className="border border-border px-2 py-1"
+                        onClick={() => state.runId && loadRun(state.runId)}
+                      >
+                        再試行 / Retry
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : state.detail ? (
+                <>
+                  <TotalsHeader run={state.detail.run} />
+                  <ProvenanceNotice
+                    status={state.detail.inputProvenance.status}
+                    reason={state.detail.inputProvenance.reason}
+                  />
+                  <ScorecardTree bands={state.detail.scorecard} selection={state.selection} onSelect={handleSelect} />
+                  {selectedFinding && (
+                    <EvidencePanel
+                      finding={selectedFinding}
+                      run={state.detail.run}
+                      specs={state.detail.specs}
+                      models={state.detail.models}
+                      filters={state.filters}
+                      onFiltersChange={(filters) => dispatch({ type: "SET_FILTERS", filters })}
+                      page={state.page}
+                      onPageChange={(page) => dispatch({ type: "SET_PAGE", page })}
+                      members={state.members}
+                      membersLoading={state.membersLoading}
+                      onMembersLoading={() => dispatch({ type: "MEMBERS_LOADING" })}
+                      onMembersReady={(findingId, objects, total) =>
+                        dispatch({ type: "MEMBERS_READY", findingId, objects, total })
+                      }
+                      onMembersFailed={() => dispatch({ type: "MEMBERS_FAILED" })}
+                      viewer={viewer}
+                    />
+                  )}
+                  <IncompleteSection findings={state.detail.reviewIncomplete} />
+                  <SpecTable specs={state.detail.specs} />
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground" data-no-run-selected>
+                  ランを選択してください / Select a run to review its findings.
+                </p>
+              )}
+            </div>
+          )
+        }
+      />
+    </div>
+  );
+}

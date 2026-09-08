@@ -13,14 +13,52 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { MockFinding } from "@/lib/mock";
+import type { Finding } from "@/lib/types";
+
+interface EvidenceObject {
+  expressId: number;
+  ifcType: string;
+  name: string | null;
+  storey: string | null;
+  model: string;
+  actual: string | null;
+}
+
+/** Real findings use `sampleObjects`; the design fixture uses `objects`. */
+function normalize(finding: Finding | MockFinding): { objects: EvidenceObject[]; expected: string | null } {
+  if ("sampleObjects" in finding) {
+    return {
+      objects: finding.sampleObjects.map((object) => ({
+        expressId: object.expressId,
+        ifcType: object.ifcType,
+        name: object.name,
+        storey: object.storey,
+        model: object.modelId.slice(0, 8),
+        actual: object.actual,
+      })),
+      expected: finding.expected,
+    };
+  }
+  return {
+    objects: finding.objects.map((object) => ({
+      expressId: object.expressId,
+      ifcType: object.ifcType,
+      name: object.name,
+      storey: object.storey,
+      model: object.model,
+      actual: object.actual,
+    })),
+    expected: finding.expected,
+  };
+}
 
 /**
  * A finding's review evidence: the rule, result counts, and concrete model
  * objects that a reviewer can inspect in the viewer.
  */
-export function FindingEvidence({ finding }: { finding: MockFinding }) {
-  const otherObjectCount = finding.objectCount - finding.objects.length;
-
+export function FindingEvidence({ finding }: { finding: Finding | MockFinding }) {
+  const { objects, expected } = normalize(finding);
+  const otherObjectCount = finding.objectCount - objects.length;
   return (
     <Accordion type="single" collapsible>
       <AccordionItem value="evidence" className="border-b-0">
@@ -35,7 +73,7 @@ export function FindingEvidence({ finding }: { finding: MockFinding }) {
             </div>
             <div className="flex gap-2">
               <dt className="w-10 shrink-0 text-muted-foreground">期待値</dt>
-              <dd>{finding.expected}</dd>
+              <dd>{expected ?? "記載なし / Not stated"}</dd>
             </div>
           </dl>
 
@@ -51,18 +89,18 @@ export function FindingEvidence({ finding }: { finding: MockFinding }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {finding.objects.map((object) => (
-                  <TableRow key={object.expressId}>
+                {objects.map((object) => (
+                  <TableRow key={`${object.model}-${object.expressId}`}>
                     <TableCell className="px-2 py-1.5 text-xs">
-                      <span className="block">{object.name}</span>
+                      <span className="block">{object.name ?? "Unnamed"}</span>
                       <span className="tnum text-muted-foreground">
                         #{object.expressId} · {object.ifcType}
                       </span>
                     </TableCell>
-                    <TableCell className="px-2 py-1.5 text-xs">{object.storey}</TableCell>
+                    <TableCell className="px-2 py-1.5 text-xs">{object.storey ?? "—"}</TableCell>
                     <TableCell className="px-2 py-1.5 text-xs">{object.model}</TableCell>
                     <TableCell className="px-2 py-1.5 text-xs text-muted-foreground">
-                      {object.actual}
+                      {object.actual ?? "—"}
                     </TableCell>
                   </TableRow>
                 ))}

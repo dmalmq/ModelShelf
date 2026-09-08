@@ -1007,6 +1007,13 @@ pub fn run_summary(row: &RunRow, finding_count: i64, failing_object_count: i64) 
 }
 
 /// Load `(finding_count, failing_object_count)` for one run.
+///
+/// Canonical definition, shared by run summaries, run detail, and diff headers:
+/// `failing_object_count` is the number of DISTINCT objects (`model_id` +
+/// `express_id`) with evidence in a decided (non-incomplete) finding.
+/// Incomplete-review members are excluded — they are reported separately and
+/// never folded into pass/fail — and one object failing several rules counts
+/// once. `score` stays on the wire for compatibility but is never rendered.
 pub async fn run_extras(pool: &sqlx::SqlitePool, run_id: &str) -> Result<(i64, i64), sqlx::Error> {
     let finding_count: i64 =
         sqlx::query_scalar("SELECT COUNT(*) FROM findings WHERE run_id = ?1")
@@ -1014,10 +1021,9 @@ pub async fn run_extras(pool: &sqlx::SqlitePool, run_id: &str) -> Result<(i64, i
             .fetch_one(pool)
             .await?;
     let failing_object_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(DISTINCT fo.object_id)
-           FROM finding_objects fo
-           JOIN findings f ON f.id = fo.finding_id
-          WHERE f.run_id = ?1 AND fo.object_id IS NOT NULL",
+        "SELECT COUNT(DISTINCT fo.model_id || ':' || fo.express_id)
+           FROM finding_objects fo JOIN findings f ON f.id = fo.finding_id
+          WHERE f.run_id = ?1 AND f.incomplete = 0",
     )
     .bind(run_id)
     .fetch_one(pool)
