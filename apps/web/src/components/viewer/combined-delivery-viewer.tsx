@@ -24,7 +24,7 @@ interface CombinedDeliveryViewerProps {
 
 interface ViewerVerificationHandle {
   inspect(): ViewerDiagnostics;
-  select(ref: ObjectRef): void;
+  select(ref: ObjectRef | null): void;
   highlight(groups: ViewerHighlight[]): void;
   isolate(refs: ObjectRef[] | null): void;
   section(z: number | null): void;
@@ -91,7 +91,7 @@ export function CombinedDeliveryViewer({
     if (window.__modelshelfViewerVerify) {
       window.__modelshelfViewer = {
         inspect: () => controller.diagnostics(),
-        select: (ref) => controller.select(parseObjectRef(ref)),
+        select: (ref) => controller.select(ref === null ? null : parseObjectRef(ref)),
         highlight: (groups) => controller.setHighlights(groups),
         isolate: (refs) => controller.isolate(refs),
         section: (z) => controller.setSectionZ(z),

@@ -14,7 +14,7 @@ import { runInspectionScenario } from "./verify-viewer-inspection.mjs";
 const scenarioFlag = process.argv.indexOf("--scenario");
 const scenario = scenarioFlag >= 0 ? process.argv[scenarioFlag + 1] : "combined";
 if (scenario !== "combined" && scenario !== "inspection") {
-  console.error(`usage: node scripts/verify-viewer.mjs [--scenario combined|inspection] (got ${scenario ?? "<none>"})`);
+  console.error(`usage: node scripts/verify-viewer.mjs [--scenario combined|inspection] [--assert-perf] (got ${scenario ?? "<none>"})`);
   process.exit(2);
 }
 if (scenario === "inspection") {

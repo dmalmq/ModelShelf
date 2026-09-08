@@ -38,12 +38,12 @@
     "right drag pans the camera",
     "wheel input zooms the camera",
     "canvas raycasting selects a revision-qualified ObjectRef",
-    "combined first unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":191}",
+    "combined first unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":186,\"triangles\":0}",
     "combined first unload releases uploaded GPU geometry and shader programs",
     "combined first unload releases every BatchedMesh GPU texture",
     "combined first unload closes the observed browser Worker",
     "combined first unload stops the observed render loop",
-    "combined repeated unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":191}",
+    "combined repeated unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":186,\"triangles\":0}",
     "combined repeated unload releases uploaded GPU geometry and shader programs",
     "combined repeated unload releases every BatchedMesh GPU texture",
     "combined repeated unload closes the observed browser Worker",
@@ -55,20 +55,20 @@
     "one ObjectRef can address several placed geometry instances",
     "the first duplicate GlobalId revision selects independently",
     "the second duplicate GlobalId revision selects independently",
-    "duplicate unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":47}",
+    "duplicate unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":45,\"triangles\":0}",
     "duplicate unload releases uploaded GPU geometry and shader programs",
     "duplicate unload releases every BatchedMesh GPU texture",
     "duplicate unload closes the observed browser Worker",
     "duplicate unload stops the observed render loop",
     "remount reacquires one Worker and batched GPU resources",
-    "duplicate remount unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":34}",
+    "duplicate remount unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":31,\"triangles\":0}",
     "duplicate remount unload releases uploaded GPU geometry and shader programs",
     "duplicate remount unload releases every BatchedMesh GPU texture",
     "duplicate remount unload closes the observed browser Worker",
     "duplicate remount unload stops the observed render loop",
     "a valid revision with no drawable geometry reaches ready",
     "an empty drawable revision exposes no selectable objects",
-    "empty revision unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":26}",
+    "empty revision unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":23,\"triangles\":0}",
     "empty revision unload releases uploaded GPU geometry and shader programs",
     "empty revision unload releases every BatchedMesh GPU texture",
     "empty revision unload closes the observed browser Worker",
@@ -107,10 +107,10 @@
     "/api/models/empty-model/file"
   ],
   "workerUrls": [
-    "http://127.0.0.1:35937/_next/static/chunks/_app-pages-browser_src_components_viewer_ifc-loader_worker_ts.js",
-    "http://127.0.0.1:35937/_next/static/chunks/_app-pages-browser_src_components_viewer_ifc-loader_worker_ts.js",
-    "http://127.0.0.1:35937/_next/static/chunks/_app-pages-browser_src_components_viewer_ifc-loader_worker_ts.js",
-    "http://127.0.0.1:35937/_next/static/chunks/_app-pages-browser_src_components_viewer_ifc-loader_worker_ts.js"
+    "http://127.0.0.1:33927/_next/static/chunks/_app-pages-browser_src_components_viewer_ifc-loader_worker_ts.js",
+    "http://127.0.0.1:33927/_next/static/chunks/_app-pages-browser_src_components_viewer_ifc-loader_worker_ts.js",
+    "http://127.0.0.1:33927/_next/static/chunks/_app-pages-browser_src_components_viewer_ifc-loader_worker_ts.js",
+    "http://127.0.0.1:33927/_next/static/chunks/_app-pages-browser_src_components_viewer_ifc-loader_worker_ts.js"
   ],
   "partial": {
     "snapshot": {
@@ -297,7 +297,8 @@
       "gpuGeometries": 2,
       "gpuTextures": 7,
       "shaderPrograms": 1,
-      "renderFrame": 82
+      "renderFrame": 78,
+      "triangles": 354452
     },
     "renderer": {
       "cameraPosition": [
@@ -353,7 +354,8 @@
       "gpuGeometries": 3,
       "gpuTextures": 10,
       "shaderPrograms": 1,
-      "renderFrame": 110
+      "renderFrame": 106,
+      "triangles": 692230
     },
     "modelBounds": [
       {
@@ -514,7 +516,8 @@
       "gpuGeometries": 1,
       "gpuTextures": 2,
       "shaderPrograms": 1,
-      "renderFrame": 26
+      "renderFrame": 23,
+      "triangles": 0
     }
   },
   "disposalRuns": [
@@ -528,7 +531,8 @@
       "gpuGeometries": 0,
       "gpuTextures": 1,
       "shaderPrograms": 0,
-      "renderFrame": 191
+      "renderFrame": 186,
+      "triangles": 0
     },
     {
       "workers": 0,
@@ -540,7 +544,8 @@
       "gpuGeometries": 0,
       "gpuTextures": 1,
       "shaderPrograms": 0,
-      "renderFrame": 191
+      "renderFrame": 186,
+      "triangles": 0
     },
     {
       "workers": 0,
@@ -552,7 +557,8 @@
       "gpuGeometries": 0,
       "gpuTextures": 1,
       "shaderPrograms": 0,
-      "renderFrame": 47
+      "renderFrame": 45,
+      "triangles": 0
     },
     {
       "workers": 0,
@@ -564,7 +570,8 @@
       "gpuGeometries": 0,
       "gpuTextures": 1,
       "shaderPrograms": 0,
-      "renderFrame": 34
+      "renderFrame": 31,
+      "triangles": 0
     },
     {
       "workers": 0,
@@ -576,7 +583,8 @@
       "gpuGeometries": 0,
       "gpuTextures": 1,
       "shaderPrograms": 0,
-      "renderFrame": 26
+      "renderFrame": 23,
+      "triangles": 0
     }
   ]
 }

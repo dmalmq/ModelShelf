@@ -135,6 +135,8 @@ export interface ViewerResourceStats {
   readonly gpuTextures: number;
   readonly shaderPrograms: number;
   readonly renderFrame: number;
+  /** Drawable triangles across uploaded revisions, indexCount / 3 per unique geometry. */
+  readonly triangles: number;
 }
 
 export interface RendererDiagnostics {
