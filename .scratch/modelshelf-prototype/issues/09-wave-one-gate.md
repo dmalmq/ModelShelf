@@ -70,8 +70,9 @@ Append an Answer with changes, exact commands/results, evidence links, remaining
 
 Created from the approved prototype plan on 2026-09-06. No implementation is claimed by ticket creation.
 
-## Answer (partial — two responsiveness lines miss on this host, see below)
-Resolution: owner accepted the documented environment-limited lines on 2026-09-08 (orbit FPS and longtask proof miss on the GPU-less host; root cause isolated and recorded). No threshold was changed; `--assert-perf` still fails loudly on those lines.
+## Answer
+
+Partial resolution: two responsiveness lines miss on this host, see below.
 
 Status note: every criterion is demonstrated except median-orbit FPS and the parsing-induced longtask proof, both blocked by the GPU-less host (root cause with isolation experiments below). Nothing was weakened. The gate script red-lines exactly those lines; everything else is green.
 
