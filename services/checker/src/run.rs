@@ -546,20 +546,9 @@ pub async fn fetch_run_row(pool: &SqlitePool, run_id: &str) -> Result<RunRow, Ap
 }
 
 pub async fn run_counts(pool: &SqlitePool, run_id: &str) -> Result<(i64, i64), ApiError> {
-    let finding_count: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM findings WHERE run_id = ?1")
-            .bind(run_id)
-            .fetch_one(pool)
-            .await?;
-    let failing_object_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(DISTINCT fo.model_id || ':' || fo.express_id)
-           FROM finding_objects fo JOIN findings f ON f.id = fo.finding_id
-          WHERE f.run_id = ?1 AND f.incomplete = 0",
-    )
-    .bind(run_id)
-    .fetch_one(pool)
-    .await?;
-    Ok((finding_count, failing_object_count))
+    // Single helper: the canonical definition lives in `dto::run_extras` so run
+    // detail, run summaries, and diff headers cannot diverge again.
+    Ok(crate::dto::run_extras(pool, run_id).await?)
 }
 
 pub async fn run_detail(pool: &SqlitePool, run_id: &str) -> Result<RunDetail, ApiError> {
