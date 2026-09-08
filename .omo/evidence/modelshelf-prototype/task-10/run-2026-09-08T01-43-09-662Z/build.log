@@ -1,0 +1,194 @@
+warning: method `is_product` is never used
+   --> crates/ifc-model/src/lib.rs:730:8
+    |
+432 | impl IfcModel {
+    | ------------- method in this implementation
+...
+730 |     fn is_product(&self, e: &Entity) -> bool {
+    |        ^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `ifc-model` (lib) generated 1 warning
+warning: use of deprecated method `quick_xml::events::attributes::Attribute::<'a>::unescape_value`: use `Self::normalized_value()`
+   --> crates/ids/src/xml.rs:111:14
+    |
+111 |             .unescape_value()
+    |              ^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(deprecated)]` on by default
+
+warning: variable does not need to be mutable
+   --> crates/ids/src/lib.rs:609:9
+    |
+609 |     let mut patterns: Vec<String> = Vec::new();
+    |         ----^^^^^^^^
+    |         |
+    |         help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: `ids` (lib) generated 2 warnings (run `cargo fix --lib -p ids` to apply 1 suggestion)
+warning: field `storage_path` is never read
+  --> services/checker/src/dto.rs:87:9
+   |
+74 | pub struct ModelRow {
+   |            -------- field in this struct
+...
+87 |     pub storage_path: String,
+   |         ^^^^^^^^^^^^
+   |
+   = note: `ModelRow` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `run_id` is never read
+   --> services/checker/src/dto.rs:222:9
+    |
+220 | pub struct RunSpecRow {
+    |            ---------- field in this struct
+221 |     pub id: String,
+222 |     pub run_id: String,
+    |         ^^^^^^
+
+warning: fields `run_id` and `sort_index` are never read
+   --> services/checker/src/dto.rs:236:9
+    |
+234 | pub struct FindingRow {
+    |            ---------- fields in this struct
+235 |     pub id: String,
+236 |     pub run_id: String,
+    |         ^^^^^^
+...
+250 |     pub sort_index: i64,
+    |         ^^^^^^^^^^
+
+warning: field `finding_id` is never read
+   --> services/checker/src/dto.rs:255:9
+    |
+254 | pub struct FindingObjectRow {
+    |            ---------------- field in this struct
+255 |     pub finding_id: String,
+    |         ^^^^^^^^^^
+
+warning: function `run_extras` is never used
+    --> services/checker/src/dto.rs:1010:14
+     |
+1010 | pub async fn run_extras(pool: &sqlx::SqlitePool, run_id: &str) -> Result<(i64, i64), sqlx::Error> {
+     |              ^^^^^^^^^^
+
+warning: function `run_summary_for` is never used
+    --> services/checker/src/dto.rs:1028:14
+     |
+1028 | pub async fn run_summary_for(pool: &sqlx::SqlitePool, row: &RunRow) -> Result<RunSummary, sqlx::Error> {
+     |              ^^^^^^^^^^^^^^^
+
+warning: function `object_row_json` is never used
+    --> services/checker/src/dto.rs:1033:8
+     |
+1033 | pub fn object_row_json(row: &ObjectRowDb) -> ObjectRowOut {
+     |        ^^^^^^^^^^^^^^^
+
+warning: function `finding_json` is never used
+    --> services/checker/src/dto.rs:1075:8
+     |
+1075 | pub fn finding_json(row: &FindingRow, sample_objects: Vec<FindingObject>) -> Finding {
+     |        ^^^^^^^^^^^^
+
+warning: function `spec_row_json` is never used
+    --> services/checker/src/dto.rs:1095:8
+     |
+1095 | pub fn spec_row_json(row: &RunSpecRow) -> SpecResultRowOut {
+     |        ^^^^^^^^^^^^^
+
+warning: function `facet_kind_name` is never used
+    --> services/checker/src/dto.rs:1114:8
+     |
+1114 | pub fn facet_kind_name(kind: ids::FacetKind) -> &'static str {
+     |        ^^^^^^^^^^^^^^^
+
+warning: function `outcome_name` is never used
+    --> services/checker/src/dto.rs:1125:8
+     |
+1125 | pub fn outcome_name(outcome: ids::Outcome) -> &'static str {
+     |        ^^^^^^^^^^^^
+
+warning: function `change_kind_name` is never used
+    --> services/checker/src/dto.rs:1134:8
+     |
+1134 | pub fn change_kind_name(kind: modeldiff::ChangeKind) -> &'static str {
+     |        ^^^^^^^^^^^^^^^^
+
+warning: function `finding_delta_name` is never used
+    --> services/checker/src/dto.rs:1146:8
+     |
+1146 | pub fn finding_delta_name(delta: modeldiff::FindingDelta) -> &'static str {
+     |        ^^^^^^^^^^^^^^^^^^
+
+warning: function `finding_key` is never used
+    --> services/checker/src/dto.rs:1156:8
+     |
+1156 | pub fn finding_key(spec_key: &str, facet: &str, requirement: &str) -> String {
+     |        ^^^^^^^^^^^
+
+warning: function `make_ids` is never used
+    --> services/checker/src/dto.rs:1166:8
+     |
+1166 | pub fn make_ids(spec_key_count: usize) -> Vec<String> {
+     |        ^^^^^^^^
+
+warning: function `timestamp_now` is never used
+    --> services/checker/src/dto.rs:1170:8
+     |
+1170 | pub fn timestamp_now() -> String {
+     |        ^^^^^^^^^^^^^
+
+warning: field `notes` is never read
+  --> services/checker/src/ids_meta.rs:53:9
+   |
+51 | pub struct PackMetadata {
+   |            ------------ field in this struct
+52 |     #[serde(default)]
+53 |     pub notes: Option<String>,
+   |         ^^^^^
+   |
+   = note: `PackMetadata` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: field `note` is never read
+  --> services/checker/src/ids_meta.rs:70:9
+   |
+64 | pub struct Triage {
+   |            ------ field in this struct
+...
+70 |     pub note: Option<String>,
+   |         ^^^^
+   |
+   = note: `Triage` has derived impls for the traits `Clone` and `Debug`, but these are intentionally ignored during dead code analysis
+
+warning: fields `worker`, `ifc_open_shell`, and `ifc_tester` are never read
+   --> services/checker/src/jobs.rs:252:9
+    |
+250 | pub(crate) struct WorkerVersions {
+    |                   -------------- fields in this struct
+251 |     #[serde(default)]
+252 |     pub worker: String,
+    |         ^^^^^^
+253 |     #[serde(default, rename = "ifcOpenShell")]
+254 |     pub ifc_open_shell: String,
+    |         ^^^^^^^^^^^^^^
+255 |     #[serde(default, rename = "ifcTester")]
+256 |     pub ifc_tester: String,
+    |         ^^^^^^^^^^
+    |
+    = note: `WorkerVersions` has a derived impl for the trait `Clone`, but this is intentionally ignored during dead code analysis
+
+warning: field `versions` is never read
+   --> services/checker/src/jobs.rs:295:9
+    |
+291 | pub(crate) struct WorkerArtifacts {
+    |                   --------------- field in this struct
+...
+295 |     pub versions: WorkerVersions,
+    |         ^^^^^^^^
+
+warning: `modelshelf-checker` (bin "modelshelf-checker") generated 20 warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.08s

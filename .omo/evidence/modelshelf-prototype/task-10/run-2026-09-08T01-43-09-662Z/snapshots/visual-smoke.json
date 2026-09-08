@@ -1,0 +1,26 @@
+{
+  "passed": true,
+  "desktop": {
+    "viewport": { "width": 1440, "height": 900 },
+    "surface": "populated project shelf",
+    "screenshot": "../shelf-populated-desktop.webp"
+  },
+  "mobile": [
+    {
+      "viewport": { "width": 390, "height": 844 },
+      "surface": "populated project shelf",
+      "innerWidth": 390,
+      "documentScrollWidth": 390,
+      "bodyScrollWidth": 390,
+      "screenshot": "../shelf-populated-mobile.webp"
+    },
+    {
+      "viewport": { "width": 390, "height": 844 },
+      "surface": "empty delivery workspace",
+      "innerWidth": 390,
+      "documentScrollWidth": 390,
+      "bodyScrollWidth": 390,
+      "screenshot": "../delivery-empty-mobile.webp"
+    }
+  ]
+}
