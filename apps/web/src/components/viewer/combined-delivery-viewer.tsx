@@ -20,6 +20,18 @@ import type {
 
 interface CombinedDeliveryViewerProps {
   readonly deliveryId: string;
+  /**
+   * Controller seam for the host review panel: the viewer publishes its
+   * controller here on start and null on dispose. The panel drives highlights
+   * through the generic controller only — no finding types cross this seam.
+   */
+  readonly onController?: (controller: DeliveryViewerController | null) => void;
+  /**
+   * Host-provided inspector for the Findings tab. When present it replaces the
+   * first-loop flat finding list, so the review screen never renders two
+   * competing lists. Plain ReactNode: the viewer never learns finding types.
+   */
+  readonly inspector?: React.ReactNode;
 }
 
 interface ViewerVerificationHandle {
@@ -50,6 +62,8 @@ const DEFAULT_VISIBILITY: Readonly<Record<Discipline, boolean>> = {
 
 export function CombinedDeliveryViewer({
   deliveryId,
+  onController,
+  inspector,
 }: CombinedDeliveryViewerProps): React.JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controllerRef = useRef<DeliveryViewerController | null>(null);
@@ -59,7 +73,9 @@ export function CombinedDeliveryViewer({
   const [visible, setVisible] = useState<Record<Discipline, boolean>>({
     ...DEFAULT_VISIBILITY,
   });
-  const [panelTab, setPanelTab] = useState<"selection" | "findings">("selection");
+  const [panelTab, setPanelTab] = useState<"selection" | "findings">(
+    inspector ? "findings" : "selection",
+  );
   const [initialRunId] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
     const run = new URLSearchParams(window.location.search).get("run");
@@ -87,6 +103,7 @@ export function CombinedDeliveryViewer({
 
     const controller = createDeliveryViewer({ delivery, canvas });
     controllerRef.current = controller;
+    onController?.(controller);
     const unsubscribe = controller.subscribe(setSnapshot);
     if (window.__modelshelfViewerVerify) {
       window.__modelshelfViewer = {
@@ -109,11 +126,12 @@ export function CombinedDeliveryViewer({
       unsubscribe();
       controller.dispose();
       controllerRef.current = null;
+      onController?.(null);
       if (window.__modelshelfViewerVerify) {
         delete window.__modelshelfViewer;
       }
     };
-  }, [delivery]);
+  }, [delivery, onController]);
 
   if (error) {
     return (
@@ -253,13 +271,15 @@ export function CombinedDeliveryViewer({
             </button>
           </div>
           {panelTab === "findings" ? (
-            <div className="p-4">
-              <FindingInspector
-                delivery={delivery}
-                getController={() => controllerRef.current}
-                selected={selected}
-                initialRunId={initialRunId}
-              />
+            <div className="max-h-[calc(100vh-12rem)] space-y-4 overflow-y-auto p-4">
+              {inspector ?? (
+                <FindingInspector
+                  delivery={delivery}
+                  getController={() => controllerRef.current}
+                  selected={selected}
+                  initialRunId={initialRunId}
+                />
+              )}
             </div>
           ) : (
           <div className="p-4">

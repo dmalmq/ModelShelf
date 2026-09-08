@@ -1,4 +1,4 @@
-import { CombinedDeliveryViewer } from "@/components/viewer/combined-delivery-viewer";
+import { ReviewScreen } from "@/components/review/review-screen";
 
 interface DeliveryPageProps {
   readonly params: Promise<{ deliveryId: string }>;
@@ -8,5 +8,5 @@ export default async function DeliveryPage({
   params,
 }: DeliveryPageProps): Promise<React.JSX.Element> {
   const { deliveryId } = await params;
-  return <CombinedDeliveryViewer deliveryId={deliveryId} />;
+  return <ReviewScreen deliveryId={deliveryId} />;
 }
