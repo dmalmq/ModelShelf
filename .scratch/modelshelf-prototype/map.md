@@ -37,6 +37,7 @@ A runnable local ModelShelf prototype that combines architectural, structural, a
 - [Open a combined delivery in the browser](issues/07-combined-viewer.md) — resolved 2026-09-07: three real BLCJ revisions share one aligned batched scene, source-specific failure and retry, revision-qualified ObjectRef selection, and verified Worker/GPU lifecycle disposal.
 - [Inspect a real finding in its model context](issues/08-finding-inspection.md) — resolved 2026-09-07: finding inspector with revision-qualified highlight groups, source/discipline/storey/type filters, section cut, dimming, isolation reset, and property inspection; 107-member flow-segment finding fully matched, incomplete findings keep textual evidence; `verify-viewer --scenario inspection` passed.
 - [Prove the Wave 1 review loop and viewer performance](issues/09-wave-one-gate.md) — resolved 2026-09-08 by owner decision: first-loop API scenario, triangle stat, perf-instrumented inspection with `--assert-perf` verdicts, Wave 1 report; orbit FPS and longtask proof stay red on the GPU-less host with root cause recorded, thresholds unchanged.
+- [Complete the reviewer delivery shelf](issues/10-delivery-shelf.md) resolved on 2026-09-08. The root shelf and delivery workspace now create sources and deliveries, ingest and retry uploads, reuse and replace revisions, freeze membership, refresh the combined viewer, and expose exact pinned run inputs. The real browser scenario passed 31 checks.
 
 ## Not yet specified
 

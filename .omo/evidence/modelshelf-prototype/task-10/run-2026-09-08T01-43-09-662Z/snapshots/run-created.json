@@ -1,0 +1,514 @@
+{
+  "run": {
+    "id": "7857cd47-067d-4151-8816-c2222fccbdc1",
+    "projectId": "demo-project",
+    "deliveryId": "a7f29066-6293-4d4a-93f5-07bf20376d1d",
+    "deliveryLabel": "drop-1",
+    "packVersionId": "f5168feb-ded4-40a7-964d-e9cb35cf1345",
+    "packName": "Demo Check Pack",
+    "packVersion": 3,
+    "engineVersion": "ifctester/0.8.5",
+    "parserVersion": "ifcopenshell/0.8.5",
+    "status": "completed",
+    "error": null,
+    "startedAt": "2026-09-08T01:43:30.908Z",
+    "finishedAt": "2026-09-08T01:43:32.139Z",
+    "durationMs": 1226,
+    "passCount": 0,
+    "failCount": 2,
+    "notApplicableCount": 0,
+    "incompleteCount": 0,
+    "score": 0,
+    "findingCount": 1,
+    "failingObjectCount": 270
+  },
+  "models": [
+    {
+      "id": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+      "deliveryId": "a7f29066-6293-4d4a-93f5-07bf20376d1d",
+      "discipline": "MEP",
+      "sourceModelId": "a388bfc6-5bd7-41b6-8534-b2455dd0057d",
+      "sourceModelName": "MEP North",
+      "filename": "base.ifc",
+      "contentSha256": "2e0b230a4f7fe25c4f603f27c824e1c831777e548c21f24cbfcf047e61a74562",
+      "byteSize": 77504,
+      "schemaLabel": "IFC4",
+      "entityCount": 141,
+      "productCount": 141,
+      "lengthToMetre": 1,
+      "parseMs": null,
+      "uploadedAt": "2026-09-08T01:43:25.569Z",
+      "originatingSystem": null
+    },
+    {
+      "id": "e6d3482d-6c4e-4b58-8c3e-2b664e3a732a",
+      "deliveryId": "a7f29066-6293-4d4a-93f5-07bf20376d1d",
+      "discipline": "MEP",
+      "sourceModelId": "07e838f7-442a-49e4-a433-6de16b8c71f8",
+      "sourceModelName": "MEP South",
+      "filename": "head.ifc",
+      "contentSha256": "28621297716286e655c2ed6ad3e3c937326b07a608d046b4a77f6f30be0709bd",
+      "byteSize": 77603,
+      "schemaLabel": "IFC4",
+      "entityCount": 141,
+      "productCount": 141,
+      "lengthToMetre": 1,
+      "parseMs": null,
+      "uploadedAt": "2026-09-08T01:43:26.714Z",
+      "originatingSystem": null
+    }
+  ],
+  "scorecard": [
+    {
+      "severity": "medium",
+      "findingCount": 1,
+      "objectCount": 270,
+      "categories": [
+        {
+          "categoryId": "other",
+          "categoryLabel": "Other",
+          "findingCount": 1,
+          "objectCount": 270,
+          "findings": [
+            {
+              "id": "b95274ab-9aaf-4805-9382-fd138472ab53",
+              "findingKey": "2a46de0f45a3e55bed07492ed376c00b",
+              "specIdentifier": "Wall declares a fire rating",
+              "specName": "Wall declares a fire rating",
+              "title": "Wall declares a fire rating",
+              "requirement": "FireRating data shall be provided in the dataset Pset_WallCommon",
+              "expected": null,
+              "instructions": null,
+              "facet": "property",
+              "severity": "medium",
+              "categoryId": "other",
+              "categoryLabel": "Other",
+              "objectCount": 270,
+              "incomplete": false,
+              "sampleObjects": [
+                {
+                  "objectId": "e02c255d-a213-4430-ae8e-ce9ea521fadd",
+                  "modelId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                  "ref": {
+                    "revisionId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                    "objectId": "occ_d69b4c4e08b498d3"
+                  },
+                  "discipline": "MEP",
+                  "expressId": 18,
+                  "globalId": "16W$a79s9PwQHAtDy0vnhE",
+                  "ifcType": "IfcWall",
+                  "name": "Repeat-000",
+                  "storey": "1F",
+                  "actual": "The required property set does not exist",
+                  "incompleteReason": null
+                },
+                {
+                  "objectId": "afddf5dd-935c-4b25-9082-11e495b8b4d3",
+                  "modelId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                  "ref": {
+                    "revisionId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                    "objectId": "occ_ee57da74113fb6cf"
+                  },
+                  "discipline": "MEP",
+                  "expressId": 32,
+                  "globalId": "0sWkWnHxzK0xVVFz8V91BB",
+                  "ifcType": "IfcWall",
+                  "name": "Repeat-001",
+                  "storey": "1F",
+                  "actual": "The required property set does not exist",
+                  "incompleteReason": null
+                },
+                {
+                  "objectId": "18f72a60-44ac-4322-bd43-dffbe559ef49",
+                  "modelId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                  "ref": {
+                    "revisionId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                    "objectId": "occ_56ffb2111eca3245"
+                  },
+                  "discipline": "MEP",
+                  "expressId": 45,
+                  "globalId": "1nxn3bS7vNI9lMZdz8h51I",
+                  "ifcType": "IfcWall",
+                  "name": "Repeat-002",
+                  "storey": "1F",
+                  "actual": "The required property set does not exist",
+                  "incompleteReason": null
+                },
+                {
+                  "objectId": "8a0086b3-97ce-418b-b411-44501919eb2f",
+                  "modelId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                  "ref": {
+                    "revisionId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                    "objectId": "occ_9abdbebcb471f5ca"
+                  },
+                  "discipline": "MEP",
+                  "expressId": 58,
+                  "globalId": "3xVGETBUPIGfbdp0KmiZX2",
+                  "ifcType": "IfcWall",
+                  "name": "Repeat-003",
+                  "storey": "1F",
+                  "actual": "The required property set does not exist",
+                  "incompleteReason": null
+                },
+                {
+                  "objectId": "8152c569-727b-4f68-8e41-4bb1accd1c8d",
+                  "modelId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                  "ref": {
+                    "revisionId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                    "objectId": "occ_0e72111a8911f0fd"
+                  },
+                  "discipline": "MEP",
+                  "expressId": 71,
+                  "globalId": "3zl7oqNurIhRRjHETagHYD",
+                  "ifcType": "IfcWall",
+                  "name": "Repeat-004",
+                  "storey": "1F",
+                  "actual": "The required property set does not exist",
+                  "incompleteReason": null
+                },
+                {
+                  "objectId": "f8770f11-4be1-498a-8385-c8201402efcf",
+                  "modelId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                  "ref": {
+                    "revisionId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                    "objectId": "occ_b3dbc9cc8b84c316"
+                  },
+                  "discipline": "MEP",
+                  "expressId": 84,
+                  "globalId": "0djyCSfL9PMejTHDc_58xF",
+                  "ifcType": "IfcWall",
+                  "name": "Repeat-005",
+                  "storey": "1F",
+                  "actual": "The required property set does not exist",
+                  "incompleteReason": null
+                },
+                {
+                  "objectId": "1d794561-62fa-43e7-b398-eac3c97ed61e",
+                  "modelId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                  "ref": {
+                    "revisionId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                    "objectId": "occ_093245e3639f7b31"
+                  },
+                  "discipline": "MEP",
+                  "expressId": 97,
+                  "globalId": "0xEaNe9CnRZfg9GbUNds4w",
+                  "ifcType": "IfcWall",
+                  "name": "Repeat-006",
+                  "storey": "1F",
+                  "actual": "The required property set does not exist",
+                  "incompleteReason": null
+                },
+                {
+                  "objectId": "9fccc7a0-fab5-4793-91b3-3362a16013a6",
+                  "modelId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                  "ref": {
+                    "revisionId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                    "objectId": "occ_86e95f89659d62fa"
+                  },
+                  "discipline": "MEP",
+                  "expressId": 110,
+                  "globalId": "0db9yM2nTL9BKB1WBwuCcJ",
+                  "ifcType": "IfcWall",
+                  "name": "Repeat-007",
+                  "storey": "1F",
+                  "actual": "The required property set does not exist",
+                  "incompleteReason": null
+                },
+                {
+                  "objectId": "6d93170d-8e44-47af-bb61-805560a5ccc3",
+                  "modelId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                  "ref": {
+                    "revisionId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                    "objectId": "occ_9018a7395cc00706"
+                  },
+                  "discipline": "MEP",
+                  "expressId": 123,
+                  "globalId": "3zcfDtWKnViA2HRl_6ph2i",
+                  "ifcType": "IfcWall",
+                  "name": "Repeat-008",
+                  "storey": "1F",
+                  "actual": "The required property set does not exist",
+                  "incompleteReason": null
+                },
+                {
+                  "objectId": "e41dacd5-993b-4d4f-8ad5-0cb326c081b3",
+                  "modelId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                  "ref": {
+                    "revisionId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                    "objectId": "occ_b5f3555339b80626"
+                  },
+                  "discipline": "MEP",
+                  "expressId": 136,
+                  "globalId": "3uvhVu6yLI5gCc42e0NTEu",
+                  "ifcType": "IfcWall",
+                  "name": "Repeat-009",
+                  "storey": "1F",
+                  "actual": "The required property set does not exist",
+                  "incompleteReason": null
+                },
+                {
+                  "objectId": "02edfedd-1706-4ee7-b35a-76b7f9b662df",
+                  "modelId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                  "ref": {
+                    "revisionId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                    "objectId": "occ_6e8c7db9b8c7e1dc"
+                  },
+                  "discipline": "MEP",
+                  "expressId": 149,
+                  "globalId": "1ZV_x6tmLRaB03QYYmy7Qj",
+                  "ifcType": "IfcWall",
+                  "name": "Repeat-010",
+                  "storey": "1F",
+                  "actual": "The required property set does not exist",
+                  "incompleteReason": null
+                },
+                {
+                  "objectId": "dac6dae2-db7f-42c5-845e-162d77f36f86",
+                  "modelId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                  "ref": {
+                    "revisionId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                    "objectId": "occ_066e798bb065c04c"
+                  },
+                  "discipline": "MEP",
+                  "expressId": 162,
+                  "globalId": "3XPzasdSvRoBkofb0ODRev",
+                  "ifcType": "IfcWall",
+                  "name": "Repeat-011",
+                  "storey": "1F",
+                  "actual": "The required property set does not exist",
+                  "incompleteReason": null
+                },
+                {
+                  "objectId": "f591ec81-1fe0-406b-9998-a66ae5389630",
+                  "modelId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                  "ref": {
+                    "revisionId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                    "objectId": "occ_0ef651fc2de8f3fe"
+                  },
+                  "discipline": "MEP",
+                  "expressId": 175,
+                  "globalId": "2NjX9WS6HLYuvuCQjI_Flr",
+                  "ifcType": "IfcWall",
+                  "name": "Repeat-012",
+                  "storey": "1F",
+                  "actual": "The required property set does not exist",
+                  "incompleteReason": null
+                },
+                {
+                  "objectId": "aa18ae81-50da-409a-a3bb-4bb6e83e5222",
+                  "modelId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                  "ref": {
+                    "revisionId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                    "objectId": "occ_1fe52a7084297d35"
+                  },
+                  "discipline": "MEP",
+                  "expressId": 188,
+                  "globalId": "26R8mlAE5HQuDc1yy3$P2O",
+                  "ifcType": "IfcWall",
+                  "name": "Repeat-013",
+                  "storey": "1F",
+                  "actual": "The required property set does not exist",
+                  "incompleteReason": null
+                },
+                {
+                  "objectId": "ab6ad11a-b04c-4471-ae42-edc7aa1b9431",
+                  "modelId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                  "ref": {
+                    "revisionId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                    "objectId": "occ_4460d70274f2f7f5"
+                  },
+                  "discipline": "MEP",
+                  "expressId": 201,
+                  "globalId": "36E4UqhDjHRxhNufeSiIkL",
+                  "ifcType": "IfcWall",
+                  "name": "Repeat-014",
+                  "storey": "1F",
+                  "actual": "The required property set does not exist",
+                  "incompleteReason": null
+                },
+                {
+                  "objectId": "dbf66fb6-cc02-43d6-a4bf-1688e18fe228",
+                  "modelId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                  "ref": {
+                    "revisionId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                    "objectId": "occ_e33c3176eac2c6d3"
+                  },
+                  "discipline": "MEP",
+                  "expressId": 214,
+                  "globalId": "1HJPD318jO2wttaLyevJzc",
+                  "ifcType": "IfcWall",
+                  "name": "Repeat-015",
+                  "storey": "1F",
+                  "actual": "The required property set does not exist",
+                  "incompleteReason": null
+                },
+                {
+                  "objectId": "ba8df189-541e-4b7b-96b3-0387130bd588",
+                  "modelId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                  "ref": {
+                    "revisionId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                    "objectId": "occ_0f078adc2933bd03"
+                  },
+                  "discipline": "MEP",
+                  "expressId": 227,
+                  "globalId": "2WT_qneePRRRlb_i0fevrv",
+                  "ifcType": "IfcWall",
+                  "name": "Repeat-016",
+                  "storey": "1F",
+                  "actual": "The required property set does not exist",
+                  "incompleteReason": null
+                },
+                {
+                  "objectId": "d2ab4fc5-0421-47d1-af41-b0bef69cb55e",
+                  "modelId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                  "ref": {
+                    "revisionId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                    "objectId": "occ_f68ba95bf8968e25"
+                  },
+                  "discipline": "MEP",
+                  "expressId": 240,
+                  "globalId": "2Nr42Hit9ULAPMPFwt6_pZ",
+                  "ifcType": "IfcWall",
+                  "name": "Repeat-017",
+                  "storey": "1F",
+                  "actual": "The required property set does not exist",
+                  "incompleteReason": null
+                },
+                {
+                  "objectId": "90c64def-f0e6-4483-ab7b-4473199bc91e",
+                  "modelId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                  "ref": {
+                    "revisionId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                    "objectId": "occ_1fd122343a4e6ace"
+                  },
+                  "discipline": "MEP",
+                  "expressId": 253,
+                  "globalId": "0$TuH5UiDGZumxHZEjb1X4",
+                  "ifcType": "IfcWall",
+                  "name": "Repeat-018",
+                  "storey": "1F",
+                  "actual": "The required property set does not exist",
+                  "incompleteReason": null
+                },
+                {
+                  "objectId": "5e762afb-0653-447e-bdd6-a3ca9ab91642",
+                  "modelId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                  "ref": {
+                    "revisionId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                    "objectId": "occ_fcaae5f01bd5bce9"
+                  },
+                  "discipline": "MEP",
+                  "expressId": 266,
+                  "globalId": "2YsaYuby9GegIkv0JqMPjJ",
+                  "ifcType": "IfcWall",
+                  "name": "Repeat-019",
+                  "storey": "1F",
+                  "actual": "The required property set does not exist",
+                  "incompleteReason": null
+                },
+                {
+                  "objectId": "28c6f7e7-9a6a-4ae3-850d-87f6fa1223c5",
+                  "modelId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                  "ref": {
+                    "revisionId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                    "objectId": "occ_93b1b30af50a2443"
+                  },
+                  "discipline": "MEP",
+                  "expressId": 279,
+                  "globalId": "3GgtRuI7fGyQD0qHa1fOl1",
+                  "ifcType": "IfcWall",
+                  "name": "Repeat-020",
+                  "storey": "1F",
+                  "actual": "The required property set does not exist",
+                  "incompleteReason": null
+                },
+                {
+                  "objectId": "5941885c-b177-459b-abd3-5e55f4a6759d",
+                  "modelId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                  "ref": {
+                    "revisionId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                    "objectId": "occ_be3ce960d2b8a6b4"
+                  },
+                  "discipline": "MEP",
+                  "expressId": 292,
+                  "globalId": "0b3GVqzrvKcP1EpNLk_9mV",
+                  "ifcType": "IfcWall",
+                  "name": "Repeat-021",
+                  "storey": "1F",
+                  "actual": "The required property set does not exist",
+                  "incompleteReason": null
+                },
+                {
+                  "objectId": "ef33be3b-f1a1-4bd8-87e2-04e742347316",
+                  "modelId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                  "ref": {
+                    "revisionId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                    "objectId": "occ_8c5af6f0f9bbfebb"
+                  },
+                  "discipline": "MEP",
+                  "expressId": 305,
+                  "globalId": "2PTvOOlE5I5PrOL2OfpKqa",
+                  "ifcType": "IfcWall",
+                  "name": "Repeat-022",
+                  "storey": "1F",
+                  "actual": "The required property set does not exist",
+                  "incompleteReason": null
+                },
+                {
+                  "objectId": "a931f12d-50b8-4167-88df-f8c0cdb5b790",
+                  "modelId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                  "ref": {
+                    "revisionId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                    "objectId": "occ_e50bb41de84183e3"
+                  },
+                  "discipline": "MEP",
+                  "expressId": 318,
+                  "globalId": "2IibNn485G_9gPgtcGOVtU",
+                  "ifcType": "IfcWall",
+                  "name": "Repeat-023",
+                  "storey": "1F",
+                  "actual": "The required property set does not exist",
+                  "incompleteReason": null
+                },
+                {
+                  "objectId": "2535378b-26b0-4cf3-90c8-9dc5ae2aa1c5",
+                  "modelId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                  "ref": {
+                    "revisionId": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+                    "objectId": "occ_da142cebeea114f2"
+                  },
+                  "discipline": "MEP",
+                  "expressId": 331,
+                  "globalId": "1OkNWn31vNVPoGFzsjtLBu",
+                  "ifcType": "IfcWall",
+                  "name": "Repeat-024",
+                  "storey": "1F",
+                  "actual": "The required property set does not exist",
+                  "incompleteReason": null
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "specs": [
+    {
+      "id": "242230cc-a166-4678-919d-911b0ac0a7f6",
+      "specIdentifier": "Wall declares a fire rating",
+      "specName": "Wall declares a fire rating",
+      "outcome": "fail",
+      "applicableCount": 276,
+      "passCount": 6,
+      "failCount": 270,
+      "incompleteCount": 0,
+      "notes": []
+    }
+  ],
+  "reviewIncomplete": [],
+  "inputProvenance": {
+    "status": "complete",
+    "reason": null
+  }
+}
