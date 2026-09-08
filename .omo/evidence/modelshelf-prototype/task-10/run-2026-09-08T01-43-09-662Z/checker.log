@@ -1,0 +1,11 @@
+2026-09-08T01:43:11.366515Z  INFO modelshelf_checker: modelshelf-checker listening addr=127.0.0.1:44689
+2026-09-08T01:43:27.758767Z  WARN modelshelf_checker::jobs: ingestion job failed job_id="005d390a-ddcb-4027-922b-0972096ab87a" error=worker exited with exit status: 1: Exception ignored in: <function file.__del__ at 0x7eb25c69e980>
+Traceback (most recent call last):
+  File "/home/daniel/orca/workspaces/ModelShelf/reviewer-delivery-shelf/services/ifc-worker/.venv/lib/python3.13/site-packages/ifcopenshell/file.py", line 649, in __del__
+    del file_dict[self.file_pointer()]
+KeyError: 497141744
+2026-09-08T01:43:28.826145Z  WARN modelshelf_checker::jobs: ingestion job failed job_id="005d390a-ddcb-4027-922b-0972096ab87a" error=worker exited with exit status: 1: Exception ignored in: <function file.__del__ at 0x7a0e6927a980>
+Traceback (most recent call last):
+  File "/home/daniel/orca/workspaces/ModelShelf/reviewer-delivery-shelf/services/ifc-worker/.venv/lib/python3.13/site-packages/ifcopenshell/file.py", line 649, in __del__
+    del file_dict[self.file_pointer()]
+KeyError: 356407472

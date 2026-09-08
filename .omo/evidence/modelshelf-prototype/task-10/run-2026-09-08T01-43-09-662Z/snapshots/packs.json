@@ -1,0 +1,41 @@
+[
+  {
+    "id": "demo-pack",
+    "tenantId": "demo-tenant",
+    "name": "Demo Check Pack",
+    "description": null,
+    "createdAt": "2026-09-08T01:43:09.825Z",
+    "versions": [
+      {
+        "id": "6a736178-f89c-4237-a8ae-e82c49ac62fa",
+        "packId": "demo-pack",
+        "packName": "Demo Check Pack",
+        "version": 1,
+        "idsSha256": "922497d146112ca8ededd01e1bfdedfd21bcb8b4f4a73c7024a70258b06d074b",
+        "notes": "blcj-s1000-v1.ids",
+        "specCount": 11,
+        "createdAt": "2026-09-08T01:43:10.326Z"
+      },
+      {
+        "id": "b17fe0c8-d62c-49d8-a679-198973d9e07f",
+        "packId": "demo-pack",
+        "packName": "Demo Check Pack",
+        "version": 2,
+        "idsSha256": "738185c6eab334835604b8fe925bef67512230c2ca668a9432a45986570de8fc",
+        "notes": "blcj-s1000-v2.ids",
+        "specCount": 11,
+        "createdAt": "2026-09-08T01:43:10.819Z"
+      },
+      {
+        "id": "f5168feb-ded4-40a7-964d-e9cb35cf1345",
+        "packId": "demo-pack",
+        "packName": "Demo Check Pack",
+        "version": 3,
+        "idsSha256": "8d8c6423b5537b9da5a488ce9eec9e3e06c099c0ed86b5ac77da472fceb7bc29",
+        "notes": "fixtures.ids",
+        "specCount": 1,
+        "createdAt": "2026-09-08T01:43:11.307Z"
+      }
+    ]
+  }
+]

@@ -1,0 +1,50 @@
+{
+  "delivery": {
+    "id": "a7f29066-6293-4d4a-93f5-07bf20376d1d",
+    "projectId": "demo-project",
+    "label": "drop-1",
+    "deliveryDate": null,
+    "createdAt": "2026-09-08T01:43:24.509Z",
+    "finalizedAt": null,
+    "modelCount": 2,
+    "productCount": 282
+  },
+  "models": [
+    {
+      "id": "e9fb85e9-13a5-4799-930a-eedc78d9839c",
+      "deliveryId": "a7f29066-6293-4d4a-93f5-07bf20376d1d",
+      "discipline": "MEP",
+      "sourceModelId": "a388bfc6-5bd7-41b6-8534-b2455dd0057d",
+      "sourceModelName": "MEP North",
+      "filename": "base.ifc",
+      "contentSha256": "2e0b230a4f7fe25c4f603f27c824e1c831777e548c21f24cbfcf047e61a74562",
+      "byteSize": 77504,
+      "schemaLabel": "IFC4",
+      "entityCount": 141,
+      "productCount": 141,
+      "lengthToMetre": 1,
+      "parseMs": null,
+      "uploadedAt": "2026-09-08T01:43:25.569Z",
+      "originatingSystem": null
+    },
+    {
+      "id": "e6d3482d-6c4e-4b58-8c3e-2b664e3a732a",
+      "deliveryId": "a7f29066-6293-4d4a-93f5-07bf20376d1d",
+      "discipline": "MEP",
+      "sourceModelId": "07e838f7-442a-49e4-a433-6de16b8c71f8",
+      "sourceModelName": "MEP South",
+      "filename": "head.ifc",
+      "contentSha256": "28621297716286e655c2ed6ad3e3c937326b07a608d046b4a77f6f30be0709bd",
+      "byteSize": 77603,
+      "schemaLabel": "IFC4",
+      "entityCount": 141,
+      "productCount": 141,
+      "lengthToMetre": 1,
+      "parseMs": null,
+      "uploadedAt": "2026-09-08T01:43:26.714Z",
+      "originatingSystem": null
+    }
+  ],
+  "runs": [],
+  "locked": false
+}

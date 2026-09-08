@@ -5,6 +5,7 @@
 
 import { spawnSync } from "node:child_process";
 import { existsSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import net from "node:net";
@@ -85,11 +86,14 @@ export async function stopProcess(child, { timeoutMs = 5000 } = {}) {
  * the build fails — every caller needs the real binary to do anything at all. */
 export function buildBinary(runDir) {
   console.log("building modelshelf-checker...");
-  const build = spawnSync("cargo", ["build", "-p", "modelshelf-checker"], {
+  const rustupCargo = join(homedir(), ".cargo", "bin", "cargo");
+  const cargo = process.env.CARGO ?? (existsSync(rustupCargo) ? rustupCargo : "cargo");
+  const build = spawnSync(cargo, ["build", "-p", "modelshelf-checker"], {
     cwd: REPO_ROOT,
     encoding: "utf8",
   });
-  writeFileSync(join(runDir, "build.log"), build.stdout + build.stderr);
+  const output = `${build.stdout ?? ""}${build.stderr ?? ""}${build.error ? `${build.error.message}\n` : ""}`;
+  writeFileSync(join(runDir, "build.log"), output);
   if (build.status !== 0 || !existsSync(BIN_PATH)) {
     console.error(`FAIL - cargo build succeeds: exit ${build.status}; see ${join(runDir, "build.log")}`);
     process.exit(1);
