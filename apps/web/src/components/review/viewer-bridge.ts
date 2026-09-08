@@ -18,6 +18,8 @@ export interface FilterableMember {
   ifcType: string;
   ref: PlainMemberRef;
 }
+/** Filter value standing in for a null storey; shared with the options list. */
+export const MISSING_STOREY = "—";
 
 export interface PlainFilters {
   source: string;
@@ -60,7 +62,7 @@ export function filterMembers<T extends FilterableMember>(
     (member) =>
       (filters.source === "all" || member.modelId === filters.source) &&
       (filters.discipline === "all" || member.discipline === filters.discipline) &&
-      (filters.storey === "all" || member.storey === filters.storey) &&
+      (filters.storey === "all" || (member.storey ?? MISSING_STOREY) === filters.storey) &&
       (filters.ifcType === "all" || member.ifcType === filters.ifcType),
   );
 }

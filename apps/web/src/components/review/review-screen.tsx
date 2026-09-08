@@ -32,6 +32,7 @@ export function ReviewScreen({ deliveryId }: { deliveryId: string }): React.JSX.
   const [state, dispatch] = useReducer(reviewReducer, initialReviewState);
   const [viewer, setViewer] = useState<DeliveryViewerController | null>(null);
   const viewerRef = useRef<DeliveryViewerController | null>(null);
+  const runAbort = useRef<AbortController | null>(null);
   const [creating, setCreating] = useState(false);
 
   const handleController = useCallback((controller: DeliveryViewerController | null) => {
@@ -57,7 +58,10 @@ export function ReviewScreen({ deliveryId }: { deliveryId: string }): React.JSX.
   }, [deliveryId]);
 
   const loadRun = useCallback((runId: string) => {
+    // A superseded response must never overwrite a newer selection.
+    runAbort.current?.abort();
     const abort = new AbortController();
+    runAbort.current = abort;
     dispatch({ type: "RUN_LOADING", runId });
     void fetchRunDetail(runId, abort.signal)
       .then((detail) => {

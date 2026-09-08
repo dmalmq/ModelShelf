@@ -21,6 +21,7 @@ import {
   clearFindingFromViewer,
   filterMembers,
   findingToHighlights,
+  MISSING_STOREY,
   toViewerRefPlain,
 } from "./viewer-bridge";
 
@@ -85,6 +86,7 @@ export function EvidencePanel({
   const [matched, setMatched] = useState<number | null>(null);
   const [selectedHidden, setSelectedHidden] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const [loadFailed, setLoadFailed] = useState(false);
   /** Keys (`revisionId\0objectId`) with no drawable geometry in this delivery. */
   const [notDrawn, setNotDrawn] = useState<Record<string, true>>({});
 
@@ -106,11 +108,11 @@ export function EvidencePanel({
 
   // Full affected-object access: the embedded 25-sample shows first; every
   // object pages in behind it. Members state lives in the reducer so selection
-  // changes clear it atomically.
   useEffect(() => {
     if (members && members.findingId === finding.id) return;
     const abort = new AbortController();
     onMembersLoading();
+    setLoadFailed(false);
     void fetchAllFindingObjects(
       finding.id,
       undefined,
@@ -122,6 +124,7 @@ export function EvidencePanel({
       })
       .catch(() => {
         if (abort.signal.aborted) return;
+        setLoadFailed(true);
         onMembersFailed();
       });
     return () => abort.abort();
@@ -173,7 +176,7 @@ export function EvidencePanel({
         modelNameOf,
       ),
       disciplines: [...new Set(valid.map((object) => object.discipline))],
-      storeys: [...new Set(valid.map((object) => object.storey ?? "—"))],
+      storeys: [...new Set(valid.map((object) => object.storey ?? MISSING_STOREY))],
       types: [...new Set(valid.map((object) => object.ifcType))],
     }),
     [valid, modelNameOf],
@@ -214,6 +217,14 @@ export function EvidencePanel({
     } catch {
       setMatched(null);
     }
+    return () => {
+      // Unmount (run switch, deselect) must not leave stale highlights behind.
+      try {
+        clearFindingFromViewer(viewer);
+      } catch {
+        // Viewer already disposed; nothing to clear.
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewer, finding.id, finding.objectCount, refs.length === 0 ? "empty" : refs.map((r) => `${r.revisionId}${r.objectId}`).join(",")]);
 
@@ -319,6 +330,27 @@ export function EvidencePanel({
         {valid.length !== uniqueKeys ? ` · 一意 ${uniqueKeys}件 (revisionId+objectIdで重複除去)` : ""}
         {matched !== null ? ` · ビューア一致 ${matched}件` : ""} · 描画不可 {withoutGeometry.length}件
       </p>
+
+      {loadFailed && !membersLoading && (
+        <div
+          className="border border-destructive/40 bg-destructive/5 px-2 py-1.5 text-[11px]"
+          data-members-failed
+        >
+          <p>
+            全件の読み込みに失敗しました。{membersForFinding.length}
+            件のサンプルを表示中 / Could not load all members — showing the{" "}
+            {membersForFinding.length}-object sample.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-1.5"
+            onClick={() => setRetryCount((count) => count + 1)}
+          >
+            再取得 / Retry
+          </Button>
+        </div>
+      )}
 
       {membersLoading ? (
         <p className="text-xs text-muted-foreground" role="status" data-members-loading>
