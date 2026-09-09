@@ -5,8 +5,8 @@ Parent: ../map.md
 Type: task
 Mode: AFK
 Labels: wayfinder:task, ready-for-agent
-Status: open
-Assignee: unassigned
+Status: resolved
+Assignee: poteto-13-diff
 Blocked by: 12
 Wave: 2
 Original plan coverage: 8, model comparison portion
@@ -65,3 +65,19 @@ Append an Answer with changes, exact commands/results, evidence links, remaining
 ## Comments
 
 Created from the approved prototype plan on 2026-09-06. No implementation is claimed by ticket creation.
+
+## Answer
+
+Delivered revision comparison over normalized snapshots with explicit match confidence, paired by SourceModel identity, in one uncommitted cutover.
+
+Changes: `crates/modeldiff/src/normalized.rs` (new `DiffObject` bundle of `DerivedSnapshot` + `IdentitySide`, `MatchPolicy` with `HeuristicPolicy::Off/On`, `compare()` returning `Result<ModelDiff, ProfileMismatch>`); `crates/modeldiff/src/lib.rs` (re-exports, qualified `ObjectRef`, untouched `diff_findings`); deleted `src/heuristic.rs`, legacy `diff()`/`DiffOptions`; rewrote `tests/diff.rs` (24 tests) and `examples/diff_fixtures.rs`. `services/checker/migrations/0008_diff_snapshots.sql` + `SCHEMA_VERSION 8` (profile/canonical columns, NULL legacy semantics, no backfill). `jobs.rs` threads validated geometry chunks into `publish_revision`, which fingerprints every object under `FingerprintProfile::v1()`. `diff.rs` pairs by `source_model_id` with reused-revision short-circuit (`reusedRevision`, empty changes, zeroed summary) and one-sided add/remove pairs; `error.rs` gains 409 `fingerprint_profile_mismatch`; `dto.rs`, `types.ts`, `http-api.md` (rules 11-13) mirror the new shapes. New `scripts/verify-api.mjs --scenario comparisons` (37 checks).
+
+Behavior: exact matches only for GlobalIds unique on both sides; duplicates pair by express_id as `Heuristic{1.0, type+gid-duplicate}` with notes, never exact; splits/merges stay unresolved add/remove; profile gate rejects cross-profile comparison before any pairing; legacy NULL-profile rows 409 with recompute guidance; history append-only (re-upload mints a new revision, old digests untouched).
+
+Commands/results (all re-run by the reviewer, not taken from the implementer): `cargo test -p modeldiff` 24/24; `cargo test -p modelshelf-checker` 15/15; `cargo test -p fingerprint` 30/30 (23+7); `cargo tree -p modeldiff -e normal` shows direct deps fingerprint+serde only, no sqlx/axum/hyper (ifc-model appears transitively via the fingerprint legacy module); `node scripts/verify-api.mjs --scenario comparisons` 37/37 against the real checker/worker, including oracle groups (added/removed/property REI30->REI60/shape/moved 3 each, 120 unchanged), two MEP sources never cross-matching, duplicate/empty/regenerated IDs never exact with uncertainMatches 6, deterministic pagination reassembly, legacy 409, and append-only re-upload.
+
+Evidence: `.omo/evidence/modelshelf-prototype/ticket-13/` (`run-2026-09-09T01-30-26-995Z` is the reviewer-confirmed green run with `diff-unpaged.json`, `rotated-behavior.json`, `profile-mismatch.json`, `reupload-diff.json`, `fingerprints-example.jsonl`, `ingest-digest-proof.json`).
+
+Limitations: pure rotation about an object's own origin reports unchanged with a sub-threshold note (origin-only distance measurement; pinned by test and scenario, recorded not fixed). Shape is a representation hash, not geometric equivalence. Placement-digest equality dominates origin distance in heuristic scoring.
+
+Downstream (ticket 14): `diff_findings`/`diff_runs` untouched; object rows now carry profile/canonical columns with NULL meaning pre-13; every change ref carries `revisionId`+`objectId`; pairs carry `sourceModelId`/`sourceModelName`/`reusedRevision`; new 409 code `fingerprint_profile_mismatch`.
