@@ -1,0 +1,424 @@
+// Complete comparison screen. One CombinedDeliveryViewer persists across the
+// base/head toggle: side is state, the toggle swaps the loaded delivery and
+// never remounts the viewer, so the shared camera survives. The change overlay
+// is app-supplied generic highlight groups through the frozen
+// DeliveryViewerController port. The panel below is hosted inside the viewer's
+// Findings tab via the generic `inspector` seam: one list, never two.
+"use client";
+
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { CHANGE_LABEL } from "@/lib/i18n";
+import type { ChangeKind, DeliveryDetail, DiffSummary, RunDetail } from "@/lib/types";
+import { fetchDelivery } from "../viewer/delivery-api";
+import type { DeliveryViewerController } from "../viewer/types";
+import { CombinedDeliveryViewer } from "../viewer/combined-delivery-viewer";
+import {
+  fetchCompleteModelDiff,
+  fetchFindingDiff,
+  FindingIncomparableError,
+  ModelDiffProfileMismatchError,
+} from "./compare-api";
+import {
+  activeKeyOf,
+  changeToHighlights,
+  clearCompareOverlay,
+  pushCompareOverlay,
+  toViewerRefPlain,
+  type CompareOverlayReadback,
+} from "./compare-bridge";
+import { CompareInspector } from "./compare-inspector";
+import {
+  ALL_SOURCES,
+  compareReducer,
+  filterCompareEntries,
+  initialCompareState,
+  type CompareSide,
+} from "./compare-state";
+
+const KIND_OPTIONS: readonly (ChangeKind | "all")[] = [
+  "all",
+  "added",
+  "removed",
+  "moved",
+  "shape_changed",
+  "properties_changed",
+  "mixed",
+  "unchanged",
+];
+
+function latestCompletedRunId(delivery: DeliveryDetail): string | null {
+  const runs = [...delivery.runs].sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1));
+  return runs.find((run) => run.status === "completed")?.id ?? runs[0]?.id ?? null;
+}
+
+const EMPTY_READBACK: CompareOverlayReadback = { matched: 0, selectedHidden: false, drawnKeys: [] };
+
+export function CompareScreen({
+  baseDeliveryId,
+  headDeliveryId,
+}: {
+  baseDeliveryId: string;
+  headDeliveryId: string;
+}): React.JSX.Element {
+  const router = useRouter();
+  const [state, dispatch] = useReducer(compareReducer, initialCompareState);
+  const [viewer, setViewer] = useState<DeliveryViewerController | null>(null);
+  const [readback, setReadback] = useState<CompareOverlayReadback>(EMPTY_READBACK);
+  const [basePicker, setBasePicker] = useState(baseDeliveryId);
+  const [headPicker, setHeadPicker] = useState(headDeliveryId);
+  const viewerRef = useRef<DeliveryViewerController | null>(null);
+  const pairAbort = useRef<AbortController | null>(null);
+  const findingAbort = useRef<AbortController | null>(null);
+
+  const handleController = useCallback((controller: DeliveryViewerController | null) => {
+    viewerRef.current = controller;
+    setViewer(controller);
+  }, []);
+
+  // Delivery pair load: atomic reset first, then deliveries, model diff, runs.
+  useEffect(() => {
+    pairAbort.current?.abort();
+    findingAbort.current?.abort();
+    const abort = new AbortController();
+    pairAbort.current = abort;
+    dispatch({ type: "SET_DELIVERIES", baseDeliveryId, headDeliveryId });
+    dispatch({ type: "MODEL_DIFF_LOADING" });
+    void Promise.all([fetchDelivery(baseDeliveryId, abort.signal), fetchDelivery(headDeliveryId, abort.signal)])
+      .then(([base, head]) => {
+        if (abort.signal.aborted) return;
+        dispatch({ type: "DELIVERIES_READY", base, head });
+        dispatch({ type: "SET_RUNS", baseRunId: latestCompletedRunId(base), headRunId: latestCompletedRunId(head) });
+        return fetchCompleteModelDiff({ baseDeliveryId, headDeliveryId }, abort.signal);
+      })
+      .then((response) => {
+        if (!response || abort.signal.aborted) return;
+        dispatch({ type: "MODEL_DIFF_READY", response });
+      })
+      .catch((reason: unknown) => {
+        if (abort.signal.aborted) return;
+        if (reason instanceof ModelDiffProfileMismatchError) {
+          dispatch({
+            type: "MODEL_DIFF_PROFILE_MISMATCH",
+            error: reason.message,
+            expected: reason.expected,
+            actual: reason.actual,
+          });
+          return;
+        }
+        const message = reason instanceof Error ? reason.message : "Deliveries could not be loaded";
+        if (state.lifecycle !== "ready") dispatch({ type: "DELIVERIES_FAILED", error: message });
+        else dispatch({ type: "MODEL_DIFF_FAILED", error: message });
+      });
+    return () => abort.abort();
+    // state.lifecycle is read only to route the error; the pair identity drives reloads.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [baseDeliveryId, headDeliveryId]);
+
+  // Finding diff follows the run pair; run changes never touch model state.
+  useEffect(() => {
+    findingAbort.current?.abort();
+    if (!state.baseRunId || !state.headRunId) return;
+    const abort = new AbortController();
+    findingAbort.current = abort;
+    const { baseRunId, headRunId } = state;
+    dispatch({ type: "FINDING_LOADING" });
+    void fetchFindingDiff({ baseRunId, headRunId }, abort.signal)
+      .then((response) => {
+        if (abort.signal.aborted) return;
+        dispatch({ type: "FINDING_READY", response });
+      })
+      .catch((reason: unknown) => {
+        if (abort.signal.aborted) return;
+        if (reason instanceof FindingIncomparableError) {
+          dispatch({ type: "FINDING_INCOMPARABLE", error: reason.message, dimension: reason.dimension });
+          return;
+        }
+        dispatch({
+          type: "FINDING_FAILED",
+          error: reason instanceof Error ? reason.message : "Finding diff could not be loaded",
+        });
+      });
+    return () => abort.abort();
+  }, [state.baseRunId, state.headRunId]);
+
+  const filtered = useMemo(
+    () => filterCompareEntries(state.changeIndex.entries, state.filters),
+    [state.changeIndex, state.filters],
+  );
+
+  // Overlay push: active-side refs only, grouped by kind. Runs on every input
+  // change so toggle, filters, and diff loads repaint without remounting.
+  const highlights = useMemo(
+    () => changeToHighlights(filtered, state.side),
+    [filtered, state.side],
+  );
+  // Summary totals across pairs; the inspector renders them as grey counts.
+  const combinedSummary = useMemo(() => {
+    if (!state.modelDiff) return null;
+    const totals: DiffSummary = {
+      added: 0,
+      removed: 0,
+      unchanged: 0,
+      moved: 0,
+      shapeChanged: 0,
+      propertiesChanged: 0,
+      mixed: 0,
+      uncertainMatches: 0,
+    };
+    for (const pair of state.modelDiff.pairs) {
+      totals.added += pair.summary.added;
+      totals.removed += pair.summary.removed;
+      totals.unchanged += pair.summary.unchanged;
+      totals.moved += pair.summary.moved;
+      totals.shapeChanged += pair.summary.shapeChanged;
+      totals.propertiesChanged += pair.summary.propertiesChanged;
+      totals.mixed += pair.summary.mixed;
+      totals.uncertainMatches += pair.summary.uncertainMatches;
+    }
+    return totals;
+  }, [state.modelDiff]);
+  useEffect(() => {
+    const controller = viewerRef.current;
+    if (!controller || state.modelDiffStatus !== "ready") return;
+    try {
+      if (filtered.length === 0) {
+        clearCompareOverlay(controller);
+        setReadback(EMPTY_READBACK);
+        return;
+      }
+      setReadback(pushCompareOverlay(controller, highlights));
+    } catch {
+      // Viewer not ready yet; the panel simply lists without highlights.
+    }
+  }, [viewer, highlights, filtered.length, state.modelDiffStatus, state.side]);
+
+  // Selection frames the active-side geometry; one-sided changes seen from the
+  // void keep the overlay and show the banner instead.
+  useEffect(() => {
+    const controller = viewerRef.current;
+    if (!controller || state.selection == null) return;
+    const index = state.changeIndex.byKey[state.selection];
+    const entry = index === undefined ? null : (state.changeIndex.entries[index] ?? null);
+    if (!entry) return;
+    const activeKey = activeKeyOf(entry.change, state.side);
+    if (!activeKey) return;
+    const parsed = toViewerRefPlain(parseKey(activeKey));
+    if (!parsed) return;
+    try {
+      controller.select(parsed);
+      controller.frame([parsed]);
+      setReadback((current) => ({
+        ...current,
+        drawnKeys: current.drawnKeys.includes(activeKey) ? current.drawnKeys : [...current.drawnKeys, activeKey],
+      }));
+    } catch {
+      // Viewer mid-reload; selection stays listed.
+    }
+  }, [state.selection, state.side, state.changeIndex]);
+
+  function handleRunCreated(detail: RunDetail): void {
+    // A new run is immutable history from birth: patch the local delivery copy
+    // so the run pickers preserve both old and new results without refetch.
+    if (detail.run.deliveryId === state.baseDeliveryId) {
+      dispatch({ type: "SET_RUNS", baseRunId: detail.run.id, headRunId: state.headRunId });
+    } else if (detail.run.deliveryId === state.headDeliveryId) {
+      dispatch({ type: "SET_RUNS", baseRunId: state.baseRunId, headRunId: detail.run.id });
+    }
+  }
+
+  function applyPickers(): void {
+    const base = basePicker.trim();
+    const head = headPicker.trim();
+    if (!base || !head) return;
+    router.push(`/deliveries/compare?base=${encodeURIComponent(base)}&head=${encodeURIComponent(head)}`);
+  }
+
+  const activeDeliveryId = state.side === "base" ? baseDeliveryId : headDeliveryId;
+  const sources = state.modelDiff?.pairs ?? [];
+
+  if (state.lifecycle === "failed") {
+    return (
+      <main className="grid min-h-screen place-items-center bg-background p-6">
+        <div className="max-w-lg border border-border bg-card p-6">
+          <h1 className="text-xl font-semibold">比較を開けません / Comparison unavailable</h1>
+          <p className="mt-2 text-sm text-destructive">{state.deliveryError}</p>
+          <button
+            type="button"
+            className="mt-5 border border-border px-3 py-1.5 text-sm"
+            onClick={() => window.location.reload()}
+          >
+            再試行 / Retry
+          </button>
+        </div>
+      </main>
+    );
+  }
+  return (
+    <div data-compare-screen>
+      <div className="border-b border-border bg-card px-4 py-3" data-compare-toolbar>
+        <div className="mx-auto flex w-full max-w-6xl flex-wrap items-end gap-x-4 gap-y-3">
+          <label className="grid gap-1 text-xs" htmlFor="compare-base-delivery">
+            <span className="font-medium">基準デリバリー / Base delivery</span>
+            <input
+              id="compare-base-delivery"
+              className="w-64 border border-border bg-background px-2 py-1.5 text-xs"
+              value={basePicker}
+              onChange={(event) => setBasePicker(event.target.value)}
+            />
+          </label>
+          <label className="grid gap-1 text-xs" htmlFor="compare-head-delivery">
+            <span className="font-medium">先端デリバリー / Head delivery</span>
+            <input
+              id="compare-head-delivery"
+              className="w-64 border border-border bg-background px-2 py-1.5 text-xs"
+              value={headPicker}
+              onChange={(event) => setHeadPicker(event.target.value)}
+            />
+          </label>
+          <button
+            type="button"
+            className="border border-border px-3 py-1.5 text-xs"
+            onClick={applyPickers}
+            disabled={!basePicker.trim() || !headPicker.trim()}
+          >
+            比較する / Compare
+          </button>
+          <div className="flex items-end gap-1.5" role="group" aria-label="表示する版 / Viewing side">
+            <SideButton active={state.side === "base"} onClick={() => dispatch({ type: "SET_SIDE", side: "base" })}>
+              基準 / Base
+            </SideButton>
+            <SideButton active={state.side === "head"} onClick={() => dispatch({ type: "SET_SIDE", side: "head" })}>
+              先端 / Head
+            </SideButton>
+          </div>
+          <label className="grid gap-1 text-xs" htmlFor="compare-kind-filter">
+            <span className="font-medium">種別 / Kind</span>
+            <select
+              id="compare-kind-filter"
+              className="border border-border bg-background px-2 py-1.5 text-xs"
+              value={state.filters.kind}
+              onChange={(event) =>
+                dispatch({
+                  type: "SET_FILTERS",
+                  filters: { ...state.filters, kind: event.target.value as ChangeKind | "all" },
+                })
+              }
+            >
+              {KIND_OPTIONS.map((kind) => (
+                <option key={kind} value={kind}>
+                  {kind === "all" ? "すべて / All" : `${CHANGE_LABEL.ja[kind]} / ${kind}`}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-xs" htmlFor="compare-confidence-filter">
+            <span className="font-medium">確度 / Confidence</span>
+            <select
+              id="compare-confidence-filter"
+              className="border border-border bg-background px-2 py-1.5 text-xs"
+              value={state.filters.confidence}
+              onChange={(event) =>
+                dispatch({
+                  type: "SET_FILTERS",
+                  filters: { ...state.filters, confidence: event.target.value as "all" | "uncertain" },
+                })
+              }
+            >
+              <option value="all">すべて / All</option>
+              <option value="uncertain">不確実のみ / Uncertain only</option>
+            </select>
+          </label>
+          <label className="grid gap-1 text-xs" htmlFor="compare-source-filter">
+            <span className="font-medium">ソース / Source</span>
+            <select
+              id="compare-source-filter"
+              className="border border-border bg-background px-2 py-1.5 text-xs"
+              value={state.filters.sourceModelId}
+              onChange={(event) =>
+                dispatch({ type: "SET_FILTERS", filters: { ...state.filters, sourceModelId: event.target.value } })
+              }
+            >
+              <option value={ALL_SOURCES}>すべて / All</option>
+              {sources.map((pair) => (
+                <option key={pair.sourceModelId} value={pair.sourceModelId}>
+                  {pair.sourceModelName}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </div>
+      <CombinedDeliveryViewer
+        deliveryId={activeDeliveryId}
+        onController={handleController}
+        inspector={
+          state.lifecycle === "loading" ? (
+            <p className="text-xs text-muted-foreground" role="status">
+              比較を読み込み中 / Loading comparison…
+            </p>
+          ) : (
+            <div data-compare-panel>
+              <CompareInspector
+                side={state.side}
+                entries={filtered}
+                unfilteredCount={state.changeIndex.entries.length}
+                summary={combinedSummary}
+                selection={state.selection}
+                onSelect={(key) => dispatch({ type: "SELECT_CHANGE", key })}
+                onJumpSide={(side: CompareSide) => dispatch({ type: "SET_SIDE", side })}
+                drawnKeys={readback.drawnKeys}
+                undrawable={highlights.undrawable}
+                overflow={highlights.overflow}
+                modelStatus={state.modelDiffStatus}
+                modelError={state.modelDiffError}
+                profileExpected={state.profileExpected}
+                profileActual={state.profileActual}
+                baseDeliveryId={state.baseDeliveryId}
+                headDeliveryId={state.headDeliveryId}
+                baseRuns={state.baseDelivery?.runs ?? []}
+                headRuns={state.headDelivery?.runs ?? []}
+                baseRunId={state.baseRunId}
+                headRunId={state.headRunId}
+                onRunsChange={(baseRunId, headRunId) => dispatch({ type: "SET_RUNS", baseRunId, headRunId })}
+                findingStatus={state.findingStatus}
+                findingDiff={state.findingDiff}
+                findingError={state.findingError}
+                findingDimension={state.findingDimension}
+                onRunCreated={handleRunCreated}
+              />
+            </div>
+          )
+        }
+      />
+    </div>
+  );
+}
+
+function SideButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onClick}
+      className={`border px-3 py-1.5 text-xs ${active ? "border-primary bg-accent font-medium" : "border-border"}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** Split a revision-qualified selection key back into its ref parts. */
+function parseKey(key: string): { revisionId: string; objectId: string } {
+  const separator = key.indexOf(String.fromCharCode(0));
+  if (separator < 0) return { revisionId: key, objectId: "" };
+  return { revisionId: key.slice(0, separator), objectId: key.slice(separator + 1) };
+}
