@@ -337,6 +337,8 @@ export type MatchConfidence =
   | { kind: "none" };
 
 export interface ObjectChangeRef {
+  revisionId: string;
+  objectId: string;
   expressId: number;
   globalId: string | null;
   ifcType: string;
@@ -374,6 +376,9 @@ export interface DiffSummary {
 
 export interface ModelPairDiff {
   discipline: Discipline;
+  sourceModelId: string;
+  sourceModelName: string;
+  reusedRevision: boolean;
   baseModelId: string | null;
   headModelId: string | null;
   baseFilename: string | null;
