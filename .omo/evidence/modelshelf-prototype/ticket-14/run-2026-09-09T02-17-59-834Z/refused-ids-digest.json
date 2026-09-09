@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "pack_digest_mismatch",
+    "message": "pack digest mismatch (IDS content digest ids_sha256) between base run 89eff16d-959f-4049-9f33-b839d33a9a38 and head run dfa731c7-64de-4d7c-91f4-a13e982e9fa7; rerun one or both sides under identical settings before comparing"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "scope_mismatch",
+    "message": "check scope mismatch (source membership diverged) between base run 198e5b53-b38f-4187-af94-fd9405db72e3 and head run c8c1a57f-5604-45ed-bcf9-e1ae05340690; rerun one or both sides under identical settings before comparing"
+  }
+}

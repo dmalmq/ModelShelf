@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "run_incomplete",
+    "message": "run has review-incomplete outcomes (run 190c0ebb-0d2d-4517-addc-f261e2336f4e reports 1 review-incomplete outcomes; base run 40ba14a2-6602-44ac-a8fc-d126410abd3d, head run 190c0ebb-0d2d-4517-addc-f261e2336f4e); rerun one or both sides under identical settings before comparing"
+  }
+}
