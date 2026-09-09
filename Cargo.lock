@@ -979,7 +979,6 @@ name = "modeldiff"
 version = "0.1.0"
 dependencies = [
  "fingerprint",
- "ifc-model",
  "serde",
 ]
 

@@ -2,15 +2,15 @@
 //!
 //! Snapshots are rebuilt from the stored `objects`/`object_props` rows rather than by
 //! re-parsing IFC: the fingerprints were computed at ingest time and are the evidence.
-//! Model pairs are matched by discipline slot, which is what makes "the services model was
-//! updated, the architectural one was not" expressible.
+//! Delivery members pair by persistent `source_model_id`, never by discipline, so two
+//! same-discipline sources in one delivery compare strictly within their own source.
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use axum::extract::{Query, State};
 use axum::Json;
-use fingerprint::{Fingerprints, ObjectSnapshot, PropSnapshot};
-use modeldiff::{ChangeKind, DiffOptions, MatchConfidence};
+use fingerprint::normalized::{DerivedSnapshot, FingerprintProfile, Fingerprints};
+use modeldiff::{ChangeKind, MatchConfidence, MatchPolicy};
 use serde::Deserialize;
 use sqlx::SqlitePool;
 
@@ -44,12 +44,14 @@ pub struct RunDiffQuery {
     pub head_run_id: String,
 }
 
-/// Matches base/head models by discipline slot. Known limitation as of the
-/// source-model/revision rework: two source models sharing a discipline in one
-/// delivery are both valid now (docs/contracts/http-api.md), but this still picks
-/// one arbitrary pair per discipline via `.find()` rather than matching by source
-/// model — comparing revisions by `source_model_id` is model-comparison scope
-/// (crates/modeldiff callers), not this ticket's.
+/// Pairs base/head revisions by `source_model_id` — never by discipline, so two
+/// same-discipline sources in one delivery can never cross-match. For each source:
+/// - present on both sides with the same revision id: short-circuit pair with no
+///   comparison, zeroed summary, and `reusedRevision: true` (no snapshot load);
+/// - present on both sides with different revisions: full `modeldiff::compare`
+///   under the default policy, where a profile mismatch becomes a 409
+///   `fingerprint_profile_mismatch`;
+/// - present on one side only: pure additions/removals without calling `compare`.
 pub async fn diff_models(
     State(state): State<AppState>,
     Query(query): Query<ModelDiffQuery>,
@@ -59,74 +61,228 @@ pub async fn diff_models(
     let base_models = load_models(&state.pool, &base.id).await?;
     let head_models = load_models(&state.pool, &head.id).await?;
 
-    let mut disciplines: Vec<String> = base_models
-        .iter()
-        .chain(head_models.iter())
-        .map(|m| m.discipline.clone())
-        .collect();
-    disciplines.sort();
-    disciplines.dedup();
+    let mut base_by_source: BTreeMap<&str, &ModelRow> = BTreeMap::new();
+    for model in &base_models {
+        base_by_source.insert(model.source_model_id.as_str(), model);
+    }
+    let mut head_by_source: BTreeMap<&str, &ModelRow> = BTreeMap::new();
+    for model in &head_models {
+        head_by_source.insert(model.source_model_id.as_str(), model);
+    }
+    let mut source_ids: Vec<&str> =
+        base_by_source.keys().chain(head_by_source.keys()).copied().collect();
+    source_ids.sort();
+    source_ids.dedup();
 
     let limit = query.limit.unwrap_or(DEFAULT_LIMIT).clamp(1, 5_000);
     let offset = query.offset.unwrap_or(0).max(0);
-    let options = DiffOptions::default();
+    let policy = MatchPolicy::default();
 
-    let mut pairs = Vec::new();
-    for discipline in disciplines {
-        let base_model = base_models.iter().find(|m| m.discipline == discipline);
-        let head_model = head_models.iter().find(|m| m.discipline == discipline);
-        let base_snapshots = match base_model {
-            Some(model) => load_snapshots(&state.pool, &model.id).await?,
-            None => Vec::new(),
-        };
-        let head_snapshots = match head_model {
-            Some(model) => load_snapshots(&state.pool, &model.id).await?,
-            None => Vec::new(),
-        };
-        let result = modeldiff::diff(&base_snapshots, &head_snapshots, &options);
-
-        let filtered: Vec<&modeldiff::ObjectChange> = result
-            .changes
-            .iter()
-            .filter(|change| match query.kind.as_deref() {
-                None | Some("") | Some("all") => true,
-                Some(kind) => kind_str(change.kind) == kind,
-            })
-            .collect();
-        let total = filtered.len() as i64;
-        let page: Vec<ObjectChangeOut> = filtered
-            .into_iter()
-            .skip(offset as usize)
-            .take(limit as usize)
-            .map(change_json)
-            .collect();
-
-        pairs.push(ModelPairDiffOut {
-            discipline,
-            base_model_id: base_model.map(|m| m.id.clone()),
-            head_model_id: head_model.map(|m| m.id.clone()),
-            base_filename: base_model.map(|m| m.filename.clone()),
-            head_filename: head_model.map(|m| m.filename.clone()),
-            summary: DiffSummaryOut {
-                added: result.summary.added as i64,
-                removed: result.summary.removed as i64,
-                unchanged: result.summary.unchanged as i64,
-                moved: result.summary.moved as i64,
-                shape_changed: result.summary.shape_changed as i64,
-                properties_changed: result.summary.properties_changed as i64,
-                mixed: result.summary.mixed as i64,
-                uncertain_matches: result.summary.uncertain_matches as i64,
-            },
-            total,
-            changes: page,
-        });
+    let mut pairs = Vec::with_capacity(source_ids.len());
+    for source_id in source_ids {
+        pairs.push(
+            diff_source_pair(
+                &state.pool,
+                base_by_source.get(source_id).copied(),
+                head_by_source.get(source_id).copied(),
+                &query.kind,
+                &policy,
+                limit,
+                offset,
+            )
+            .await?,
+        );
     }
+    pairs.sort_by(|a: &ModelPairDiffOut, b: &ModelPairDiffOut| {
+        a.source_model_name.cmp(&b.source_model_name).then(a.source_model_id.cmp(&b.source_model_id))
+    });
 
     Ok(Json(ModelDiffResponse {
         base: delivery_json(&state.pool, &base).await?,
         head: delivery_json(&state.pool, &head).await?,
         pairs,
     }))
+}
+
+async fn diff_source_pair(
+    pool: &SqlitePool,
+    base_model: Option<&ModelRow>,
+    head_model: Option<&ModelRow>,
+    kind_filter: &Option<String>,
+    policy: &MatchPolicy,
+    limit: i64,
+    offset: i64,
+) -> Result<ModelPairDiffOut, ApiError> {
+    let representative =
+        base_model.or(head_model).expect("a pair always has at least one side");
+    let (discipline, source_model_id, source_model_name) = (
+        representative.discipline.clone(),
+        representative.source_model_id.clone(),
+        representative.source_model_name.clone(),
+    );
+    let base_model_id = base_model.map(|m| m.id.clone());
+    let head_model_id = head_model.map(|m| m.id.clone());
+    let base_filename = base_model.map(|m| m.filename.clone());
+    let head_filename = head_model.map(|m| m.filename.clone());
+
+    if let (Some(base), Some(head)) = (base_model, head_model) {
+        if base.id == head.id {
+            return Ok(ModelPairDiffOut {
+                discipline,
+                source_model_id,
+                source_model_name,
+                reused_revision: true,
+                base_model_id,
+                head_model_id,
+                base_filename,
+                head_filename,
+                summary: zero_summary(),
+                total: 0,
+                changes: Vec::new(),
+            });
+        }
+    }
+
+    let (summary, changes) = match (base_model, head_model) {
+        (Some(base), Some(head)) => {
+            let base_objects = load_diff_objects(pool, &base.id).await?;
+            let head_objects = load_diff_objects(pool, &head.id).await?;
+            let result = modeldiff::compare(&base_objects, &head_objects, policy).map_err(|mismatch| {
+                ApiError::fingerprint_profile_mismatch(&mismatch.expected, &mismatch.actual)
+            })?;
+            (summary_json(&result.summary), result.changes)
+        }
+        (Some(base), None) => {
+            let objects = load_diff_objects(pool, &base.id).await?;
+            (removed_summary(objects.len() as u32), removed_changes(&objects))
+        }
+        (None, Some(head)) => {
+            let objects = load_diff_objects(pool, &head.id).await?;
+            (added_summary(objects.len() as u32), added_changes(&objects))
+        }
+        (None, None) => unreachable!("a pair always has at least one side"),
+    };
+
+    let filtered: Vec<&modeldiff::ObjectChange> = changes
+        .iter()
+        .filter(|change| match kind_filter.as_deref() {
+            None | Some("") | Some("all") => true,
+            Some(kind) => kind_str(change.kind) == kind,
+        })
+        .collect();
+    let total = filtered.len() as i64;
+    let page: Vec<ObjectChangeOut> = filtered
+        .into_iter()
+        .skip(offset as usize)
+        .take(limit as usize)
+        .map(change_json)
+        .collect();
+
+    Ok(ModelPairDiffOut {
+        discipline,
+        source_model_id,
+        source_model_name,
+        reused_revision: false,
+        base_model_id,
+        head_model_id,
+        base_filename,
+        head_filename,
+        summary,
+        total,
+        changes: page,
+    })
+}
+
+fn zero_summary() -> DiffSummaryOut {
+    DiffSummaryOut {
+        added: 0,
+        removed: 0,
+        unchanged: 0,
+        moved: 0,
+        shape_changed: 0,
+        properties_changed: 0,
+        mixed: 0,
+        uncertain_matches: 0,
+    }
+}
+
+fn summary_json(summary: &modeldiff::DiffSummary) -> DiffSummaryOut {
+    DiffSummaryOut {
+        added: summary.added as i64,
+        removed: summary.removed as i64,
+        unchanged: summary.unchanged as i64,
+        moved: summary.moved as i64,
+        shape_changed: summary.shape_changed as i64,
+        properties_changed: summary.properties_changed as i64,
+        mixed: summary.mixed as i64,
+        uncertain_matches: summary.uncertain_matches as i64,
+    }
+}
+
+fn added_summary(count: u32) -> DiffSummaryOut {
+    DiffSummaryOut { added: count as i64, ..zero_summary() }
+}
+
+fn removed_summary(count: u32) -> DiffSummaryOut {
+    DiffSummaryOut { removed: count as i64, ..zero_summary() }
+}
+
+/// One-sided head member: every object is a pure addition. Deterministic order
+/// (type, then express id) matching `compare`'s presentation order for a
+/// single-kind page.
+fn added_changes(objects: &[modeldiff::DiffObject]) -> Vec<modeldiff::ObjectChange> {
+    let mut changes: Vec<modeldiff::ObjectChange> = objects
+        .iter()
+        .map(|object| modeldiff::ObjectChange {
+            kind: ChangeKind::Added,
+            confidence: MatchConfidence::None,
+            base: None,
+            head: Some(side_ref(object)),
+            property_changes: Vec::new(),
+            moved_distance_m: None,
+            notes: Vec::new(),
+        })
+        .collect();
+    changes.sort_by(|a, b| {
+        side_sort_key(a.head.as_ref()).cmp(&side_sort_key(b.head.as_ref()))
+    });
+    changes
+}
+
+fn removed_changes(objects: &[modeldiff::DiffObject]) -> Vec<modeldiff::ObjectChange> {
+    let mut changes: Vec<modeldiff::ObjectChange> = objects
+        .iter()
+        .map(|object| modeldiff::ObjectChange {
+            kind: ChangeKind::Removed,
+            confidence: MatchConfidence::None,
+            base: Some(side_ref(object)),
+            head: None,
+            property_changes: Vec::new(),
+            moved_distance_m: None,
+            notes: Vec::new(),
+        })
+        .collect();
+    changes.sort_by(|a, b| {
+        side_sort_key(a.base.as_ref()).cmp(&side_sort_key(b.base.as_ref()))
+    });
+    changes
+}
+
+fn side_ref(object: &modeldiff::DiffObject) -> modeldiff::ObjectRef {
+    modeldiff::ObjectRef {
+        revision_id: object.id.revision_id.clone(),
+        object_id: object.id.object_id.clone(),
+        express_id: object.id.express_id,
+        global_id: object.id.global_id.clone(),
+        ifc_type: object.id.ifc_type.clone(),
+        name: object.id.name.clone(),
+        storey: object.id.storey.clone(),
+    }
+}
+
+fn side_sort_key(reference: Option<&modeldiff::ObjectRef>) -> (&str, u32) {
+    let reference = reference.expect("a one-sided change always has its side");
+    (reference.ifc_type.as_str(), reference.express_id)
 }
 
 pub async fn diff_runs(
@@ -267,9 +423,8 @@ pub async fn load_delivery(pool: &SqlitePool, id: &str) -> Result<DeliveryRow, A
 
 /// The one place "which models are in this delivery" is queried; `run.rs::create_run`
 /// calls this too rather than keeping its own copy. Two source models sharing a
-/// discipline both appear here, one `ModelRow` each — `diff_models` below still
-/// matches by discipline and so still only compares one pair per discipline; see
-/// its doc comment.
+/// discipline both appear here, one `ModelRow` each; `diff_models` above pairs them
+/// by `source_model_id`, so same-discipline sources never cross-match.
 pub async fn load_models(pool: &SqlitePool, delivery_id: &str) -> Result<Vec<ModelRow>, ApiError> {
     Ok(sqlx::query_as(&format!("{DELIVERY_MODEL_ROW_SELECT} WHERE dm.delivery_id = ?1 ORDER BY sm.discipline, sm.name"))
         .bind(delivery_id)
@@ -277,14 +432,23 @@ pub async fn load_models(pool: &SqlitePool, delivery_id: &str) -> Result<Vec<Mod
         .await?)
 }
 
-/// Rebuild `ObjectSnapshot` values from persisted rows.
-async fn load_snapshots(
+/// Rebuild `DiffObject` values from persisted rows: the ingest-time fingerprint
+/// evidence plus the identity loaded beside it.
+///
+/// A row with NULL `profile_id` predates normalized fingerprints and has no
+/// trustworthy snapshot: this returns `fingerprint_profile_mismatch` rather than
+/// fabricating one. `origin_m` reads the translation column (indices 3, 7, 11)
+/// of the stored row-major 3x4 placement in metres
+/// (`docs/contracts/worker-v1.md`); an unparseable placement yields `None`.
+async fn load_diff_objects(
     pool: &SqlitePool,
     model_id: &str,
-) -> Result<Vec<ObjectSnapshot>, ApiError> {
+) -> Result<Vec<modeldiff::DiffObject>, ApiError> {
     let objects: Vec<ObjectRowDb> = sqlx::query_as(
         "SELECT id, model_id, express_id, global_id, ifc_type, name, predefined_type, storey,
-                placement_json, fp_properties, fp_placement, fp_shape, fp_combined
+                placement_json, fp_properties, fp_placement, fp_shape, fp_combined,
+                ref_object_id, profile_version, profile_id,
+                canonical_properties, canonical_placement, canonical_shape
            FROM objects WHERE model_id = ?1 ORDER BY express_id",
     )
     .bind(model_id)
@@ -292,18 +456,14 @@ async fn load_snapshots(
     .await?;
 
     #[derive(sqlx::FromRow)]
-    struct PropWithObject {
+    struct PropValue {
         object_id: String,
         pset: String,
         name: String,
         value: Option<String>,
-        data_type: Option<String>,
-        unit: Option<String>,
-        numeric: Option<f64>,
-        inherited: i64,
     }
-    let props: Vec<PropWithObject> = sqlx::query_as(
-        "SELECT p.object_id, p.pset, p.name, p.value, p.data_type, p.unit, p.numeric, p.inherited
+    let props: Vec<PropValue> = sqlx::query_as(
+        "SELECT p.object_id, p.pset, p.name, p.value
            FROM object_props p JOIN objects o ON o.id = p.object_id
           WHERE o.model_id = ?1
           ORDER BY p.pset, p.name",
@@ -312,45 +472,61 @@ async fn load_snapshots(
     .fetch_all(pool)
     .await?;
 
-    let mut by_object: HashMap<String, Vec<PropSnapshot>> = HashMap::new();
+    let mut by_object: HashMap<String, Vec<modeldiff::PropRow>> = HashMap::new();
     for prop in props {
-        by_object.entry(prop.object_id).or_default().push(PropSnapshot {
+        by_object.entry(prop.object_id).or_default().push(modeldiff::PropRow {
             pset: prop.pset,
             name: prop.name,
             value: prop.value.unwrap_or_default(),
-            data_type: prop.data_type,
-            unit: prop.unit,
-            numeric: prop.numeric,
-            inherited: prop.inherited != 0,
         });
     }
 
-    Ok(objects
-        .into_iter()
-        .map(|row| {
-            let placement = row
-                .placement_json
-                .as_deref()
-                .and_then(|json| serde_json::from_str::<Vec<f64>>(json).ok())
-                .and_then(|values| <[f64; 12]>::try_from(values).ok());
-            ObjectSnapshot {
-                express_id: row.express_id as u32,
-                global_id: row.global_id,
-                ifc_type: row.ifc_type,
-                name: row.name,
-                predefined_type: row.predefined_type,
-                storey: row.storey,
-                placement,
+    let current_profile = FingerprintProfile::v1().profile_id();
+    let mut out = Vec::with_capacity(objects.len());
+    for row in objects {
+        let (Some(profile_id), Some(ref_object_id)) =
+            (row.profile_id.clone(), row.ref_object_id.clone())
+        else {
+            return Err(ApiError::fingerprint_profile_mismatch(
+                &current_profile,
+                "legacy (no profile — ingested before normalized fingerprints)",
+            ));
+        };
+        let origin_m = row
+            .placement_json
+            .as_deref()
+            .and_then(|json| serde_json::from_str::<Vec<f64>>(json).ok())
+            .and_then(|values| <[f64; 12]>::try_from(values).ok())
+            .map(|matrix| [matrix[3], matrix[7], matrix[11]]);
+        out.push(modeldiff::DiffObject {
+            snapshot: DerivedSnapshot {
+                object_id: ref_object_id.clone(),
+                profile_version: row.profile_version.clone().unwrap_or_default(),
+                profile_id,
                 fingerprints: Fingerprints {
-                    properties: row.fp_properties,
-                    placement: row.fp_placement,
-                    shape: row.fp_shape,
-                    combined: row.fp_combined,
+                    properties: row.fp_properties.clone(),
+                    placement: row.fp_placement.clone(),
+                    shape: row.fp_shape.clone(),
+                    combined: row.fp_combined.clone(),
                 },
-                properties: by_object.remove(&row.id).unwrap_or_default(),
-            }
-        })
-        .collect())
+                canonical_properties: row.canonical_properties.clone().unwrap_or_default(),
+                canonical_placement: row.canonical_placement.clone().unwrap_or_default(),
+                canonical_shape: row.canonical_shape.clone().unwrap_or_default(),
+            },
+            id: modeldiff::IdentitySide {
+                object_id: ref_object_id,
+                revision_id: model_id.to_string(),
+                express_id: row.express_id as u32,
+                global_id: row.global_id.clone(),
+                ifc_type: row.ifc_type.clone(),
+                name: row.name.clone(),
+                storey: row.storey.clone(),
+                origin_m,
+                props: by_object.remove(&row.id).unwrap_or_default(),
+            },
+        });
+    }
+    Ok(out)
 }
 
 pub fn kind_str(kind: ChangeKind) -> &'static str {
@@ -394,6 +570,8 @@ fn change_json(change: &modeldiff::ObjectChange) -> ObjectChangeOut {
 
 fn object_ref_json(reference: &modeldiff::ObjectRef) -> ObjectChangeRefOut {
     ObjectChangeRefOut {
+        revision_id: reference.revision_id.clone(),
+        object_id: reference.object_id.clone(),
         express_id: reference.express_id as i64,
         global_id: reference.global_id.clone(),
         ifc_type: reference.ifc_type.clone(),
