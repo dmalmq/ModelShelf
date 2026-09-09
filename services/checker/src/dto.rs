@@ -227,6 +227,10 @@ pub struct RunRow {
     pub incomplete_count: i64,
     pub input_provenance: String,
     pub input_provenance_reason: Option<String>,
+    pub ids_sha256: Option<String>,
+    pub pack_metadata_sha256: Option<String>,
+    pub scope_json: Option<String>,
+    pub engine_profile_json: Option<String>,
 }
 
 #[derive(sqlx::FromRow)]
@@ -285,7 +289,8 @@ pub const RUN_SUMMARY_SELECT: &str = "SELECT r.id, r.project_id, r.delivery_id,
         r.engine_version, r.parser_version, r.status, r.error,
         r.started_at, r.finished_at, r.duration_ms,
         r.pass_count, r.fail_count, r.not_applicable_count, r.incomplete_count,
-        r.input_provenance, r.input_provenance_reason
+        r.input_provenance, r.input_provenance_reason,
+        r.ids_sha256, r.pack_metadata_sha256, r.scope_json, r.engine_profile_json
    FROM runs r
    JOIN deliveries d ON d.id = r.delivery_id
    JOIN pack_versions pv ON pv.id = r.pack_version_id

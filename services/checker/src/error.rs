@@ -10,6 +10,12 @@ pub enum ErrorCode {
     BadRequest,
     DeliveryLocked,
     PackVersionMismatch,
+    PackDigestMismatch,
+    ScopeMismatch,
+    EngineProfileMismatch,
+    ProvenanceIncomplete,
+    RunNotCompleted,
+    RunIncomplete,
     FingerprintProfileMismatch,
     DuplicateDiscipline,
     ParseFailed,
@@ -23,6 +29,12 @@ impl ErrorCode {
             ErrorCode::BadRequest => "bad_request",
             ErrorCode::DeliveryLocked => "delivery_locked",
             ErrorCode::PackVersionMismatch => "pack_version_mismatch",
+            ErrorCode::PackDigestMismatch => "pack_digest_mismatch",
+            ErrorCode::ScopeMismatch => "scope_mismatch",
+            ErrorCode::EngineProfileMismatch => "engine_profile_mismatch",
+            ErrorCode::ProvenanceIncomplete => "provenance_incomplete",
+            ErrorCode::RunNotCompleted => "run_not_completed",
+            ErrorCode::RunIncomplete => "run_incomplete",
             ErrorCode::FingerprintProfileMismatch => "fingerprint_profile_mismatch",
             ErrorCode::DuplicateDiscipline => "duplicate_discipline",
             ErrorCode::ParseFailed => "parse_failed",
@@ -61,6 +73,66 @@ impl ApiError {
             StatusCode::CONFLICT,
             ErrorCode::PackVersionMismatch,
             "runs used different pack versions; findings cannot be compared",
+        )
+    }
+    pub fn pack_digest_mismatch(base_run_id: &str, head_run_id: &str, which: &str) -> Self {
+        ApiError::new(
+            StatusCode::CONFLICT,
+            ErrorCode::PackDigestMismatch,
+            format!(
+                "pack digest mismatch ({which}) between base run {base_run_id} and head run \
+                 {head_run_id}; rerun one or both sides under identical settings before comparing"
+            ),
+        )
+    }
+    pub fn scope_mismatch(base_run_id: &str, head_run_id: &str, which: &str) -> Self {
+        ApiError::new(
+            StatusCode::CONFLICT,
+            ErrorCode::ScopeMismatch,
+            format!(
+                "check scope mismatch ({which} diverged) between base run {base_run_id} and head \
+                 run {head_run_id}; rerun one or both sides under identical settings before comparing"
+            ),
+        )
+    }
+    pub fn engine_profile_mismatch(base_run_id: &str, head_run_id: &str) -> Self {
+        ApiError::new(
+            StatusCode::CONFLICT,
+            ErrorCode::EngineProfileMismatch,
+            format!(
+                "engine profile mismatch between base run {base_run_id} and head run {head_run_id}; \
+                 rerun one or both sides under identical settings before comparing"
+            ),
+        )
+    }
+    pub fn provenance_incomplete(base_run_id: &str, head_run_id: &str, detail: &str) -> Self {
+        ApiError::new(
+            StatusCode::CONFLICT,
+            ErrorCode::ProvenanceIncomplete,
+            format!(
+                "run input provenance is incomplete ({detail}; base run {base_run_id}, head run \
+                 {head_run_id}); rerun one or both sides under identical settings before comparing"
+            ),
+        )
+    }
+    pub fn run_not_completed(base_run_id: &str, head_run_id: &str, detail: &str) -> Self {
+        ApiError::new(
+            StatusCode::CONFLICT,
+            ErrorCode::RunNotCompleted,
+            format!(
+                "run did not complete ({detail}; base run {base_run_id}, head run {head_run_id}); \
+                 rerun one or both sides under identical settings before comparing"
+            ),
+        )
+    }
+    pub fn run_incomplete(base_run_id: &str, head_run_id: &str, detail: &str) -> Self {
+        ApiError::new(
+            StatusCode::CONFLICT,
+            ErrorCode::RunIncomplete,
+            format!(
+                "run has review-incomplete outcomes ({detail}; base run {base_run_id}, head run \
+                 {head_run_id}); rerun one or both sides under identical settings before comparing"
+            ),
         )
     }
     pub fn fingerprint_profile_mismatch(expected: &str, actual: &str) -> Self {
