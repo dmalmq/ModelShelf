@@ -10,6 +10,13 @@
 //! different shape fingerprints. Documented limitation, not a bug.
 //!
 //! PUBLIC API IS A CROSS-CRATE CONTRACT: signatures below MUST NOT change.
+//!
+//! Versioned normalized fingerprints live in [`normalized`]: the pure module over
+//! the worker's authoritative `SemanticObject` + `GeometryChunk` records and an
+//! explicit [`normalized::FingerprintProfile`]. The `IfcModel` API below is the
+//! legacy representation-graph path and stays until its callers migrate.
+
+pub mod normalized;
 
 use std::collections::HashSet;
 

@@ -1,0 +1,12 @@
+test a_move_changes_only_the_placement_fingerprint ... ok
+test a_profile_change_moves_only_the_shape_fingerprint ... ok
+test same_content_hashes_identically_across_formatting_and_numbering ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+   Doc-tests fingerprint
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

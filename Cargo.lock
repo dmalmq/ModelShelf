@@ -392,7 +392,9 @@ version = "0.1.0"
 dependencies = [
  "blake3",
  "ifc-model",
+ "model-contracts",
  "serde",
+ "serde_json",
 ]
 
 [[package]]

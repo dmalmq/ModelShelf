@@ -19,10 +19,10 @@
 mod generated;
 
 pub use generated::{
-    GeometryChunk, Instance, InstanceBoundingBox, ModelDescriptor, ModelDescriptorArtifacts,
-    ModelDescriptorSchemaVersion, ModelDescriptorSourceProvenance, ModelDescriptorUpAxis,
-    ObjectRef, Property, PropertyOrigin, PropertyValue, PropertyValueValue, RenderCapability,
-    RenderManifest,
+    GeometryChunk, GeometryChunkStatus, Instance, InstanceBoundingBox, ModelDescriptor,
+    ModelDescriptorArtifacts, ModelDescriptorSchemaVersion, ModelDescriptorSourceProvenance,
+    ModelDescriptorUpAxis, ObjectRef, Property, PropertyOrigin, PropertyValue,
+    PropertyValueDimension, PropertyValueValue, RenderCapability, RenderManifest,
     RenderManifestSchemaVersion, SemanticCapability, SemanticModel, SemanticModelSchemaVersion,
     SemanticObject, SemanticObjectNativeIds, Transform,
 };
