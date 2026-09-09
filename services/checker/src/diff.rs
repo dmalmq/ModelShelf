@@ -77,13 +77,17 @@ pub async fn diff_models(
         let head_model = head_models.iter().find(|m| m.discipline == discipline);
         let base_snapshots = match base_model {
             Some(model) => load_snapshots(&state.pool, &model.id).await?,
-            None => Vec::new(),
+            None => RevisionSnapshots::empty(),
         };
         let head_snapshots = match head_model {
             Some(model) => load_snapshots(&state.pool, &model.id).await?,
-            None => Vec::new(),
+            None => RevisionSnapshots::empty(),
         };
-        let result = modeldiff::diff(&base_snapshots, &head_snapshots, &options);
+        // Comparing digests across fingerprint profiles is meaningless, and
+        // comparing sentinel digests from pre-profile ingestion reports every
+        // pair unchanged. Refuse both rather than publish a confident wrong answer.
+        require_comparable(&discipline, &base_snapshots, &head_snapshots)?;
+        let result = modeldiff::diff(&base_snapshots.snapshots, &head_snapshots.snapshots, &options);
 
         let filtered: Vec<&modeldiff::ObjectChange> = result
             .changes
@@ -277,19 +281,61 @@ pub async fn load_models(pool: &SqlitePool, delivery_id: &str) -> Result<Vec<Mod
         .await?)
 }
 
+/// A revision's stored fingerprints plus the profile that produced them.
+/// `profile` is `None` for revisions ingested before profiles were recorded;
+/// those digests are the sentinel and must never be compared.
+struct RevisionSnapshots {
+    snapshots: Vec<ObjectSnapshot>,
+    profile: Option<String>,
+}
+
+impl RevisionSnapshots {
+    /// A discipline present on only one side. No objects, so nothing to compare
+    /// and no profile to disagree about; every object reads as added or removed.
+    fn empty() -> Self {
+        RevisionSnapshots { snapshots: Vec::new(), profile: None }
+    }
+}
+
+/// Both sides must carry fingerprints from the same profile before their digests
+/// mean anything to each other. A side with no objects is vacuously comparable.
+fn require_comparable(
+    discipline: &str,
+    base: &RevisionSnapshots,
+    head: &RevisionSnapshots,
+) -> Result<(), ApiError> {
+    if base.snapshots.is_empty() || head.snapshots.is_empty() {
+        return Ok(());
+    }
+    match (base.profile.as_deref(), head.profile.as_deref()) {
+        (Some(a), Some(b)) if a == b => Ok(()),
+        (None, _) | (_, None) => Err(ApiError::fingerprint_profile_mismatch(format!(
+            "the {discipline} models were ingested before fingerprint profiles were recorded, \
+             so their stored digests carry no comparable value"
+        ))),
+        (Some(a), Some(b)) => Err(ApiError::fingerprint_profile_mismatch(format!(
+            "the {discipline} models were fingerprinted under different profiles ({a} and {b})"
+        ))),
+    }
+}
+
 /// Rebuild `ObjectSnapshot` values from persisted rows.
 async fn load_snapshots(
     pool: &SqlitePool,
     model_id: &str,
-) -> Result<Vec<ObjectSnapshot>, ApiError> {
+) -> Result<RevisionSnapshots, ApiError> {
     let objects: Vec<ObjectRowDb> = sqlx::query_as(
         "SELECT id, model_id, express_id, global_id, ifc_type, name, predefined_type, storey,
-                placement_json, fp_properties, fp_placement, fp_shape, fp_combined
+                placement_json, fp_properties, fp_placement, fp_shape, fp_combined, fp_profile_id
            FROM objects WHERE model_id = ?1 ORDER BY express_id",
     )
     .bind(model_id)
     .fetch_all(pool)
     .await?;
+
+    // One revision is fingerprinted in one transaction under one profile, so the
+    // first row's profile speaks for the revision. A NULL means pre-profile rows.
+    let profile = objects.first().and_then(|row| row.fp_profile_id.clone());
 
     #[derive(sqlx::FromRow)]
     struct PropWithObject {
@@ -325,7 +371,7 @@ async fn load_snapshots(
         });
     }
 
-    Ok(objects
+    let snapshots = objects
         .into_iter()
         .map(|row| {
             let placement = row
@@ -350,7 +396,8 @@ async fn load_snapshots(
                 properties: by_object.remove(&row.id).unwrap_or_default(),
             }
         })
-        .collect())
+        .collect();
+    Ok(RevisionSnapshots { snapshots, profile })
 }
 
 pub fn kind_str(kind: ChangeKind) -> &'static str {

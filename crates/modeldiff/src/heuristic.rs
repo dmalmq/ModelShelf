@@ -25,15 +25,37 @@ pub const W_NAME: f64 = 0.10;
 /// Displacement at which the placement component grades to zero.
 pub const PLACEMENT_GRADE_RANGE_M: f64 = 1.0;
 
-/// Origin translation components. Matches `ifc_model::Transform::to_array12`'s
-/// documented layout `[xx,xy,xz, yx,yy,yz, zx,zy,zz, ox,oy,oz]` — three axis
-/// vectors, then the origin — not an interleaved row-major 3x4 with a
-/// translation column per row. Getting this wrong silently corrupts both move
-/// detection (`classify_pair`) and this module's own placement-based match
-/// scoring for any pair whose rotation differs, since it would read rotation
-/// components as if they were part of the origin.
+/// Origin translation components of a `schemas/model/v1` placement: a row-major
+/// 3x4 matrix, `[r00,r01,r02,tx, r10,r11,r12,ty, r20,r21,r22,tz]`, so the
+/// translation is the fourth entry of each row.
+///
+/// This layout is the worker's, and the worker is the only producer now. It is
+/// NOT the `[xx,xy,xz, yx,yy,yz, zx,zy,zz, ox,oy,oz]` layout the deleted
+/// `ifc_model::Transform::to_array12` used, which put the origin last. Reading
+/// one as the other silently returns rotation components as the origin: a pure
+/// translation then measures as zero displacement and vanishes from move
+/// detection and from this module's placement match scoring.
 fn origin(placement: &[f64; 12]) -> [f64; 3] {
-    [placement[9], placement[10], placement[11]]
+    [placement[3], placement[7], placement[11]]
+}
+
+/// The 3x3 rotation basis, row-major, with the translation column dropped.
+fn basis(placement: &[f64; 12]) -> [f64; 9] {
+    [
+        placement[0], placement[1], placement[2], placement[4], placement[5], placement[6],
+        placement[8], placement[9], placement[10],
+    ]
+}
+
+/// Largest absolute difference between two rotation bases. Direction cosines are
+/// dimensionless and bounded by 1, so a plain max-delta is a sound rotation test
+/// and needs no angle reconstruction.
+pub fn basis_delta(a: &[f64; 12], b: &[f64; 12]) -> f64 {
+    basis(a)
+        .iter()
+        .zip(basis(b).iter())
+        .map(|(x, y)| (x - y).abs())
+        .fold(0.0, f64::max)
 }
 
 /// Straight-line distance between two placements' origins.

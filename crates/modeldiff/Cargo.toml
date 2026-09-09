@@ -9,4 +9,4 @@ fingerprint.workspace = true
 serde.workspace = true
 
 [dev-dependencies]
-ifc-model.workspace = true
+model-contracts.workspace = true

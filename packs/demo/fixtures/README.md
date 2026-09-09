@@ -30,39 +30,42 @@ uv run --project services/ifc-worker python scripts/check-demo-oracle.py --prove
 | Ambiguous: duplicate GlobalId | 2 walls sharing one GlobalId, in both revisions | Intended correspondence is `uncertain`. |
 | Ambiguous: empty GlobalId | 1 wall with `GlobalId = ""`, in both revisions | Intended correspondence is `uncertain`. |
 
-## Two real things this fixture found while it was being built
+## Three real things this fixture found while it was being built
 
-**A real bug, fixed as a prerequisite.** `crates/modeldiff/src/heuristic.rs`'s
-`origin()` read a placement array as `[R,R,R,T, R,R,R,T, R,R,R,T]` (translation
-interleaved into a row-major 3x4), indexing `[3, 7, 11]`. The actual, documented
-layout `ifc_model::Transform::to_array12()` produces is three axis vectors
-then the origin — `[xx,xy,xz, yx,yy,yz, zx,zy,zz, ox,oy,oz]` — so the real
-origin lives at `[9, 10, 11]`. The mismatch was invisible to
-`crates/modeldiff`'s own unit tests because its test helper
-(`crates/modeldiff/tests/diff.rs::placement_at`) constructed placement arrays
-by hand in the *same* wrong convention the buggy code assumed — internally
-consistent, but never checked against what a real parsed IFC file actually
-produces. Building this fixture and running it through the real
-`ifc_model → fingerprint → modeldiff` pipeline surfaced it immediately: a real
-500 mm translation (the "Moved" category) was reported `unchanged`
-("sub-threshold displacement 0.000000 m"), and a pure rotation with zero
-translation (the "Rotated" category) was reported `moved`. Both are inverted
-from what the code's own doc comments say it should do. Fixed by correcting
-`origin()`'s indices and updating `placement_at()`'s test helper to the
-correct layout; all 14 pre-existing `modeldiff` tests still pass unchanged in
-behavior, now against a correctly-encoded fixture
-(`.omo/evidence/modelshelf-prototype/task-5/modeldiff-tests-after-fix.txt`).
+**A placement layout that had to change twice, for the same reason both times.**
+`crates/modeldiff/src/heuristic.rs`'s `origin()` must read the translation from
+whatever layout its *producer* emits, and the producer has changed once.
 
-**A real, still-true design limitation, left alone.** After that fix, a *pure*
-rotation about an object's own origin (no translation) is still reported
-`unchanged`, not `moved` — `classify_pair` (`crates/modeldiff/src/lib.rs`)
-only measures displacement as origin-to-origin distance
-(`heuristic::origin_distance`), which is genuinely zero for a rotation with no
-translation, even though the placement fingerprint (which hashes the full
-axis set) did change. This is not the bug above — it's a real, documented
-consequence of the current design's choice of what counts as "moved," left as
-a discovered characteristic for a future ticket to decide whether orientation
-change alone should also count.
+When this fixture was authored, snapshots came from the now-deleted
+`fingerprint::snapshot_model(&IfcModel)`, whose `ifc_model::Transform::to_array12()`
+layout is three axis vectors then the origin — `[xx,xy,xz, yx,yy,yz, zx,zy,zz, ox,oy,oz]`
+— so the origin lived at `[9, 10, 11]`, and `origin()` was corrected to that.
+
+Ticket 33 removed the IFC-parsing path entirely. The only producer now is the
+worker, and `schemas/model/v1`'s placement is a row-major 3x4,
+`[r00,r01,r02,tx, r10,r11,r12,ty, r20,r21,r22,tz]`, so the translation is back at
+`[3, 7, 11]`. Neither reading was ever wrong in the abstract; reading one
+producer's array with the other's indices is. The failure is silent and always
+looks the same: a real translation measures as zero displacement and disappears.
+
+The lesson that outlives both fixes: `crates/modeldiff/tests/diff.rs`'s
+`placement_at()` helper builds arrays by hand, so it can agree with buggy code
+and prove nothing. It is now pinned by
+`pure_translation_is_measured_from_the_translation_column`, which asserts a
+known 0.5 m move measures as 0.5 m rather than merely round-tripping the
+helper's own convention.
+
+**A rotation is a placement change, decided.** This README previously left open
+"whether orientation change alone should also count" as a move. Ticket 33
+decided yes. `classify_pair` measures origin-to-origin distance, which is
+genuinely zero for a pure rotation, so the sub-threshold forgiveness that exists
+to swallow exporter coordinate noise was swallowing rotations too and reporting
+the "Rotated" category as `unchanged`. A differing placement fingerprint is now
+forgiven only when the rotation basis is identical *and* the displacement is
+sub-threshold; a rotation is reported as a placement change carrying the note
+`rotation changed; origin displacement below threshold`. `ChangeKind` still has
+no separate `Rotated` member, so the "Moved" and "Rotated" categories both
+classify as `moved` and are told apart by that note.
 
 **A real modeling lesson.** The "Added"/"Removed" categories initially used
 the same generic block size as everything else. Since `crates/modeldiff`'s

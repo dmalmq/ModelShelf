@@ -1,32 +1,59 @@
-//! Parses two real IFC files, fingerprints both, and runs `modeldiff::diff`
-//! directly — no service/database involved — printing each object's
-//! classification keyed by GlobalId. Used to independently verify
-//! `packs/demo/fixtures/oracle.json` against the fixtures
-//! `scripts/generate-demo-fixtures.py` produced.
+//! Diffs two revisions from the worker's normalized artifacts — no IFC parser,
+//! service, or database involved — printing each object's classification keyed
+//! by GlobalId. Used to independently verify `packs/demo/fixtures/oracle.json`
+//! against the fixtures `scripts/generate-demo-fixtures.py` produced.
 //!
-//! Usage: cargo run -p modeldiff --example diff_fixtures -- <base.ifc> <head.ifc>
+//! Produce the inputs by running the real worker over each fixture:
+//!   uv run --locked --project services/ifc-worker ifc-worker --request <job>.json
+//! then point this at the `semantic.json` / `geometry.jsonl` pair it wrote.
+//!
+//! Usage: cargo run -p modeldiff --example diff_fixtures -- \
+//!          <base-semantic.json> <base-geometry.jsonl> \
+//!          <head-semantic.json> <head-geometry.jsonl>
 
+use std::collections::HashMap;
 use std::fs;
 
-use fingerprint::FpOptions;
-use ifc_model::IfcModel;
+use fingerprint::normalized::FingerprintProfile;
+use fingerprint::{snapshot_from_normalized, ObjectSnapshot};
+use model_contracts::{parse_geometry_chunk, parse_semantic_model, GeometryChunk};
 use modeldiff::{ChangeKind, DiffOptions};
 
+/// Join one revision's semantic records with its geometry chunks by `ObjectRef`,
+/// exactly as the checker does at ingestion.
+fn load(semantic_path: &str, geometry_path: &str, profile: &FingerprintProfile) -> Vec<ObjectSnapshot> {
+    let semantic_text = fs::read_to_string(semantic_path).expect("read semantic.json");
+    let model = parse_semantic_model(&semantic_text).expect("semantic.json validates");
+    let mut chunks: HashMap<String, GeometryChunk> = HashMap::new();
+    if !geometry_path.is_empty() {
+        let geometry_text = fs::read_to_string(geometry_path).expect("read geometry.jsonl");
+        for line in geometry_text.lines().filter(|line| !line.trim().is_empty()) {
+            let chunk = parse_geometry_chunk(line).expect("geometry chunk validates");
+            chunks.insert(chunk.ref_.object_id.to_string(), chunk);
+        }
+    }
+    model
+        .objects
+        .iter()
+        .map(|object| {
+            snapshot_from_normalized(object, chunks.get(object.ref_.object_id.as_str()), profile)
+        })
+        .collect()
+}
+
 fn main() {
-    let mut args = std::env::args().skip(1);
-    let (Some(base_path), Some(head_path)) = (args.next(), args.next()) else {
-        eprintln!("usage: diff_fixtures <base.ifc> <head.ifc>");
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    let [base_semantic, base_geometry, head_semantic, head_geometry] = args.as_slice() else {
+        eprintln!(
+            "usage: diff_fixtures <base-semantic.json> <base-geometry.jsonl> \
+             <head-semantic.json> <head-geometry.jsonl>"
+        );
         std::process::exit(2);
     };
 
-    let base_bytes = fs::read(&base_path).expect("read base");
-    let head_bytes = fs::read(&head_path).expect("read head");
-    let base_model = IfcModel::parse(&base_bytes).expect("parse base");
-    let head_model = IfcModel::parse(&head_bytes).expect("parse head");
-
-    let opts = FpOptions::default();
-    let base_snapshots = fingerprint::snapshot_model(&base_model, &opts);
-    let head_snapshots = fingerprint::snapshot_model(&head_model, &opts);
+    let profile = FingerprintProfile::v1();
+    let base_snapshots = load(base_semantic, base_geometry, &profile);
+    let head_snapshots = load(head_semantic, head_geometry, &profile);
     println!("base objects: {}, head objects: {}", base_snapshots.len(), head_snapshots.len());
 
     let diff = modeldiff::diff(&base_snapshots, &head_snapshots, &DiffOptions::default());

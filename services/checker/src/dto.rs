@@ -149,6 +149,10 @@ pub struct ObjectRowDb {
     pub fp_placement: String,
     pub fp_shape: String,
     pub fp_combined: String,
+    /// Which `fingerprint::normalized` profile produced the four digests above.
+    /// NULL for rows written before migration 0008: those carry the sentinel and
+    /// are refused for comparison rather than backfilled.
+    pub fp_profile_id: Option<String>,
     /// schemas/model/v1 ObjectRef.objectId; nullable only because SQLite cannot add
     /// a NOT NULL column with no constant default to an existing table (see
     /// migrations/0002_source_models.sql) — every row is backfilled/inserted with one.

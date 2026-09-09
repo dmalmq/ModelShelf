@@ -1,0 +1,14 @@
+-- Records which fingerprint profile produced an object's stored digests.
+--
+-- `fingerprint::normalized` forks `profile_id` on any canonicalization rule or
+-- quantum change, so a digest whose profile is unknown cannot be compared
+-- safely: two objects hashed under different profiles may differ in the hash
+-- and not in the building.
+--
+-- Rows written before this migration carry the sentinel
+-- 'incomplete:waiting-for-normalized-snapshot' in every fp_* column. They keep
+-- a NULL profile, which comparison reads as "not comparable". They are NOT
+-- backfilled: re-deriving a fingerprint now and storing it as though it were
+-- recorded at ingestion time would fabricate historical evidence. Re-ingest the
+-- revision to get comparable digests.
+ALTER TABLE objects ADD COLUMN fp_profile_id TEXT;

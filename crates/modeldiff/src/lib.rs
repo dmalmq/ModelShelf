@@ -385,22 +385,40 @@ fn classify_pair(
         _ => None,
     };
 
-    // A placement change only counts as a move above the threshold; below it the pair
-    // is unchanged-with-a-note. When the fingerprints differ but a side has no
-    // placement we cannot prove the displacement is tiny, so it counts as a move.
+    // A translation change only counts as a move above the threshold; below it the
+    // pair is unchanged-with-a-note, which suppresses exporter coordinate noise.
+    // A ROTATION is not noise: it displaces no origin, so measuring displacement
+    // alone would report a rotated object as unchanged. A differing placement
+    // fingerprint is therefore only forgiven when the basis is identical AND the
+    // displacement is sub-threshold. When the fingerprints differ but a side has
+    // no placement we cannot prove the change is tiny, so it counts.
     let mut moved = false;
     if placement_fp_diff {
-        match moved_distance_m {
-            Some(d) if d <= opts.move_threshold_m => {
-                notes.push(format!(
-                    "sub-threshold displacement {:.6} m (threshold {:.6} m)",
-                    d, opts.move_threshold_m
-                ));
-            }
-            Some(_) => moved = true,
-            None => {
-                moved = true;
-                notes.push("placement changed; distance unknown (missing placement on one side)".to_string());
+        let rotated = match (&base.placement, &head.placement) {
+            (Some(bp), Some(hp)) => heuristic::basis_delta(bp, hp) > 0.0,
+            _ => false,
+        };
+        if rotated {
+            moved = true;
+            notes.push(match moved_distance_m {
+                Some(d) if d <= opts.move_threshold_m => {
+                    "rotation changed; origin displacement below threshold".to_string()
+                }
+                _ => "rotation and origin both changed".to_string(),
+            });
+        } else {
+            match moved_distance_m {
+                Some(d) if d <= opts.move_threshold_m => {
+                    notes.push(format!(
+                        "sub-threshold displacement {:.6} m (threshold {:.6} m)",
+                        d, opts.move_threshold_m
+                    ));
+                }
+                Some(_) => moved = true,
+                None => {
+                    moved = true;
+                    notes.push("placement changed; distance unknown (missing placement on one side)".to_string());
+                }
             }
         }
     }

@@ -10,6 +10,7 @@ pub enum ErrorCode {
     BadRequest,
     DeliveryLocked,
     PackVersionMismatch,
+    FingerprintProfileMismatch,
     DuplicateDiscipline,
     ParseFailed,
     Internal,
@@ -22,6 +23,7 @@ impl ErrorCode {
             ErrorCode::BadRequest => "bad_request",
             ErrorCode::DeliveryLocked => "delivery_locked",
             ErrorCode::PackVersionMismatch => "pack_version_mismatch",
+            ErrorCode::FingerprintProfileMismatch => "fingerprint_profile_mismatch",
             ErrorCode::DuplicateDiscipline => "duplicate_discipline",
             ErrorCode::ParseFailed => "parse_failed",
             ErrorCode::Internal => "internal",
@@ -59,6 +61,17 @@ impl ApiError {
             StatusCode::CONFLICT,
             ErrorCode::PackVersionMismatch,
             "runs used different pack versions; findings cannot be compared",
+        )
+    }
+    /// Two revisions whose fingerprints were produced by different profiles —
+    /// or by none at all, for revisions ingested before profiles were recorded —
+    /// cannot be compared. Hash equality would mean nothing across profiles, and
+    /// hash inequality would report the building changed when only the rules did.
+    pub fn fingerprint_profile_mismatch(detail: impl std::fmt::Display) -> Self {
+        ApiError::new(
+            StatusCode::CONFLICT,
+            ErrorCode::FingerprintProfileMismatch,
+            format!("revisions cannot be compared: {detail}; re-ingest them to compare"),
         )
     }
     pub fn duplicate_discipline(discipline: &str) -> Self {

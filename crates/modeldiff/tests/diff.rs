@@ -12,11 +12,17 @@ fn fp(properties: &str, placement: &str, shape: &str) -> Fingerprints {
     }
 }
 
-/// Identity rotation, origin at (x, y, z). Layout matches
-/// `ifc_model::Transform::to_array12`: three axis vectors, then the origin —
-/// `[xx,xy,xz, yx,yy,yz, zx,zy,zz, ox,oy,oz]`.
+/// Identity rotation, origin at (x, y, z). Layout is `schemas/model/v1`'s
+/// row-major 3x4 — `[r00,r01,r02,tx, r10,r11,r12,ty, r20,r21,r22,tz]` — the
+/// only placement layout the worker emits.
 fn placement_at(x: f64, y: f64, z: f64) -> [f64; 12] {
-    [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, x, y, z]
+    [1.0, 0.0, 0.0, x, 0.0, 1.0, 0.0, y, 0.0, 0.0, 1.0, z]
+}
+
+/// Rotation about Z by `degrees`, origin at (x, y, z). Same row-major layout.
+fn placement_rotated(x: f64, y: f64, z: f64, degrees: f64) -> [f64; 12] {
+    let (s, c) = degrees.to_radians().sin_cos();
+    [c, -s, 0.0, x, s, c, 0.0, y, 0.0, 0.0, 1.0, z]
 }
 
 fn prop(pset: &str, name: &str, value: &str) -> PropSnapshot {
@@ -394,4 +400,43 @@ fn diff_findings_all_deltas() {
             FindingDelta::Persisting,
         ]
     );
+}
+
+/// A rotation displaces no origin, so a displacement-only move test reports a
+/// rotated object as unchanged. The sub-threshold forgiveness exists to swallow
+/// exporter coordinate noise in translation; it must never swallow a rotation.
+#[test]
+fn rotation_without_displacement_is_a_move_not_unchanged() {
+    let b = snap(10, Some("g1"), "IFCWALL");
+    let mut h = snap(10, Some("g1"), "IFCWALL");
+    h.placement = Some(placement_rotated(0.0, 0.0, 0.0, 30.0));
+    h.fingerprints = fp("p", "l2", "s");
+
+    let d = diff(&[b], &[h], &opts());
+    let c = &d.changes[0];
+    assert_eq!(c.kind, ChangeKind::Moved, "notes: {:?}", c.notes);
+    assert_eq!(c.moved_distance_m, Some(0.0));
+    assert!(
+        c.notes.iter().any(|n| n.contains("rotation changed")),
+        "expected the note to name rotation, got {:?}",
+        c.notes
+    );
+    assert_eq!(d.summary.moved, 1);
+    assert_eq!(d.summary.unchanged, 0);
+}
+
+/// The row-major translation column must be read as the origin. Reading the old
+/// `to_array12` tail instead returns rotation components, and every pure
+/// translation measures as zero displacement and disappears from the diff.
+#[test]
+fn pure_translation_is_measured_from_the_translation_column() {
+    let b = snap(10, Some("g1"), "IFCWALL");
+    let mut h = snap(10, Some("g1"), "IFCWALL");
+    h.placement = Some(placement_at(0.0, 0.5, 0.0));
+    h.fingerprints = fp("p", "l2", "s");
+
+    let d = diff(&[b], &[h], &opts());
+    let c = &d.changes[0];
+    assert_eq!(c.moved_distance_m, Some(0.5));
+    assert_eq!(c.kind, ChangeKind::Moved);
 }
