@@ -1,0 +1,23 @@
+{
+  "objectCount": 9,
+  "highlightGroups": [
+    {
+      "label": "removed",
+      "color": "#be123c",
+      "requested": 2,
+      "matched": 2
+    },
+    {
+      "label": "moved",
+      "color": "#2563eb",
+      "requested": 1,
+      "matched": 1
+    },
+    {
+      "label": "shape_changed",
+      "color": "#a21caf",
+      "requested": 1,
+      "matched": 1
+    }
+  ]
+}

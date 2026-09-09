@@ -1,7 +1,5 @@
 // Compare fetchers: typed clients for GET /api/diff/models and GET /api/diff/runs.
-// Same fetch plus parse shape as the viewer fetchers (delivery-api.ts,
-// findings-api.ts): non-empty ids, HTTP status in the error, unknown JSON
-// validated at this boundary so the screen never learns the wire shape.
+// Unknown JSON is validated here so the screen never learns the wire shape.
 import type {
   ChangeKind,
   Delivery,
@@ -19,17 +17,7 @@ import type {
   Severity,
 } from "@/lib/types";
 
-/** First-mismatch dimension codes from GET /api/diff/runs 409s (rule 14). */
-export type FindingIncomparableDimension =
-  | "provenance_incomplete"
-  | "run_not_completed"
-  | "run_incomplete"
-  | "pack_version_mismatch"
-  | "pack_digest_mismatch"
-  | "scope_mismatch"
-  | "engine_profile_mismatch";
-
-const INCOMPARABLE_DIMENSIONS: readonly string[] = [
+const INCOMPARABLE_DIMENSIONS = [
   "provenance_incomplete",
   "run_not_completed",
   "run_incomplete",
@@ -37,7 +25,10 @@ const INCOMPARABLE_DIMENSIONS: readonly string[] = [
   "pack_digest_mismatch",
   "scope_mismatch",
   "engine_profile_mismatch",
-];
+] as const;
+
+/** First-mismatch dimension codes from GET /api/diff/runs 409s (rule 14). */
+export type FindingIncomparableDimension = (typeof INCOMPARABLE_DIMENSIONS)[number];
 
 /**
  * 409 from GET /api/diff/models: the two sides were fingerprinted under
@@ -56,24 +47,20 @@ export class ModelDiffProfileMismatchError extends Error {
 
 /**
  * 409 from GET /api/diff/runs: the runs do not share one checking setup.
- * Carries the first-mismatch dimension when the backend names a known one;
- * an unrecognised code stays null and the panel shows the raw code instead of
- * claiming a dimension the backend never reported.
+ * Carries the first-mismatch dimension when the backend names a known one; an
+ * unrecognised code leaves it null, so the panel explains the refusal from the
+ * backend message without claiming a cause the backend never reported.
  */
 export class FindingIncomparableError extends Error {
   readonly dimension: FindingIncomparableDimension | null;
-  readonly rawCode: string;
 
   constructor(code: string, message: string) {
     super(message);
     this.name = "FindingIncomparableError";
-    this.rawCode = code;
-    this.dimension = isIncomparableDimension(code) ? code : null;
+    this.dimension = INCOMPARABLE_DIMENSIONS.some((dimension) => dimension === code)
+      ? (code as FindingIncomparableDimension)
+      : null;
   }
-}
-
-function isIncomparableDimension(code: string): code is FindingIncomparableDimension {
-  return INCOMPARABLE_DIMENSIONS.includes(code);
 }
 
 interface ErrorEnvelope {
@@ -84,11 +71,11 @@ interface ErrorEnvelope {
 function errorEnvelope(value: unknown): ErrorEnvelope | null {
   if (!isRecord(value)) return null;
   const error = value["error"];
-  if (!isRecord(error) || typeof error["code"] !== "string") return null;
-  return {
-    code: error["code"] as string,
-    message: typeof error["message"] === "string" ? (error["message"] as string) : "",
-  };
+  if (!isRecord(error)) return null;
+  const code = error["code"];
+  const message = error["message"];
+  if (typeof code !== "string") return null;
+  return { code, message: typeof message === "string" ? message : "" };
 }
 
 export interface ModelDiffQuery {
@@ -98,7 +85,7 @@ export interface ModelDiffQuery {
   offset?: number;
 }
 
-export async function fetchModelDiff(query: ModelDiffQuery, signal?: AbortSignal): Promise<ModelDiffResponse> {
+async function fetchModelDiff(query: ModelDiffQuery, signal?: AbortSignal): Promise<ModelDiffResponse> {
   const baseDeliveryId = query.baseDeliveryId.trim();
   const headDeliveryId = query.headDeliveryId.trim();
   if (baseDeliveryId.length === 0 || headDeliveryId.length === 0) {
@@ -138,7 +125,9 @@ export async function fetchCompleteModelDiff(
   const outstanding = first.pairs.some((pair) => pair.changes.length < pair.total);
   if (!outstanding) return first;
   const merged = new Map(first.pairs.map((pair) => [pair.sourceModelId, { ...pair, changes: [...pair.changes] }]));
-  let offset = first.pairs.reduce((max, pair) => Math.max(max, pair.changes.length), 0);
+  // A pair reports fewer changes than its total only when the server capped the
+  // page, and it caps at exactly `limit`.
+  let offset = limit;
   for (;;) {
     const page = await fetchModelDiff({ ...query, limit, offset }, signal);
     let advanced = false;
@@ -171,7 +160,7 @@ export async function fetchFindingDiff(query: FindingDiffQuery, signal?: AbortSi
   if (response.status === 409) {
     const envelope = errorEnvelope(await response.json().catch(() => null));
     throw new FindingIncomparableError(
-      envelope?.code ?? "provenance_incomplete",
+      envelope?.code ?? "unknown",
       envelope?.message || "These runs cannot be compared under one set of checking settings",
     );
   }
@@ -184,7 +173,7 @@ export async function fetchFindingDiff(query: FindingDiffQuery, signal?: AbortSi
 // a malformed payload, never a silent default.
 // ---------------------------------------------------------------------------
 
-export function parseModelDiffResponse(value: unknown): ModelDiffResponse {
+function parseModelDiffResponse(value: unknown): ModelDiffResponse {
   const record = requireRecord(value, "Model diff response");
   return {
     base: parseDeliveryShallow(record["base"], "base"),
@@ -193,7 +182,7 @@ export function parseModelDiffResponse(value: unknown): ModelDiffResponse {
   };
 }
 
-export function parseFindingDiffResponse(value: unknown): FindingDiffResponse {
+function parseFindingDiffResponse(value: unknown): FindingDiffResponse {
   const record = requireRecord(value, "Finding diff response");
   const changes = record["changes"];
   if (!Array.isArray(changes)) throw new Error("Finding diff response changes must be an array");
@@ -332,14 +321,13 @@ function parseDeliveryShallow(value: unknown, field: string): Delivery {
 }
 
 function parseRunShallow(value: unknown, field: string): RunSummary {
-  // RunSummary is wide; the diff endpoints return full rows, so a shallow
-  // record check plus the fields the panel reads keeps this honest without
-  // re-declaring the whole contract.
+  // Shallow on purpose: these two rows are contract fill, not panel input. The
+  // run pickers read DeliveryDetail.runs, which delivery-api.ts validates.
   const record = requireRecord(value, `Finding diff ${field}`);
   for (const required of ["id", "deliveryId", "packVersionId", "status"]) {
     if (typeof record[required] !== "string") throw new Error(`Finding diff ${field}.${required} must be a string`);
   }
-  return value as unknown as RunSummary;
+  return value as RunSummary;
 }
 
 // --- scalar guards (same vocabulary as delivery-api.ts) ---

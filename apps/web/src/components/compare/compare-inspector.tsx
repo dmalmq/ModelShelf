@@ -18,7 +18,7 @@ import type {
   RunSummary,
 } from "@/lib/types";
 import { copy } from "../review/review-i18n";
-import { runLabel } from "../review/pack-selection";
+import { pollRunDetail, postRun, runLabel } from "../review/pack-selection";
 import type { FindingIncomparableDimension } from "./compare-api";
 import { activeKeyOf, sideBannerFor } from "./compare-bridge";
 import {
@@ -101,8 +101,7 @@ export interface CompareInspectorProps {
 }
 
 export function CompareInspector(props: CompareInspectorProps): React.JSX.Element {
-  const selectedIndex = props.selection == null ? null : findSelectedIndex(props.entries, props.selection);
-  const selected = selectedIndex == null ? null : (props.entries[selectedIndex] ?? null);
+  const selected = findSelected(props.entries, props.selection);
   return (
     <div className="space-y-6" data-compare-inspector>
       <section aria-label={copy(COPY.changesHeading, "ja")}>
@@ -208,9 +207,12 @@ function entryKeyMatches(entry: CompareChangeEntry, key: string): boolean {
   return fallbackKey(entry) === key;
 }
 
-function findSelectedIndex(entries: readonly CompareChangeEntry[], key: string): number | null {
-  const index = entries.findIndex((entry) => entryKeyMatches(entry, key));
-  return index >= 0 ? index : null;
+function findSelected(
+  entries: readonly CompareChangeEntry[],
+  key: CompareSelection,
+): CompareChangeEntry | null {
+  if (key == null) return null;
+  return entries.find((entry) => entryKeyMatches(entry, key)) ?? null;
 }
 
 function ModelStateBlock({
@@ -250,6 +252,16 @@ function ModelStateBlock({
   return null;
 }
 
+const SUMMARY_FIELD: Record<ChangeKind, keyof DiffSummary> = {
+  added: "added",
+  removed: "removed",
+  unchanged: "unchanged",
+  moved: "moved",
+  shape_changed: "shapeChanged",
+  properties_changed: "propertiesChanged",
+  mixed: "mixed",
+};
+
 function SummaryCounts({
   summary,
   filtered,
@@ -262,20 +274,7 @@ function SummaryCounts({
   if (!summary) return null;
   const counts: Array<{ kind: ChangeKind; count: number }> = KIND_ORDER.map((kind) => ({
     kind,
-    count:
-      kind === "added"
-        ? summary.added
-        : kind === "removed"
-          ? summary.removed
-          : kind === "moved"
-            ? summary.moved
-            : kind === "shape_changed"
-              ? summary.shapeChanged
-              : kind === "properties_changed"
-                ? summary.propertiesChanged
-                : kind === "mixed"
-                  ? summary.mixed
-                  : summary.unchanged,
+    count: summary[SUMMARY_FIELD[kind]],
   })).filter(({ kind, count }) => kind === "unchanged" || count > 0 || filtered < total);
   return (
     <div className="mt-2" data-change-summary>
@@ -426,8 +425,8 @@ function SelectedDetail({
       )}
       {change.movedDistanceM != null && (
         <p className="mt-1">
-          {copy(COPY.movedDistance, "ja")} {(change.movedDistanceM).toFixed(3)} m / {copy(COPY.movedDistance, "en")}{" "}
-          {(change.movedDistanceM).toFixed(3)} m
+          {copy(COPY.movedDistance, "ja")} {change.movedDistanceM.toFixed(3)} m / {copy(COPY.movedDistance, "en")}{" "}
+          {change.movedDistanceM.toFixed(3)} m
         </p>
       )}
       {change.propertyChanges.length > 0 && (
@@ -611,9 +610,8 @@ function FindingDeltaList({ diff }: { diff: FindingDiffResponse }): React.JSX.El
 }
 
 /**
- * Rerun CTA for incomparable runs. PackSelection's createRunWith is local to
- * that module, so this copies its POST-plus-poll shape: mint a new run on the
- * same delivery under the same pack version, never mutating the old one.
+ * Rerun CTA for incomparable runs: mint a new run on the same delivery under
+ * the same pack version, never mutating the old one.
  */
 function RerunButtons(props: {
   baseDeliveryId: string | null;
@@ -636,7 +634,8 @@ function RerunButtons(props: {
     setBusy(which);
     setError(null);
     try {
-      props.onRunCreated(await postAndPollRun(deliveryId, packVersionId));
+      const created = await postRun(deliveryId, packVersionId);
+      props.onRunCreated(await pollRunDetail(created.run.id));
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : "Run could not be created");
     } finally {
@@ -669,26 +668,4 @@ function RerunButtons(props: {
       {error && <p className="mt-1 text-destructive">{error}</p>}
     </div>
   );
-}
-
-async function postAndPollRun(deliveryId: string, packVersionId: string): Promise<RunDetail> {
-  const created = await fetch("/api/runs", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ deliveryId, packVersionId }),
-  });
-  if (!created.ok) {
-    const text = await created.text().catch(() => "");
-    throw new Error(`Run creation failed with HTTP ${created.status}${text ? `: ${text.slice(0, 200)}` : ""}`);
-  }
-  const createdDetail = (await created.json()) as RunDetail;
-  const deadline = Date.now() + 120_000;
-  for (;;) {
-    const response = await fetch(`/api/runs/${encodeURIComponent(createdDetail.run.id)}`);
-    if (!response.ok) throw new Error(`Run request failed with HTTP ${response.status}`);
-    const detail = (await response.json()) as RunDetail;
-    if (detail.run.status === "completed" || detail.run.status === "failed") return detail;
-    if (Date.now() > deadline) throw new Error("Run did not settle within 120 s");
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
 }

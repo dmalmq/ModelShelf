@@ -28,9 +28,10 @@ import {
   ModelDiffProfileMismatchError,
 } from "./compare-api";
 import {
-  activeKeyOf,
+  activeRefOf,
   changeToHighlights,
   clearCompareOverlay,
+  compareReadback,
   pushCompareOverlay,
   toViewerRefPlain,
   type CompareOverlayReadback,
@@ -39,7 +40,6 @@ import { CompareInspector } from "./compare-inspector";
 import {
   ALL_SOURCES,
   compareReducer,
-  compareRefKey,
   filterCompareEntries,
   initialCompareState,
   type CompareSide,
@@ -236,13 +236,11 @@ export function CompareScreen({
     [state.changeIndex, state.filters],
   );
 
-  // Overlay push: active-side refs only, grouped by kind. Runs on every input
-  // change so toggle, filters, and diff loads repaint without remounting.
+  // Filters and diff loads repaint through the overlay without remounting.
   const highlights = useMemo(
     () => changeToHighlights(filtered, state.side),
     [filtered, state.side],
   );
-  // Summary totals across pairs; the inspector renders them as grey counts.
   const combinedSummary = useMemo(() => {
     if (!state.modelDiff) return null;
     const totals: DiffSummary = {
@@ -270,43 +268,27 @@ export function CompareScreen({
   useEffect(() => {
     const controller = viewerRef.current;
     if (!controller || state.modelDiffStatus !== "ready") return;
-    try {
-      if (filtered.length === 0) {
-        clearCompareOverlay(controller);
-        setReadback(EMPTY_READBACK);
-        return;
-      }
-      setReadback(pushCompareOverlay(controller, highlights));
-    } catch {
-      // Viewer not ready yet; the panel simply lists without highlights.
+    if (filtered.length === 0) {
+      clearCompareOverlay(controller);
+      setReadback(EMPTY_READBACK);
+      return;
     }
+    setReadback(pushCompareOverlay(controller, highlights));
   }, [viewer, readyModels, highlights, filtered.length, state.modelDiffStatus, state.side]);
 
-  // Selection frames the active-side geometry; one-sided changes seen from the
-  // void keep the overlay and show the banner instead. The read-back comes
-  // from real diagnostics, never an optimistic append.
   useEffect(() => {
     const controller = viewerRef.current;
     if (!controller || state.selection == null) return;
     const index = state.changeIndex.byKey[state.selection];
     const entry = index === undefined ? null : (state.changeIndex.entries[index] ?? null);
     if (!entry) return;
-    const activeKey = activeKeyOf(entry.change, state.side);
-    if (!activeKey) return;
-    const parsed = toViewerRefPlain(parseKey(activeKey));
+    const ref = activeRefOf(entry.change, state.side);
+    if (!ref) return;
+    const parsed = toViewerRefPlain(ref);
     if (!parsed) return;
-    try {
-      controller.select(parsed);
-      controller.frame([parsed]);
-      const diagnostics = controller.diagnostics();
-      setReadback({
-        matched: diagnostics.renderer.highlightGroups.reduce((sum, group) => sum + group.matched, 0),
-        selectedHidden: diagnostics.selectedHidden,
-        drawnKeys: diagnostics.objects.map((object) => compareRefKey(object.ref.revisionId, object.ref.objectId)),
-      });
-    } catch {
-      // Viewer mid-reload; selection stays listed.
-    }
+    controller.select(parsed);
+    controller.frame([parsed]);
+    setReadback(compareReadback(controller));
   }, [viewer, readyModels, state.selection, state.side, state.changeIndex]);
 
   function handleRunCreated(detail: RunDetail): void {
@@ -512,9 +494,4 @@ function SideButton({
   );
 }
 
-/** Split a revision-qualified selection key back into its ref parts. */
-function parseKey(key: string): { revisionId: string; objectId: string } {
-  const separator = key.indexOf(String.fromCharCode(0));
-  if (separator < 0) return { revisionId: key, objectId: "" };
-  return { revisionId: key.slice(0, separator), objectId: key.slice(separator + 1) };
-}
+

@@ -1,20 +1,20 @@
 {
   "base": {
-    "id": "d239be2b-38b9-4b12-bc0f-5ebb3608bff2",
+    "id": "45599721-2a9d-4297-b947-7a6be4cab319",
     "projectId": "demo-project",
     "label": "Compare base",
     "deliveryDate": null,
-    "createdAt": "2026-09-09T03:50:18.778Z",
+    "createdAt": "2026-09-09T04:37:27.260Z",
     "finalizedAt": null,
     "modelCount": 1,
     "productCount": 10
   },
   "head": {
-    "id": "4699119e-d419-4fcf-a17f-a7486df16cd4",
+    "id": "9431eb6e-956b-472c-aaea-ff8ce467beac",
     "projectId": "demo-project",
     "label": "Compare head",
     "deliveryDate": null,
-    "createdAt": "2026-09-09T03:50:19.353Z",
+    "createdAt": "2026-09-09T04:37:27.837Z",
     "finalizedAt": null,
     "modelCount": 1,
     "productCount": 10
@@ -22,11 +22,11 @@
   "pairs": [
     {
       "discipline": "ARCH",
-      "sourceModelId": "c03d9418-05b9-4559-a930-f56491f964e5",
+      "sourceModelId": "2291534e-4bb5-48a2-98b9-8d957dc068a8",
       "sourceModelName": "Compare ARCH",
       "reusedRevision": false,
-      "baseModelId": "348b7fc4-9af6-4434-826b-25088a36f5f0",
-      "headModelId": "74d66fb2-9b5a-496b-b3c3-bfd481042e85",
+      "baseModelId": "3f3143c6-729c-470d-b865-f70340fc2904",
+      "headModelId": "b8e2a825-2a7c-4034-ae18-ddcd56a2d578",
       "baseFilename": "cmp-base.ifc",
       "headFilename": "cmp-head.ifc",
       "summary": {
@@ -47,8 +47,8 @@
             "kind": "exact"
           },
           "base": {
-            "revisionId": "348b7fc4-9af6-4434-826b-25088a36f5f0",
-            "objectId": "occ_9a18c7a50a0bffe3",
+            "revisionId": "3f3143c6-729c-470d-b865-f70340fc2904",
+            "objectId": "occ_c223f89bf6513484",
             "expressId": 38,
             "globalId": "I6Bet0nV6S8_fm_L2q2SDT",
             "ifcType": "IfcWall",
@@ -56,8 +56,8 @@
             "storey": null
           },
           "head": {
-            "revisionId": "74d66fb2-9b5a-496b-b3c3-bfd481042e85",
-            "objectId": "occ_f3055618e1a22be2",
+            "revisionId": "b8e2a825-2a7c-4034-ae18-ddcd56a2d578",
+            "objectId": "occ_0c0d9be09d7a9507",
             "expressId": 38,
             "globalId": "I6Bet0nV6S8_fm_L2q2SDT",
             "ifcType": "IfcWall",
@@ -74,8 +74,8 @@
             "kind": "exact"
           },
           "base": {
-            "revisionId": "348b7fc4-9af6-4434-826b-25088a36f5f0",
-            "objectId": "occ_8b2a7ccd7dbb7743",
+            "revisionId": "3f3143c6-729c-470d-b865-f70340fc2904",
+            "objectId": "occ_c953b6b0063abf33",
             "expressId": 52,
             "globalId": "I6Bet0nV6S8_fm_LOImoZp",
             "ifcType": "IfcWall",
@@ -83,8 +83,8 @@
             "storey": null
           },
           "head": {
-            "revisionId": "74d66fb2-9b5a-496b-b3c3-bfd481042e85",
-            "objectId": "occ_213b46771823b569",
+            "revisionId": "b8e2a825-2a7c-4034-ae18-ddcd56a2d578",
+            "objectId": "occ_4a33bf4c465fa2c4",
             "expressId": 52,
             "globalId": "I6Bet0nV6S8_fm_LOImoZp",
             "ifcType": "IfcWall",
@@ -101,8 +101,8 @@
             "kind": "exact"
           },
           "base": {
-            "revisionId": "348b7fc4-9af6-4434-826b-25088a36f5f0",
-            "objectId": "occ_94b34b726d4c2772",
+            "revisionId": "3f3143c6-729c-470d-b865-f70340fc2904",
+            "objectId": "occ_c704a2961b2fca06",
             "expressId": 134,
             "globalId": "I6Bet0nV6S82LyTzc8__eM",
             "ifcType": "IfcSite",
@@ -110,8 +110,8 @@
             "storey": null
           },
           "head": {
-            "revisionId": "74d66fb2-9b5a-496b-b3c3-bfd481042e85",
-            "objectId": "occ_b9b21ce43bbb2255",
+            "revisionId": "b8e2a825-2a7c-4034-ae18-ddcd56a2d578",
+            "objectId": "occ_21b9787775a32bb8",
             "expressId": 133,
             "globalId": "I6Bet0nV6S82LyTzc8__eM",
             "ifcType": "IfcSite",
@@ -135,8 +135,8 @@
             "kind": "exact"
           },
           "base": {
-            "revisionId": "348b7fc4-9af6-4434-826b-25088a36f5f0",
-            "objectId": "occ_474fd92440b2c875",
+            "revisionId": "3f3143c6-729c-470d-b865-f70340fc2904",
+            "objectId": "occ_4ed305d0da8f8115",
             "expressId": 24,
             "globalId": "I6Bet0nV6S8_fm_Ll3J$q2",
             "ifcType": "IfcWall",
@@ -144,8 +144,8 @@
             "storey": null
           },
           "head": {
-            "revisionId": "74d66fb2-9b5a-496b-b3c3-bfd481042e85",
-            "objectId": "occ_d0943b82d058dcdd",
+            "revisionId": "b8e2a825-2a7c-4034-ae18-ddcd56a2d578",
+            "objectId": "occ_08e30be270363bc8",
             "expressId": 24,
             "globalId": "I6Bet0nV6S8_fm_Ll3J$q2",
             "ifcType": "IfcWall",
@@ -170,8 +170,8 @@
           },
           "base": null,
           "head": {
-            "revisionId": "74d66fb2-9b5a-496b-b3c3-bfd481042e85",
-            "objectId": "occ_d3d2ae4e4f85ceb0",
+            "revisionId": "b8e2a825-2a7c-4034-ae18-ddcd56a2d578",
+            "objectId": "occ_da9a62100a840378",
             "expressId": 66,
             "globalId": "I6Bet0nV6S8_fm_LCsSUd$",
             "ifcType": "IfcWall",
@@ -189,8 +189,8 @@
           },
           "base": null,
           "head": {
-            "revisionId": "74d66fb2-9b5a-496b-b3c3-bfd481042e85",
-            "objectId": "occ_68ccd6697ae703ad",
+            "revisionId": "b8e2a825-2a7c-4034-ae18-ddcd56a2d578",
+            "objectId": "occ_4b201c29f7543d25",
             "expressId": 79,
             "globalId": "I6Bet0nV6S8_fm_LCslR8_",
             "ifcType": "IfcWall",
@@ -207,8 +207,8 @@
             "kind": "none"
           },
           "base": {
-            "revisionId": "348b7fc4-9af6-4434-826b-25088a36f5f0",
-            "objectId": "occ_fcec6cd261f3e0f5",
+            "revisionId": "3f3143c6-729c-470d-b865-f70340fc2904",
+            "objectId": "occ_e1b7631bfc1d6091",
             "expressId": 66,
             "globalId": "I6Bet0nV6S8_fm_LLn9jgu",
             "ifcType": "IfcWall",
@@ -226,8 +226,8 @@
             "kind": "none"
           },
           "base": {
-            "revisionId": "348b7fc4-9af6-4434-826b-25088a36f5f0",
-            "objectId": "occ_497ee08533d6154e",
+            "revisionId": "3f3143c6-729c-470d-b865-f70340fc2904",
+            "objectId": "occ_da41d7ab1a2d8435",
             "expressId": 79,
             "globalId": "I6Bet0nV6S8_fm_LLns0vX",
             "ifcType": "IfcWall",
@@ -245,8 +245,8 @@
             "kind": "exact"
           },
           "base": {
-            "revisionId": "348b7fc4-9af6-4434-826b-25088a36f5f0",
-            "objectId": "occ_3d622d2389290350",
+            "revisionId": "3f3143c6-729c-470d-b865-f70340fc2904",
+            "objectId": "occ_4f90fb70ac167834",
             "expressId": 11,
             "globalId": "I6Bet0nV6S8_fm_LGguAhB",
             "ifcType": "IfcWall",
@@ -254,8 +254,8 @@
             "storey": null
           },
           "head": {
-            "revisionId": "74d66fb2-9b5a-496b-b3c3-bfd481042e85",
-            "objectId": "occ_615eba7d7505f832",
+            "revisionId": "b8e2a825-2a7c-4034-ae18-ddcd56a2d578",
+            "objectId": "occ_32fe4228617b41ef",
             "expressId": 11,
             "globalId": "I6Bet0nV6S8_fm_LGguAhB",
             "ifcType": "IfcWall",
@@ -274,8 +274,8 @@
             "basis": "type+gid-duplicate"
           },
           "base": {
-            "revisionId": "348b7fc4-9af6-4434-826b-25088a36f5f0",
-            "objectId": "occ_cdbe8f5f9e5fd38a",
+            "revisionId": "3f3143c6-729c-470d-b865-f70340fc2904",
+            "objectId": "occ_952f8e0bbbb302b0",
             "expressId": 92,
             "globalId": "I6Bet0nV6S8bi3xv_a6Q1t",
             "ifcType": "IfcWall",
@@ -283,8 +283,8 @@
             "storey": null
           },
           "head": {
-            "revisionId": "74d66fb2-9b5a-496b-b3c3-bfd481042e85",
-            "objectId": "occ_294263469b0ef978",
+            "revisionId": "b8e2a825-2a7c-4034-ae18-ddcd56a2d578",
+            "objectId": "occ_b2c605a48486eed4",
             "expressId": 93,
             "globalId": "I6Bet0nV6S8bi3xv_a6Q1t",
             "ifcType": "IfcWall",
@@ -306,8 +306,8 @@
             "basis": "type+gid-duplicate"
           },
           "base": {
-            "revisionId": "348b7fc4-9af6-4434-826b-25088a36f5f0",
-            "objectId": "occ_dbdc9d6e221b0c2f",
+            "revisionId": "3f3143c6-729c-470d-b865-f70340fc2904",
+            "objectId": "occ_4b45e782e7a1215c",
             "expressId": 106,
             "globalId": "I6Bet0nV6S8bi3xv_a6Q1t",
             "ifcType": "IfcWall",
@@ -315,8 +315,8 @@
             "storey": null
           },
           "head": {
-            "revisionId": "74d66fb2-9b5a-496b-b3c3-bfd481042e85",
-            "objectId": "occ_43be23eca135e16f",
+            "revisionId": "b8e2a825-2a7c-4034-ae18-ddcd56a2d578",
+            "objectId": "occ_f38526148389c8bc",
             "expressId": 107,
             "globalId": "I6Bet0nV6S8bi3xv_a6Q1t",
             "ifcType": "IfcWall",
@@ -338,8 +338,8 @@
             "basis": "type+shape+placement+properties+name"
           },
           "base": {
-            "revisionId": "348b7fc4-9af6-4434-826b-25088a36f5f0",
-            "objectId": "occ_3d8e492ff3a516d1",
+            "revisionId": "3f3143c6-729c-470d-b865-f70340fc2904",
+            "objectId": "occ_9705b187b9a55b5f",
             "expressId": 120,
             "globalId": null,
             "ifcType": "IfcWall",
@@ -347,8 +347,8 @@
             "storey": null
           },
           "head": {
-            "revisionId": "74d66fb2-9b5a-496b-b3c3-bfd481042e85",
-            "objectId": "occ_1884dc02cecf0b48",
+            "revisionId": "b8e2a825-2a7c-4034-ae18-ddcd56a2d578",
+            "objectId": "occ_dc7d7069aa578be7",
             "expressId": 121,
             "globalId": null,
             "ifcType": "IfcWall",

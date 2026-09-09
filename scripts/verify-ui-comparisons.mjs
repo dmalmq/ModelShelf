@@ -122,14 +122,13 @@ function buildCompareIfc(filename, walls, siteWidth) {
   }
 
   const siteLocal = emit(`IFCLOCALPLACEMENT($,#${ax0})`);
-  const siteProps = siteWidth
-    ? (() => {
-        const prop = emit(`IFCPROPERTYSINGLEVALUE('EvacuationWidth',$,IFCLENGTHMEASURE(1800.),$)`);
-        return emit(
-          `IFCPROPERTYSET('${guid22(`${filename}:site:pset`)}',$,'Pset_SiteCommon',$,(#${prop}))`,
-        );
-      })()
-    : null;
+  let siteProps = null;
+  if (siteWidth) {
+    const prop = emit(`IFCPROPERTYSINGLEVALUE('EvacuationWidth',$,IFCLENGTHMEASURE(1800.),$)`);
+    siteProps = emit(
+      `IFCPROPERTYSET('${guid22(`${filename}:site:pset`)}',$,'Pset_SiteCommon',$,(#${prop}))`,
+    );
+  }
   const site = emit(
     `IFCSITE('${guid22("site")}',$,'CompareSite',$,$,#${siteLocal},$,$,.ELEMENT.,$)`,
   );
@@ -626,8 +625,8 @@ async function main() {
   // Finding deltas group with both runs selected; the v2 head run refuses.
   await page.getByLabel(/基準ラン/).selectOption(runBase.run.id);
   await page.getByLabel(/先端ラン/).selectOption(runHead.run.id);
-  snap("finding-panel.txt", (await page.locator("[data-compare-inspector]").innerText()) ?? "");
   await page.waitForSelector("[data-finding-delta-list]", { timeout: 60_000 });
+  snap("finding-panel.txt", await page.locator("[data-compare-inspector]").innerText());
   for (const delta of ["resolved", "introduced", "persisting"]) {
     await page.waitForSelector(`[data-finding-delta="${delta}"]`, { timeout: 30_000 });
   }

@@ -15,12 +15,12 @@
     {
       "label": "comparison pack v1 is published",
       "passed": true,
-      "detail": "{\"id\":\"906a372f-3e9d-401e-ba75-8ad084ddcdca\",\"packId\":\"demo-pack\",\"packName\":\"Demo Check Pack\",\"version\":1,\"idsSha256\":\"4b996db6de974e8f749b445fe2d06b6b44d1c68d91372df7f14fa44aa8d64d83\",\"notes\":null,\"specCount\":3,\"createdAt\":\"2026-09-09T03:50:14.726Z\"}"
+      "detail": "{\"id\":\"268a4a91-3ac7-4e6d-b915-b9db9dc6e2d3\",\"packId\":\"demo-pack\",\"packName\":\"Demo Check Pack\",\"version\":1,\"idsSha256\":\"4b996db6de974e8f749b445fe2d06b6b44d1c68d91372df7f14fa44aa8d64d83\",\"notes\":null,\"specCount\":3,\"createdAt\":\"2026-09-09T04:37:23.195Z\"}"
     },
     {
       "label": "compare source is created",
       "passed": true,
-      "detail": "{\"id\":\"c03d9418-05b9-4559-a930-f56491f964e5\",\"projectId\":\"demo-project\",\"name\":\"Compare ARCH\",\"discipline\":\"ARCH\",\"createdAt\":\"2026-09-09T03:50:14.743Z\",\"revisions\":[]}"
+      "detail": "{\"id\":\"2291534e-4bb5-48a2-98b9-8d957dc068a8\",\"projectId\":\"demo-project\",\"name\":\"Compare ARCH\",\"discipline\":\"ARCH\",\"createdAt\":\"2026-09-09T04:37:23.210Z\",\"revisions\":[]}"
     },
     {
       "label": "base and head revisions ingest via the real worker",
@@ -30,12 +30,12 @@
     {
       "label": "base and head deliveries each complete a run",
       "passed": true,
-      "detail": "700a14cd-3226-49e6-8566-5d9291fb3040 / 19cfd836-28de-4ad5-a79a-c51b99f56b51"
+      "detail": "79d2cf3e-2381-4a6c-9df5-edff558cf41f / 8935ca10-0cd8-407d-9bc7-d7f25a9970a2"
     },
     {
       "label": "a head run under pack v2 stages the incomparable pair",
       "passed": true,
-      "detail": "5a0b2443-c896-4267-9591-e2cd08b7e0fa"
+      "detail": "7658f53b-06c3-4902-95ab-a5c2cb4743f8"
     },
     {
       "label": "every controlled change reports its oracle kind and confidence",
@@ -70,7 +70,7 @@
     {
       "label": "compare route renders from ?base= and ?head=",
       "passed": true,
-      "detail": "http://127.0.0.1:41543/deliveries/compare?base=d239be2b-38b9-4b12-bc0f-5ebb3608bff2&head=4699119e-d419-4fcf-a17f-a7486df16cd4"
+      "detail": "http://127.0.0.1:41795/deliveries/compare?base=45599721-2a9d-4297-b947-7a6be4cab319&head=9431eb6e-956b-472c-aaea-ff8ce467beac"
     },
     {
       "label": "every controlled A/B change row is listed",
@@ -194,10 +194,10 @@
     }
   ],
   "ids": {
-    "packVersionId": "906a372f-3e9d-401e-ba75-8ad084ddcdca",
-    "baseDeliveryId": "d239be2b-38b9-4b12-bc0f-5ebb3608bff2",
-    "headDeliveryId": "4699119e-d419-4fcf-a17f-a7486df16cd4",
-    "headRunV2Id": "5a0b2443-c896-4267-9591-e2cd08b7e0fa"
+    "packVersionId": "268a4a91-3ac7-4e6d-b915-b9db9dc6e2d3",
+    "baseDeliveryId": "45599721-2a9d-4297-b947-7a6be4cab319",
+    "headDeliveryId": "9431eb6e-956b-472c-aaea-ff8ce467beac",
+    "headRunV2Id": "7658f53b-06c3-4902-95ab-a5c2cb4743f8"
   },
   "failures": 0
 }

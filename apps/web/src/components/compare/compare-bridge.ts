@@ -36,10 +36,7 @@ export function activeKeyOf(change: ObjectChange, side: CompareSide): string | n
   return ref ? compareRefKey(ref.revisionId, ref.objectId) : null;
 }
 
-/**
- * Display order for kind groups as data, not branches: additions first,
- * removals second, then geometry edits, then attribute edits, then mixed.
- */
+/** Display order for kind groups as data, not branches. */
 export const KIND_GROUP_ORDER: readonly ChangeKind[] = [
   "added",
   "removed",
@@ -83,20 +80,17 @@ export function changeToHighlights(
     if (bucket) bucket.push(parsed);
     else byKind.set(entry.change.kind, [parsed]);
   }
-  const ordered = KIND_GROUP_ORDER.filter((kind) => byKind.has(kind));
-  const paintedKinds = ordered.slice(0, VIEWER_MAX_HIGHLIGHT_GROUPS);
-  const overflow = ordered.slice(VIEWER_MAX_HIGHLIGHT_GROUPS).map((kind) => ({
-    kind,
-    count: byKind.get(kind)?.length ?? 0,
-  }));
+  const ordered = KIND_GROUP_ORDER.flatMap((kind) => {
+    const refs = byKind.get(kind);
+    return refs ? [{ kind, refs }] : [];
+  });
+  const painted = ordered.slice(0, VIEWER_MAX_HIGHLIGHT_GROUPS);
   return {
-    groups: paintedKinds.map((kind) => ({
-      refs: byKind.get(kind) ?? [],
-      color: CHANGE_COLOR[kind],
-      label: kind,
-    })),
-    paintedKinds,
-    overflow,
+    groups: painted.map(({ kind, refs }) => ({ refs, color: CHANGE_COLOR[kind], label: kind })),
+    paintedKinds: painted.map(({ kind }) => kind),
+    overflow: ordered
+      .slice(VIEWER_MAX_HIGHLIGHT_GROUPS)
+      .map(({ kind, refs }) => ({ kind, count: refs.length })),
     undrawable,
   };
 }
@@ -108,24 +102,21 @@ export interface CompareOverlayReadback {
 }
 
 /**
- * One-way push: paint the kind groups and soften everything else. The camera
- * is never touched here — filtering must not move the view — so isolation and
- * framing are opt-in and belong to an explicit selection. Returns the
- * diagnostics read-back (matched / selectedHidden / drawnKeys) for the panel
- * to display. `drawnKeys` are revision-qualified strings for geometry the
- * viewer actually holds.
+ * Paint the kind groups and soften everything else. The camera is never
+ * touched: framing belongs to an explicit selection, so filtering cannot move
+ * the view.
  */
 export function pushCompareOverlay(
   controller: DeliveryViewerController,
   highlight: CompareHighlightGroups,
-  options?: { isolate?: boolean; dimOpacity?: number; frame?: boolean },
 ): CompareOverlayReadback {
-  const { isolate = false, dimOpacity = 0.25, frame = false } = options ?? {};
   controller.setHighlights(highlight.groups);
-  const refs = highlight.groups.flatMap((group) => [...group.refs]);
-  if (isolate) controller.isolate(refs);
-  controller.setDimOpacity(dimOpacity);
-  if (frame) controller.frame(refs);
+  controller.setDimOpacity(0.25);
+  return compareReadback(controller);
+}
+
+/** What the viewer actually drew, for the panel to display. */
+export function compareReadback(controller: DeliveryViewerController): CompareOverlayReadback {
   const diagnostics = controller.diagnostics();
   return {
     matched: diagnostics.renderer.highlightGroups.reduce((sum, group) => sum + group.matched, 0),
@@ -141,8 +132,8 @@ export function clearCompareOverlay(controller: DeliveryViewerController): void 
 }
 
 export type SideBannerNeed =
-  | { missingSide: Extract<CompareSide, "head">; reason: "added" }
-  | { missingSide: Extract<CompareSide, "base">; reason: "removed" };
+  | { missingSide: "head"; reason: "added" }
+  | { missingSide: "base"; reason: "removed" };
 
 /**
  * Added (head-only) viewed from base, and removed (base-only) viewed from

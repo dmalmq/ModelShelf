@@ -185,4 +185,4 @@ warning: field `versions` is never read
     |         ^^^^^^^^
 
 warning: `modelshelf-checker` (bin "modelshelf-checker") generated 19 warnings
-    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.08s
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.31s
