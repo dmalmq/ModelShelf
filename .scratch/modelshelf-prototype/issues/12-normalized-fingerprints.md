@@ -5,8 +5,8 @@ Parent: ../map.md
 Type: task
 Mode: AFK
 Labels: wayfinder:task, ready-for-agent
-Status: open
-Assignee: unassigned
+Status: resolved
+Assignee: poteto-12-fingerprint
 Blocked by: 09
 Wave: 2
 Original plan coverage: 8, fingerprint portion
@@ -64,3 +64,17 @@ Append an Answer with changes, exact commands/results, evidence links, remaining
 ## Comments
 
 Created from the approved prototype plan on 2026-09-06. No implementation is claimed by ticket creation.
+
+## Answer
+
+Delivered a pure normalized fingerprint module over the worker's authoritative records plus a versioned profile, with standalone tests and real worker A/B evidence.
+
+Changes: `crates/fingerprint/src/normalized.rs` (new, pure imports only `model_contracts`/`serde`/`blake3`); `crates/fingerprint/src/lib.rs` (`pub mod normalized`); `crates/fingerprint/Cargo.toml` (adds `model-contracts`, `serde_json` dev-dep); `crates/fingerprint/examples/fingerprint_worker.rs` (new driver joining `semantic.json` with `geometry.jsonl` by `ObjectRef`); `crates/model-contracts/src/lib.rs` (re-exports `GeometryChunkStatus`, `PropertyValueDimension`). Legacy `IfcModel` API untouched. Native `expressId`/`globalId` are provenance only and never hashed. All four digests are full 64-char BLAKE3. `DerivedSnapshot` carries `profile_version` (`fp-v1`) and `profile_id` (BLAKE3 of canonical profile JSON binding extraction `inspect-v2`, algorithm `blake3-256`, units policy `si-metre`, `use_world_coords=false`, length/area/volume/angle/numeric quanta, ignored psets). Mismatched profiles error (`fingerprint_with_expected_profile`, `require_same_profile`, `verify_profile`) and never overwrite history. Shape is object-local quantized triangles with sorted triangle tokens (winding preserved); `absent`/`unsupported`/missing-chunk are distinct stable tokens and exporter reasons are display-only. Properties trust worker `siValue` for length/area/volume with per-dimension quanta, keep `ordered` semantics, tag `occurrence`/`type` origin, ignore psets case-insensitively. Placement splits translations (length quantum) from rotation (angle quantum); missing placement is distinct from origin-zero.
+
+Commands/results: `cargo test -p fingerprint` passes 30/30 (23 normalized in-code fixtures, no IFC or services; 7 legacy unchanged). `cargo test -p modeldiff` 14/14 and `cargo check --workspace` clean (checker warnings only, pre-existing). Real worker runs `ifc-worker --request` inspect on `packs/demo/fixtures/base.ifc` and `head.ifc` (both exit 0, 141 objects each: 138 available plus 3 absent geometry) fingerprinted by the example driver: 133 shared GlobalIds with 121 unchanged, 3 property-only, 6 placement-only (moved 3 plus rotated 3), 3 shape-only deltas, 6 added plus 6 removed (oracle added/removed 3 each plus ambiguous-ID pairs), zero mixed-component flips. Absent geometry hashes one stable token across both revisions, disjoint from every available shape. Quantization ties pin half-away-from-zero with `-0.0` to `0.0`, NaN/Inf/negative-Inf to fixed tokens; boundary straddling flips are documented as inherent.
+
+Evidence: `.omo/evidence/modelshelf-prototype/ticket-12/` (`cargo-test-fingerprint.log`, `ab-comparison.txt`, `base-snapshots.jsonl`, `head-snapshots.jsonl`, `worker-base-manifest.json`, `worker-head-manifest.json`).
+
+Limitations: STEP numbering and source formatting invariance is structural (normalized records carry neither) rather than tested. Shape is a representation hash, not geometric equivalence. Checker persistence still stores legacy `fp_*` columns with no profile column; migrating ingest/diff to `DerivedSnapshot` and adding the profile column belongs to ticket 13, which owns profile-mismatch dimensions and recomputation without touching old artifacts.
+
+Downstream: ticket 13 can depend on `fingerprint::normalized::{FingerprintProfile, fingerprint_normalized, fingerprint_with_expected_profile, require_same_profile, verify_profile, DerivedSnapshot}` and must gate every comparison on equal `profile_id`.
