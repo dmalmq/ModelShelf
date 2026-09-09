@@ -24,6 +24,8 @@ A runnable local ModelShelf prototype that combines architectural, structural, a
 - Ticket 07 is the ModelShelf combined view and ObjectRef selection only. A reusable viewer package is deferred until that loop exists.
 - Native issue blocking is unavailable in the local tracker. Child metadata records blockers; the read-only check-tickets.mjs command derives the current frontier.
 - No external issues were published. No commits, pushes, PRs, deployment, or public sample redistribution are authorized here.
+- 2026-09-09: [plan-alignment review](../../docs/reviews/plan-alignment-2026-09-09.md) of the code delivered by tickets 01–11 and 18. The architecture follows the plan; twelve divergences became tickets 19–30. Two are structural: `packages/model-viewer` was deferred and never extracted (19), and the generated shared contracts still have no browser caller (20). Gaps already owned by unstarted tickets 12, 13, 14 and 16 were appended to those tickets' Comments instead of being duplicated. The deferral in the note above is spent: tickets 09, 10 and 11 are resolved, so viewer extraction is now due.
+- 2026-09-09: adopted the Autodesk [Snowdon Towers](../../samples/snowdon-towers/README.md) four-discipline sample set (architecture, structure, electrical, plumbing) as a second demo dataset; tickets 31 and 32. It is the only sample data that exercises imperial units, a 425 km survey origin offset, two SourceModels sharing the MEP discipline, and naturally occurring cross-model GlobalId collisions. Bytes are gitignored under Autodesk's terms; only provenance is tracked. Graded compliance variants derive from the real export rather than replacing it.
 
 ## Decisions so far
 

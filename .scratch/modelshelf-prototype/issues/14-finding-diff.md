@@ -62,3 +62,5 @@ Append an Answer with changes, exact commands/results, evidence links, remaining
 ## Comments
 
 Created from the approved prototype plan on 2026-09-06. No implementation is claimed by ticket creation.
+
+2026-09-09, [plan-alignment review](../../../docs/reviews/plan-alignment-2026-09-09.md): `services/checker/src/diff.rs` `diff_runs` currently gates only on `pack_version_id` equality. It never reads `runs.input_provenance`, `runs.scope_json` or `runs.engine_profile_json`, although migration 0007 persists all three. Two `provenance_incomplete` legacy runs, runs with different discipline scope, and runs evaluated by different engine versions all diff as trusted like-for-like comparisons. The plan requires the same pack version, the same scope semantics and identical persisted check-profile digests. Note that ticket 23 replaces the hardcoded engine profile with the worker-reported versions; take its output before building the digest.

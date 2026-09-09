@@ -1,0 +1,5 @@
+# The Snowdon Towers IFC exports themselves: Autodesk sample content, no
+# redistribution grant found (see README.md). Only manifest.json, README.md,
+# and alignment.md — provenance metadata, not the content — are tracked.
+/downloads/
+*.ifc

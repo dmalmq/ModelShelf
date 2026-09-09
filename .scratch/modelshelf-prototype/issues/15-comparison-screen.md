@@ -62,3 +62,7 @@ Append an Answer with changes, exact commands/results, evidence links, remaining
 ## Comments
 
 Created from the approved prototype plan on 2026-09-06. No implementation is claimed by ticket creation.
+
+2026-09-09, [plan-alignment review](../../../docs/reviews/plan-alignment-2026-09-09.md): a real source for move, remove and shape change kinds is available. The repository owner exported the [Snowdon Towers](../../../samples/snowdon-towers/README.md) IFC set himself from the Autodesk Revit sample projects, so he can make a small deliberate edit in Revit (move one wall, delete one beam, swap one type) and export a genuine second revision. That gives real exporter output for the change kinds this screen renders, which the synthetic A/B fixtures cannot reproduce. Revit GlobalIds are stable across exports, so matching works; expect re-tessellation of untouched geometry to read as "Shape representation changed", which the plan already says to label honestly rather than treat as physical change. Ask the owner before assuming the revision exists.
+
+Note also [ticket 34](34-rotation-change-kind.md): a rotation-only change currently reports as unchanged, so this screen would render a rotated object as identical. Confirm that decision before building the change overlay.

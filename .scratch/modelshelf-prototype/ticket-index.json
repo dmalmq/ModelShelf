@@ -179,5 +179,172 @@
     "wave": 1,
     "blockedBy": [],
     "planCoverage": "11, approved reusable-module amendment"
+  },
+  {
+    "id": "19",
+    "file": "19-reusable-viewer-package.md",
+    "title": "Extract the reusable viewer package behind public exports",
+    "wave": 2,
+    "blockedBy": [
+      "09",
+      "11"
+    ],
+    "planCoverage": "5, reusable-package portion; ADR 0001"
+  },
+  {
+    "id": "20",
+    "file": "20-consume-shared-contracts.md",
+    "title": "Consume the generated model contracts in the browser and checker",
+    "wave": 1,
+    "blockedBy": [
+      "18"
+    ],
+    "planCoverage": "11, consumer-wiring portion; ADR 0001"
+  },
+  {
+    "id": "21",
+    "file": "21-remove-mock-scaffolding.md",
+    "title": "Remove the design mock scaffolding from the shipped application",
+    "wave": 2,
+    "blockedBy": [
+      "11"
+    ],
+    "planCoverage": "6,7 delivered scope; plan guardrails"
+  },
+  {
+    "id": "22",
+    "file": "22-serialize-heavy-jobs.md",
+    "title": "Serialize heavy worker jobs and recover interrupted runs",
+    "wave": 1,
+    "blockedBy": [
+      "04",
+      "06"
+    ],
+    "planCoverage": "3, job-scheduling portion"
+  },
+  {
+    "id": "23",
+    "file": "23-measured-run-inputs.md",
+    "title": "Record measured run inputs instead of hardcoded and reconstructed ones",
+    "wave": 1,
+    "blockedBy": [
+      "02",
+      "06"
+    ],
+    "planCoverage": "2,3 immutable-evidence portion"
+  },
+  {
+    "id": "24",
+    "file": "24-distinct-counts-and-order.md",
+    "title": "Report distinct object counts and preserve backend order",
+    "wave": 2,
+    "blockedBy": [
+      "11"
+    ],
+    "planCoverage": "7, counting portion"
+  },
+  {
+    "id": "25",
+    "file": "25-worker-envelope-schema.md",
+    "title": "Publish the worker envelope schema and settle its version",
+    "wave": 1,
+    "blockedBy": [
+      "03",
+      "04"
+    ],
+    "planCoverage": "3, contract-artifact portion"
+  },
+  {
+    "id": "26",
+    "file": "26-worker-boundary-hardening.md",
+    "title": "Close worker path and dependency boundary gaps",
+    "wave": 1,
+    "blockedBy": [
+      "04"
+    ],
+    "planCoverage": "3, boundary portion"
+  },
+  {
+    "id": "27",
+    "file": "27-edge-case-coverage.md",
+    "title": "Cover the untested plan edge cases with real scenarios",
+    "wave": 2,
+    "blockedBy": [
+      "06",
+      "05"
+    ],
+    "planCoverage": "Verification strategy edge-case list"
+  },
+  {
+    "id": "28",
+    "file": "28-honest-verification-harness.md",
+    "title": "Make the verification harness assert what it claims",
+    "wave": 2,
+    "blockedBy": [
+      "09"
+    ],
+    "planCoverage": "Verification strategy"
+  },
+  {
+    "id": "29",
+    "file": "29-hardware-gl-performance.md",
+    "title": "Re-measure Wave 1 viewer performance on a hardware GL host",
+    "wave": 1,
+    "blockedBy": [
+      "09"
+    ],
+    "planCoverage": "5, performance acceptance"
+  },
+  {
+    "id": "30",
+    "file": "30-documentation-and-evidence.md",
+    "title": "Reconcile stale documentation with the shipped prototype",
+    "wave": 2,
+    "blockedBy": [
+      "10",
+      "11"
+    ],
+    "planCoverage": "10, documentation portion"
+  },
+  {
+    "id": "31",
+    "file": "31-snowdon-demo-delivery.md",
+    "title": "Adopt Snowdon Towers as the four-discipline demo delivery",
+    "wave": 2,
+    "blockedBy": [
+      "05",
+      "06"
+    ],
+    "planCoverage": "4, second-dataset portion"
+  },
+  {
+    "id": "32",
+    "file": "32-graded-compliance-variants.md",
+    "title": "Derive graded compliance variants from the Snowdon delivery",
+    "wave": 2,
+    "blockedBy": [
+      "31"
+    ],
+    "planCoverage": "4 fixture portion; 8,9 comparison inputs"
+  },
+  {
+    "id": "33",
+    "file": "33-retire-legacy-fingerprint-api.md",
+    "title": "Retire the dead IFC-parsing fingerprint API",
+    "wave": 2,
+    "blockedBy": [
+      "13"
+    ],
+    "planCoverage": "8, ADR 0001 import boundary"
+  },
+  {
+    "id": "34",
+    "file": "34-rotation-change-kind.md",
+    "title": "Decide whether a rotation-only change reads as unchanged",
+    "wave": 2,
+    "blockedBy": [
+      "13"
+    ],
+    "planCoverage": "9; plan comparison scope"
   }
 ]
