@@ -1,0 +1,73 @@
+{
+  "baseRun": {
+    "id": "5a4b3cac-7b88-4f35-ad8f-9101e193d65d",
+    "projectId": "demo-project",
+    "deliveryId": "85114ca4-14b6-49c8-b921-af6b8c382642",
+    "deliveryLabel": "Base drop",
+    "packVersionId": "50e48631-cb67-4fe5-8e78-22e103712ecd",
+    "packName": "Demo Check Pack",
+    "packVersion": 1,
+    "engineVersion": "ifctester/0.8.5",
+    "parserVersion": "ifcopenshell/0.8.5",
+    "status": "completed",
+    "error": null,
+    "startedAt": "2026-09-09T02:18:56.024Z",
+    "finishedAt": "2026-09-09T02:18:56.581Z",
+    "durationMs": 554,
+    "passCount": 0,
+    "failCount": 1,
+    "notApplicableCount": 0,
+    "incompleteCount": 0,
+    "score": 0,
+    "findingCount": 1,
+    "failingObjectCount": 135
+  },
+  "headRun": {
+    "id": "b42586a6-839d-47e7-94d6-927f68047545",
+    "projectId": "demo-project",
+    "deliveryId": "ce22bd09-1d9a-45a4-ae12-ad2777086560",
+    "deliveryLabel": "Corrected drop",
+    "packVersionId": "50e48631-cb67-4fe5-8e78-22e103712ecd",
+    "packName": "Demo Check Pack",
+    "packVersion": 1,
+    "engineVersion": "ifctester/0.8.5",
+    "parserVersion": "ifcopenshell/0.8.5",
+    "status": "completed",
+    "error": null,
+    "startedAt": "2026-09-09T02:18:56.596Z",
+    "finishedAt": "2026-09-09T02:18:57.214Z",
+    "durationMs": 616,
+    "passCount": 0,
+    "failCount": 1,
+    "notApplicableCount": 0,
+    "incompleteCount": 0,
+    "score": 0,
+    "findingCount": 1,
+    "failingObjectCount": 135
+  },
+  "resolved": 0,
+  "introduced": 0,
+  "persisting": 1,
+  "changes": [
+    {
+      "findingKey": "2a46de0f45a3e55bed07492ed376c00b",
+      "delta": "persisting",
+      "title": "Wall declares a fire rating",
+      "severity": "high",
+      "categoryId": "regulatory",
+      "categoryLabel": "Regulatory",
+      "baseObjectCount": 133,
+      "headObjectCount": 133,
+      "introducedObjects": [
+        "0SdBeWOR1GpAo9L79uiztJ",
+        "1U55pVhjTVbxH0u2_EMBx$",
+        "1i63mwol9RRBYwWxq9CAOW"
+      ],
+      "resolvedObjects": [
+        "0TrB95VUPTlOMqcDN_pFkO",
+        "0zaQA4RznI6h6xDS1nz5_0",
+        "25R1H9v5DQixS4A8tigxiK"
+      ]
+    }
+  ]
+}

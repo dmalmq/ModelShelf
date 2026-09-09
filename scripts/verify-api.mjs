@@ -31,8 +31,12 @@
 // source/revision and confidence, pagination reassembles deterministically,
 // legacy rows fail loudly with `fingerprint_profile_mismatch`, and
 // re-uploading the same bytes appends a new revision without touching history.
-//
-// Usage: node scripts/verify-api.mjs --scenario revisions
+// `--scenario finding-comparisons` proves run comparison is gated on compatible
+// checking settings (ticket 14): a base/corrected/empty run trio yields
+// introduced/resolved/persisting outcomes, and each compat dimension (pack
+// version, IDS/metadata digests, scope text, source membership, engine
+// profile, provenance, completion, review-incomplete) plus a failed run and
+// uncertain GlobalId identity refuses or holds honestly with its own code.
 //        node scripts/verify-api.mjs --scenario worker-failure
 //        node scripts/verify-api.mjs --scenario checks
 //        node scripts/verify-api.mjs --scenario first-loop
@@ -55,8 +59,8 @@ const FIXTURES_IDS = join(REPO_ROOT, "packs", "demo", "fixtures.ids");
 function requireScenario() {
   const flagIndex = process.argv.indexOf("--scenario");
   const scenario = flagIndex >= 0 ? process.argv[flagIndex + 1] : undefined;
-  if (scenario !== "revisions" && scenario !== "worker-failure" && scenario !== "checks" && scenario !== "first-loop" && scenario !== "comparisons") {
-    console.error(`usage: node scripts/verify-api.mjs --scenario revisions|worker-failure|checks|first-loop|comparisons (got ${scenario ?? "<none>"})`);
+  if (scenario !== "revisions" && scenario !== "worker-failure" && scenario !== "checks" && scenario !== "first-loop" && scenario !== "comparisons" && scenario !== "finding-comparisons") {
+    console.error(`usage: node scripts/verify-api.mjs --scenario revisions|worker-failure|checks|first-loop|comparisons|finding-comparisons (got ${scenario ?? "<none>"})`);
     process.exit(2);
   }
   return scenario;
@@ -604,6 +608,233 @@ async function runComparisonsScenario(runDir, check, log) {
   } finally {
     if (server) {
       log("comparisons-serve.log", server.getLog());
+      await stopProcess(server.child);
+    }
+    rmSync(dataDir, { recursive: true, force: true });
+
+  }
+}
+// ---------------------------------------------------------------------------
+// scenario: finding-comparisons (ticket 14)
+// ---------------------------------------------------------------------------
+
+const FINDING_BASE_IFC = join(REPO_ROOT, "packs", "demo", "fixtures", "base.ifc");
+const FINDING_HEAD_IFC = join(REPO_ROOT, "packs", "demo", "fixtures", "head.ifc");
+
+function dbGet(dbPath, query) {
+  return runPython(dbPath, `import sqlite3,sys
+con = sqlite3.connect(sys.argv[1])
+row = con.execute(sys.argv[2]).fetchone()
+print("" if row is None or row[0] is None else row[0])`, [query]).trim();
+}
+
+function dbExec(dbPath, ...statements) {
+  runPython(dbPath, `import sqlite3,sys
+con = sqlite3.connect(sys.argv[1])
+for s in sys.argv[2:]:
+    con.execute(s)
+con.commit()`, statements);
+}
+
+async function runFindingComparisonsScenario(runDir, check, log) {
+  const dataDir = mkdtempSync(join(tmpdir(), "modelshelf-verify-api-finding-comparisons-"));
+  let server;
+  try {
+    const seed = runCli(["seed", "--data-dir", dataDir, "--packs-dir", dataDir, "--samples-dir", dataDir]);
+    check("seed succeeds", seed.status === 0, seed.stderr);
+
+    server = await startServer(dataDir);
+    const base = server.base;
+    const dbPath = join(dataDir, "modelshelf.db");
+
+    const packMeta = {
+      categories: [{ id: "regulatory", label: "Regulatory" }],
+      defaults: { severity: "high", categoryId: "regulatory" },
+      specs: {
+        "Wall declares a fire rating": { severity: "high", categoryId: "regulatory", disciplines: ["ARCH"] },
+      },
+    };
+    const idsXml = await readFileAsync(FIXTURES_IDS, "utf8");
+    const packV1 = (await api(base, "POST", "/api/packs/demo-pack/versions", { idsXml, metadata: packMeta })).json;
+    check("fixtures pack v1 is published", Boolean(packV1?.id), JSON.stringify(packV1));
+
+    const east = (await api(base, "POST", "/api/projects/demo-project/source-models", { name: "East", discipline: "ARCH" })).json;
+    check("east source created", Boolean(east.id), JSON.stringify(east));
+
+    async function deliverAndRun(label, revisionId, packVersionId, members) {
+      const delivery = (await api(base, "POST", "/api/projects/demo-project/deliveries", { label })).json;
+      for (const [sourceModelId, modelRevisionId] of members) {
+        const res = await api(base, "POST", `/api/deliveries/${delivery.id}/members`, { sourceModelId, modelRevisionId });
+        check(`member added to ${label}`, res.status === 200, JSON.stringify({ status: res.status, body: res.json }));
+      }
+      const run = (await api(base, "POST", "/api/runs", { deliveryId: delivery.id, packVersionId })).json;
+      check(
+        `${label} run completes with pinned complete inputs`,
+        run?.run?.status === "completed" && run?.inputProvenance?.status === "complete",
+        JSON.stringify({ status: run?.run?.status, provenance: run?.inputProvenance }),
+      );
+      return { delivery, run };
+    }
+
+    const diffRuns = (baseRunId, headRunId) =>
+      api(base, "GET", `/api/diff/runs?baseRunId=${baseRunId}&headRunId=${headRunId}`);
+
+    async function expect409(label, baseRunId, headRunId, code, messageFragment, expectRerun = true) {
+      const res = await diffRuns(baseRunId, headRunId);
+      log(`refused-${label}.json`, res.json);
+      check(
+        `${label} refuses with 409 ${code}`,
+        res.status === 409 && res.json?.error?.code === code
+          && (!expectRerun || /rerun one or both sides/.test(res.json?.error?.message ?? ""))
+          && (res.json?.error?.message ?? "").includes(messageFragment),
+        JSON.stringify({ status: res.status, error: res.json?.error }),
+      );
+    }
+
+    // --- happy path: base, corrected, and empty runs ---
+    const revBase = (await uploadFileAndAwait(base, east.id, "east-base.ifc", FINDING_BASE_IFC)).job;
+    const revHead = (await uploadFileAndAwait(base, east.id, "east-head.ifc", FINDING_HEAD_IFC)).job;
+    check(
+      "base and corrected revisions ingest via the real worker",
+      revBase?.status === "completed" && revHead?.status === "completed",
+      JSON.stringify({ base: revBase?.status, head: revHead?.status }),
+    );
+    const { run: runA } = await deliverAndRun("Base drop", revBase.modelRevisionId, packV1.id, [[east.id, revBase.modelRevisionId]]);
+    const { delivery: delB, run: runB } = await deliverAndRun("Corrected drop", revHead.modelRevisionId, packV1.id, [[east.id, revHead.modelRevisionId]]);
+    // A second run on the same delivery: identical findings, used for the
+    // uncertainty probe below.
+    const runB2 = (await api(base, "POST", "/api/runs", { deliveryId: delB.id, packVersionId: packV1.id })).json;
+    check(
+      "a second run on the same delivery completes identically",
+      runB2?.run?.status === "completed" && runB2?.inputProvenance?.status === "complete",
+      JSON.stringify({ status: runB2?.run?.status, provenance: runB2?.inputProvenance }),
+    );
+
+    const happy = await diffRuns(runA.run.id, runB.run.id);
+    log("diff-base-corrected.json", happy.json);
+    check(
+      "base vs corrected compares 200 with consistent counts",
+      happy.status === 200
+        && happy.json?.resolved + happy.json?.introduced + happy.json?.persisting === happy.json?.changes?.length,
+      JSON.stringify({ status: happy.status, resolved: happy.json?.resolved, introduced: happy.json?.introduced, persisting: happy.json?.persisting }),
+    );
+
+    const self = await diffRuns(runA.run.id, runA.run.id);
+    const findingCount = self.json?.persisting ?? 0;
+    check(
+      "a run compared with itself is fully persisting (proves findings exist)",
+      self.status === 200 && findingCount >= 1 && self.json?.resolved === 0 && self.json?.introduced === 0,
+      JSON.stringify({ status: self.status, persisting: self.json?.persisting }),
+    );
+
+    const emptyEnqueued = await uploadBytes(base, east.id, "empty.ifc", EMPTY_IFC);
+    const emptyJob = await pollJob(base, emptyEnqueued.json.id, { timeoutMs: 120_000 });
+    check("empty model ingests", emptyJob?.status === "completed", JSON.stringify(emptyJob?.status));
+    const { run: runEmpty } = await deliverAndRun("Empty drop", emptyJob.modelRevisionId, packV1.id, [[east.id, emptyJob.modelRevisionId]]);
+
+    const toEmpty = await diffRuns(runA.run.id, runEmpty.run.id);
+    check(
+      "base vs empty resolves every finding and introduces none",
+      toEmpty.status === 200 && toEmpty.json?.resolved === findingCount && toEmpty.json?.introduced === 0,
+      JSON.stringify({ status: toEmpty.status, resolved: toEmpty.json?.resolved, introduced: toEmpty.json?.introduced }),
+    );
+    const fromEmpty = await diffRuns(runEmpty.run.id, runA.run.id);
+    check(
+      "empty vs base introduces every finding and resolves none",
+      fromEmpty.status === 200 && fromEmpty.json?.introduced === findingCount && fromEmpty.json?.resolved === 0,
+      JSON.stringify({ status: fromEmpty.status, introduced: fromEmpty.json?.introduced, resolved: fromEmpty.json?.resolved }),
+    );
+
+    // --- pack version dimension: a second published version never compares ---
+    const packV2 = (await api(base, "POST", "/api/packs/demo-pack/versions", { idsXml, metadata: packMeta })).json;
+    check("fixtures pack v2 is published", packV2?.id !== packV1.id, JSON.stringify(packV2?.id));
+    const { run: runV2 } = await deliverAndRun("V2 drop", revBase.modelRevisionId, packV2.id, [[east.id, revBase.modelRevisionId]]);
+    // pack_version_mismatch keeps its historical message (no rerun phrase).
+    await expect409("pack-version", runA.run.id, runV2.run.id, "pack_version_mismatch", "pack versions", false);
+
+    // --- membership dimension: a delivery with a different source set ---
+    const west = (await api(base, "POST", "/api/projects/demo-project/source-models", { name: "West", discipline: "ARCH" })).json;
+    const westRev = (await uploadFileAndAwait(base, west.id, "west-base.ifc", FINDING_BASE_IFC)).job;
+    check("west revision ingests", westRev?.status === "completed", JSON.stringify(westRev?.status));
+    const { run: runWide } = await deliverAndRun(
+      "Wide drop",
+      revBase.modelRevisionId,
+      packV1.id,
+      [[east.id, revBase.modelRevisionId], [west.id, westRev.modelRevisionId]],
+    );
+    await expect409("membership", runA.run.id, runWide.run.id, "scope_mismatch", "membership");
+
+    // --- stored-row dimensions, mutated one at a time with restore ---
+    async function expect409AfterUpdate(label, column, tempValue, code, messageFragment) {
+      const prev = dbGet(dbPath, `SELECT ${column} FROM runs WHERE id='${runB.run.id}'`);
+      dbExec(dbPath, `UPDATE runs SET ${column}='${tempValue}' WHERE id='${runB.run.id}'`);
+      await expect409(label, runA.run.id, runB.run.id, code, messageFragment);
+      dbExec(dbPath, `UPDATE runs SET ${column}='${prev}' WHERE id='${runB.run.id}'`);
+    }
+    await expect409AfterUpdate("scope-text", "scope_json", '{"ARCH":[]}', "scope_mismatch", "scope text");
+    await expect409AfterUpdate("engine-profile", "engine_profile_json", '{"worker":"9.9.9"}', "engine_profile_mismatch", runA.run.id);
+    await expect409AfterUpdate("ids-digest", "ids_sha256", "deadbeef", "pack_digest_mismatch", "ids_sha256");
+    await expect409AfterUpdate("provenance", "input_provenance", "incomplete", "provenance_incomplete", runB.run.id);
+    await expect409AfterUpdate("review-incomplete", "incomplete_count", "1", "run_incomplete", runB.run.id);
+    const restored = await diffRuns(runA.run.id, runB.run.id);
+    check("restored rows compare 200 again", restored.status === 200, JSON.stringify({ status: restored.status }));
+
+    // --- empty pins: a run with no recorded snapshot cannot prove its inputs ---
+    const { run: runUnpinned } = await deliverAndRun("Unpinned drop", revBase.modelRevisionId, packV1.id, [[east.id, revBase.modelRevisionId]]);
+    dbExec(dbPath, `DELETE FROM run_models WHERE run_id='${runUnpinned.run.id}'`);
+    await expect409("empty-pins", runA.run.id, runUnpinned.run.id, "provenance_incomplete", runUnpinned.run.id);
+
+    // --- failed run via a bad upload: corrupt the stored blob, then check ---
+    const badSrc = (await api(base, "POST", "/api/projects/demo-project/source-models", { name: "BadSrc", discipline: "ARCH" })).json;
+    const badRev = await uploadFileAndAwait(base, badSrc.id, "bad.ifc", FINDING_HEAD_IFC);
+    check("bad-source revision ingests", badRev.job?.status === "completed", JSON.stringify(badRev.job?.status));
+    const badSha = dbGet(dbPath, `SELECT content_sha256 FROM model_revisions WHERE id='${badRev.job.modelRevisionId}'`);
+    writeFileSync(join(dataDir, "blobs", badSha), "corrupted-by-verify-scenario");
+    const badDelivery = (await api(base, "POST", "/api/projects/demo-project/deliveries", { label: "Bad drop" })).json;
+    await api(base, "POST", `/api/deliveries/${badDelivery.id}/members`, { sourceModelId: badSrc.id, modelRevisionId: badRev.job.modelRevisionId });
+    const badRun = (await api(base, "POST", "/api/runs", { deliveryId: badDelivery.id, packVersionId: packV1.id })).json;
+    log("failed-run.json", { status: badRun?.run?.status, error: badRun?.run?.error });
+    check(
+      "checking a corrupted upload fails the run instead of scoring it",
+      badRun?.run?.status === "failed" && Boolean(badRun?.run?.error),
+      JSON.stringify({ status: badRun?.run?.status, error: badRun?.run?.error }),
+    );
+    await expect409("failed-run", runA.run.id, badRun.run.id, "run_not_completed", badRun.run.id);
+
+    // --- uncertain identity: objects without a GlobalId never resolve ---
+    const sameInput = await diffRuns(runB.run.id, runB2.run.id);
+    check(
+      "two runs on one delivery are fully persisting before the probe",
+      sameInput.status === 200 && sameInput.json?.persisting >= 1
+        && sameInput.json?.resolved === 0 && sameInput.json?.introduced === 0,
+      JSON.stringify({ status: sameInput.status, persisting: sameInput.json?.persisting }),
+    );
+    const probeKey = dbGet(
+      dbPath,
+      `SELECT finding_key FROM findings WHERE run_id='${runB2.run.id}' AND object_count > 0 ORDER BY sort_index LIMIT 1`,
+    );
+    check("probe finding selected", probeKey.length > 0, probeKey);
+    dbExec(
+      dbPath,
+      `UPDATE finding_objects SET global_id = NULL WHERE finding_id IN
+         (SELECT id FROM findings WHERE run_id = '${runB2.run.id}' AND finding_key = '${probeKey}')`,
+    );
+    const probed = await diffRuns(runB.run.id, runB2.run.id);
+    log("uncertain-identity.json", probed.json);
+    const probeChange = (probed.json?.changes ?? []).find((c) => c.findingKey === probeKey);
+    check(
+      "a finding with uncertain identity stays persisting, never resolved",
+      probed.status === 200 && probeChange?.delta === "persisting" && probed.json?.resolved === 0,
+      JSON.stringify({ status: probed.status, probe: probeChange }),
+    );
+    check(
+      "no synthetic occurrence ids leak into object lists",
+      probed.status === 200 && !JSON.stringify(probed.json).includes("express:"),
+      JSON.stringify((probed.json?.changes ?? []).flatMap((c) => c.resolvedObjects ?? []).slice(0, 3)),
+    );
+  } finally {
+    if (server) {
+      log("finding-comparisons-serve.log", server.getLog());
       await stopProcess(server.child);
     }
     rmSync(dataDir, { recursive: true, force: true });
@@ -1215,7 +1446,7 @@ async function main() {
     ".omo",
     "evidence",
     "modelshelf-prototype",
-    scenario === "checks" ? "task-6" : scenario === "first-loop" ? "task-9" : scenario === "comparisons" ? "ticket-13" : "task-2",
+    scenario === "checks" ? "task-6" : scenario === "first-loop" ? "task-9" : scenario === "comparisons" ? "ticket-13" : scenario === "finding-comparisons" ? "ticket-14" : "task-2",
   );
   mkdirSync(evidenceRoot, { recursive: true });
   const runDir = join(evidenceRoot, `run-${new Date().toISOString().replace(/[:.]/g, "-")}`);
@@ -1233,6 +1464,8 @@ async function main() {
     await runFirstLoopScenario(runDir, check, log);
   } else if (scenario === "comparisons") {
     await runComparisonsScenario(runDir, check, log);
+  } else if (scenario === "finding-comparisons") {
+    await runFindingComparisonsScenario(runDir, check, log);
   } else {
     await runChecksScenario(runDir, check, log);
   }

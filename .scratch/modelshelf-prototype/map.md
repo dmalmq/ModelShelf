@@ -43,6 +43,7 @@ A runnable local ModelShelf prototype that combines architectural, structural, a
 - [Complete the reviewer delivery shelf](issues/10-delivery-shelf.md) resolved on 2026-09-08. The root shelf and delivery workspace now create sources and deliveries, ingest and retry uploads, reuse and replace revisions, freeze membership, refresh the combined viewer, and expose exact pinned run inputs. The real browser scenario passed 31 checks.
 - [Compute versioned fingerprints from normalized object state](issues/12-normalized-fingerprints.md) — resolved: pure `fingerprint::normalized` over worker `SemanticObject`/`GeometryChunk` with versioned `fp-v1` profile, full BLAKE3 digests, per-dimension quanta, stable absent/unsupported tokens, and profile-mismatch errors; 30/30 `cargo test -p fingerprint` plus real worker A/B component deltas with evidence under `.omo/evidence/modelshelf-prototype/ticket-12/`.
 - [Compare revisions with explicit match confidence](issues/13-model-diff.md) — resolved: normalized `DiffObject` comparison with SourceModel pairing, explicit confidence, profile-gated 409, and a 37-check comparisons scenario.
+- [Compare findings only under compatible checking settings](issues/14-finding-diff.md) — resolved: `diff_runs` refuses with a per-dimension 409 unless both runs share provenance, completion, pack digests, scope plus pinned membership, and engine profile; confirmed GlobalIds only with uncertain identity held persisting; 42-check finding-comparisons scenario.
 
 ## Not yet specified
 

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "run_not_completed",
+    "message": "run did not complete (run 774b34a1-1029-4fca-969f-194d91a6a80c has status 'failed'; base run 89eff16d-959f-4049-9f33-b839d33a9a38, head run 774b34a1-1029-4fca-969f-194d91a6a80c); rerun one or both sides under identical settings before comparing"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "provenance_incomplete",
+    "message": "run input provenance is incomplete (run a7a7d973-6315-4727-862d-5f672b2712cb has no pinned input snapshot (run_models is empty); base run 89eff16d-959f-4049-9f33-b839d33a9a38, head run a7a7d973-6315-4727-862d-5f672b2712cb); rerun one or both sides under identical settings before comparing"
+  }
+}

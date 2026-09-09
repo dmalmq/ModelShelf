@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "run_not_completed",
+    "message": "run did not complete (run 95f16815-6b2a-48e4-ad7e-adb0e48210f7 has status 'failed'; base run 5a4b3cac-7b88-4f35-ad8f-9101e193d65d, head run 95f16815-6b2a-48e4-ad7e-adb0e48210f7); rerun one or both sides under identical settings before comparing"
+  }
+}
