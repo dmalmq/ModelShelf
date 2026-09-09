@@ -13,6 +13,7 @@ import type {
   FindingChange,
   FindingDelta,
   FindingDiffResponse,
+  MatchConfidence,
   RunDetail,
   RunSummary,
 } from "@/lib/types";
@@ -85,8 +86,6 @@ export interface CompareInspectorProps {
   readonly overflow: ReadonlyArray<{ kind: ChangeKind; count: number }>;
   readonly modelStatus: ModelDiffStatus;
   readonly modelError: string | null;
-  readonly profileExpected: string | null;
-  readonly profileActual: string | null;
   readonly baseDeliveryId: string | null;
   readonly headDeliveryId: string | null;
   readonly baseRuns: readonly RunSummary[];
@@ -110,12 +109,7 @@ export function CompareInspector(props: CompareInspectorProps): React.JSX.Elemen
         <h2 className="text-sm font-semibold">
           {copy(COPY.changesHeading, "ja")} / {copy(COPY.changesHeading, "en")}
         </h2>
-        <ModelStateBlock
-          status={props.modelStatus}
-          error={props.modelError}
-          profileExpected={props.profileExpected}
-          profileActual={props.profileActual}
-        />
+        <ModelStateBlock status={props.modelStatus} error={props.modelError} />
         {props.modelStatus === "ready" && (
           <>
             <SummaryCounts summary={props.summary} filtered={props.entries.length} total={props.unfilteredCount} />
@@ -222,13 +216,9 @@ function findSelectedIndex(entries: readonly CompareChangeEntry[], key: string):
 function ModelStateBlock({
   status,
   error,
-  profileExpected,
-  profileActual,
 }: {
   status: ModelDiffStatus;
   error: string | null;
-  profileExpected: string | null;
-  profileActual: string | null;
 }): React.JSX.Element | null {
   if (status === "loading" || status === "idle") {
     return (
@@ -241,11 +231,6 @@ function ModelStateBlock({
     return (
       <div className="mt-2 border border-destructive/40 p-3 text-xs" data-profile-mismatch role="alert">
         <p className="font-medium">指紋プロファイルが不一致 / Fingerprint profile mismatch</p>
-        {profileExpected && profileActual && (
-          <p className="mt-1">
-            期待 {profileExpected} / 検出 {profileActual} / expected {profileExpected}, found {profileActual}
-          </p>
-        )}
         <p className="mt-1 text-muted-foreground">
           両版を同一プロファイルで再計算してください。履歴は追記専用のため、リビジョンの再アップロードで再計算されます。/
           Recompute both revisions under one profile by re-uploading (history is append-only).
@@ -385,13 +370,38 @@ function SelectedDetail({
       </p>
       <p className="mt-1 text-muted-foreground">
         {entry.sourceModelName} · {(change.head ?? change.base)?.ifcType ?? "—"}
-        {isUncertain(change) && (
+        {change.confidence.kind === "heuristic" && (
           <>
             {" · "}
-            <UncertainText change={entry.change} />
+            <UncertainText confidence={change.confidence} />
           </>
         )}
       </p>
+      <table className="mt-2 w-full border-collapse text-xs" data-change-identity>
+        <thead>
+          <tr className="text-left text-muted-foreground">
+            <th className="border border-border px-1.5 py-1 font-normal">版 / Revision side</th>
+            <th className="border border-border px-1.5 py-1 font-normal">名称 / Name</th>
+            <th className="border border-border px-1.5 py-1 font-normal">GlobalId</th>
+            <th className="border border-border px-1.5 py-1 font-normal">Express ID</th>
+            <th className="border border-border px-1.5 py-1 font-normal">階 / Storey</th>
+          </tr>
+        </thead>
+        <tbody>
+          {([
+            ["base", "基準 / Base", change.base],
+            ["head", "先端 / Head", change.head],
+          ] as const).map(([sideKey, sideLabel, ref]) => (
+            <tr key={sideKey} data-identity-side={sideKey}>
+              <td className="border border-border px-1.5 py-1">{sideLabel}</td>
+              <td className="border border-border px-1.5 py-1">{ref?.name ?? "—"}</td>
+              <td className="border border-border px-1.5 py-1">{ref?.globalId ?? "—"}</td>
+              <td className="border border-border px-1.5 py-1">{ref ? ref.expressId : "—"}</td>
+              <td className="border border-border px-1.5 py-1">{ref?.storey ?? "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
       {banner && (
         <div className="mt-2 border border-amber-500/50 p-2" data-side-banner={banner.missingSide} role="status">
           <p>
@@ -453,15 +463,16 @@ function SelectedDetail({
   );
 }
 
-function UncertainText({ change }: { change: CompareChangeEntry["change"] }): React.JSX.Element {
-  if (change.confidence.kind === "heuristic") {
-    return (
-      <span data-confidence="heuristic">
-        推定照合 (score {change.confidence.score.toFixed(2)} · {change.confidence.basis})
-      </span>
-    );
-  }
-  return <span data-confidence="none">照合なし / unmatched</span>;
+function UncertainText({
+  confidence,
+}: {
+  confidence: Extract<MatchConfidence, { kind: "heuristic" }>;
+}): React.JSX.Element {
+  return (
+    <span data-confidence="heuristic">
+      推定照合 (score {confidence.score.toFixed(2)} · {confidence.basis})
+    </span>
+  );
 }
 
 function RunPicker({

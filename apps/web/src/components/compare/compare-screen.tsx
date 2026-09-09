@@ -9,9 +9,17 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CHANGE_LABEL } from "@/lib/i18n";
-import type { ChangeKind, DeliveryDetail, DiffSummary, RunDetail } from "@/lib/types";
+import { formatDate } from "@/lib/format";
+import { fetchProject } from "@/lib/shelf-api";
+import type {
+  ChangeKind,
+  DeliveryDetail,
+  DeliverySummary,
+  DiffSummary,
+  RunDetail,
+} from "@/lib/types";
 import { fetchDelivery } from "../viewer/delivery-api";
-import type { DeliveryViewerController } from "../viewer/types";
+import type { DeliverySnapshot, DeliveryViewerController } from "../viewer/types";
 import { CombinedDeliveryViewer } from "../viewer/combined-delivery-viewer";
 import {
   fetchCompleteModelDiff,
@@ -31,6 +39,7 @@ import { CompareInspector } from "./compare-inspector";
 import {
   ALL_SOURCES,
   compareReducer,
+  compareRefKey,
   filterCompareEntries,
   initialCompareState,
   type CompareSide,
@@ -54,6 +63,36 @@ function latestCompletedRunId(delivery: DeliveryDetail): string | null {
 
 const EMPTY_READBACK: CompareOverlayReadback = { matched: 0, selectedHidden: false, drawnKeys: [] };
 
+/** A picker option always includes the pair in the URL, loaded or not. */
+interface DeliveryOption {
+  id: string;
+  label: string;
+  deliveryDate: string | null;
+}
+
+function deliveryOptionLabel(option: DeliveryOption): string {
+  return option.deliveryDate ? `${option.label} — ${formatDate(option.deliveryDate)}` : option.label;
+}
+
+function deliveryOptionsFor(
+  deliveries: readonly DeliverySummary[],
+  pinned: readonly { id: string; detail: DeliveryDetail | null }[],
+): DeliveryOption[] {
+  const options = new Map<string, DeliveryOption>();
+  for (const summary of deliveries) {
+    options.set(summary.id, { id: summary.id, label: summary.label, deliveryDate: summary.deliveryDate });
+  }
+  for (const { id, detail } of pinned) {
+    if (!id || options.has(id)) continue;
+    options.set(id, {
+      id,
+      label: detail?.delivery.label ?? id,
+      deliveryDate: detail?.delivery.deliveryDate ?? null,
+    });
+  }
+  return [...options.values()];
+}
+
 export function CompareScreen({
   baseDeliveryId,
   headDeliveryId,
@@ -65,8 +104,10 @@ export function CompareScreen({
   const [state, dispatch] = useReducer(compareReducer, initialCompareState);
   const [viewer, setViewer] = useState<DeliveryViewerController | null>(null);
   const [readback, setReadback] = useState<CompareOverlayReadback>(EMPTY_READBACK);
+  const [readyModels, setReadyModels] = useState(0);
   const [basePicker, setBasePicker] = useState(baseDeliveryId);
   const [headPicker, setHeadPicker] = useState(headDeliveryId);
+  const [projectDeliveries, setProjectDeliveries] = useState<readonly DeliverySummary[]>([]);
   const viewerRef = useRef<DeliveryViewerController | null>(null);
   const pairAbort = useRef<AbortController | null>(null);
   const findingAbort = useRef<AbortController | null>(null);
@@ -76,7 +117,38 @@ export function CompareScreen({
     setViewer(controller);
   }, []);
 
+  // Swapping side swaps the delivery, and the viewer answers that by disposing
+  // its controller and building a new one, so geometry always arrives after the
+  // controller does. Counting ready models is the repaint signal: the overlay
+  // and the framed selection both re-run as each revision lands.
+  useEffect(() => {
+    if (!viewer) {
+      setReadyModels(0);
+      return;
+    }
+    const countReady = (snapshot: DeliverySnapshot): number =>
+      snapshot.models.filter((model) => model.status === "ready").length;
+    setReadyModels(countReady(viewer.snapshot()));
+    return viewer.subscribe((snapshot) => setReadyModels(countReady(snapshot)));
+  }, [viewer]);
+
+  // The pickers offer the project's own deliveries: a reviewer picks a pair by
+  // label and date, never by pasting an id.
+  useEffect(() => {
+    const projectId = state.baseDelivery?.delivery.projectId;
+    if (!projectId) return;
+    const abort = new AbortController();
+    void fetchProject(projectId, abort.signal)
+      .then((detail) => {
+        if (!abort.signal.aborted) setProjectDeliveries(detail.deliveries);
+      })
+      .catch(() => setProjectDeliveries([]));
+    return () => abort.abort();
+  }, [state.baseDelivery?.delivery.projectId]);
+
   // Delivery pair load: atomic reset first, then deliveries, model diff, runs.
+  // Delivery and diff failures stay in their own statuses: a broken diff never
+  // demotes loaded deliveries to the full-page error.
   useEffect(() => {
     pairAbort.current?.abort();
     findingAbort.current?.abort();
@@ -84,36 +156,53 @@ export function CompareScreen({
     pairAbort.current = abort;
     dispatch({ type: "SET_DELIVERIES", baseDeliveryId, headDeliveryId });
     dispatch({ type: "MODEL_DIFF_LOADING" });
-    void Promise.all([fetchDelivery(baseDeliveryId, abort.signal), fetchDelivery(headDeliveryId, abort.signal)])
-      .then(([base, head]) => {
+    void (async () => {
+      try {
+        const [base, head] = await Promise.all([
+          fetchDelivery(baseDeliveryId, abort.signal),
+          fetchDelivery(headDeliveryId, abort.signal),
+        ]);
         if (abort.signal.aborted) return;
         dispatch({ type: "DELIVERIES_READY", base, head });
         dispatch({ type: "SET_RUNS", baseRunId: latestCompletedRunId(base), headRunId: latestCompletedRunId(head) });
-        return fetchCompleteModelDiff({ baseDeliveryId, headDeliveryId }, abort.signal);
-      })
-      .then((response) => {
-        if (!response || abort.signal.aborted) return;
+      } catch (reason: unknown) {
+        if (abort.signal.aborted) return;
+        dispatch({
+          type: "DELIVERIES_FAILED",
+          error: reason instanceof Error ? reason.message : "Deliveries could not be loaded",
+        });
+        return;
+      }
+      try {
+        const response = await fetchCompleteModelDiff({ baseDeliveryId, headDeliveryId }, abort.signal);
+        if (abort.signal.aborted) return;
         dispatch({ type: "MODEL_DIFF_READY", response });
-      })
-      .catch((reason: unknown) => {
+      } catch (reason: unknown) {
         if (abort.signal.aborted) return;
         if (reason instanceof ModelDiffProfileMismatchError) {
           dispatch({
             type: "MODEL_DIFF_PROFILE_MISMATCH",
             error: reason.message,
-            expected: reason.expected,
-            actual: reason.actual,
           });
           return;
         }
-        const message = reason instanceof Error ? reason.message : "Deliveries could not be loaded";
-        if (state.lifecycle !== "ready") dispatch({ type: "DELIVERIES_FAILED", error: message });
-        else dispatch({ type: "MODEL_DIFF_FAILED", error: message });
-      });
+        dispatch({
+          type: "MODEL_DIFF_FAILED",
+          error: reason instanceof Error ? reason.message : "Model diff could not be loaded",
+        });
+      }
+    })();
     return () => abort.abort();
-    // state.lifecycle is read only to route the error; the pair identity drives reloads.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [baseDeliveryId, headDeliveryId]);
+
+  const deliveryOptions = useMemo(
+    () =>
+      deliveryOptionsFor(projectDeliveries, [
+        { id: baseDeliveryId, detail: state.baseDelivery },
+        { id: headDeliveryId, detail: state.headDelivery },
+      ]),
+    [projectDeliveries, baseDeliveryId, headDeliveryId, state.baseDelivery, state.headDelivery],
+  );
 
   // Finding diff follows the run pair; run changes never touch model state.
   useEffect(() => {
@@ -191,10 +280,11 @@ export function CompareScreen({
     } catch {
       // Viewer not ready yet; the panel simply lists without highlights.
     }
-  }, [viewer, highlights, filtered.length, state.modelDiffStatus, state.side]);
+  }, [viewer, readyModels, highlights, filtered.length, state.modelDiffStatus, state.side]);
 
   // Selection frames the active-side geometry; one-sided changes seen from the
-  // void keep the overlay and show the banner instead.
+  // void keep the overlay and show the banner instead. The read-back comes
+  // from real diagnostics, never an optimistic append.
   useEffect(() => {
     const controller = viewerRef.current;
     if (!controller || state.selection == null) return;
@@ -208,30 +298,26 @@ export function CompareScreen({
     try {
       controller.select(parsed);
       controller.frame([parsed]);
-      setReadback((current) => ({
-        ...current,
-        drawnKeys: current.drawnKeys.includes(activeKey) ? current.drawnKeys : [...current.drawnKeys, activeKey],
-      }));
+      const diagnostics = controller.diagnostics();
+      setReadback({
+        matched: diagnostics.renderer.highlightGroups.reduce((sum, group) => sum + group.matched, 0),
+        selectedHidden: diagnostics.selectedHidden,
+        drawnKeys: diagnostics.objects.map((object) => compareRefKey(object.ref.revisionId, object.ref.objectId)),
+      });
     } catch {
       // Viewer mid-reload; selection stays listed.
     }
-  }, [state.selection, state.side, state.changeIndex]);
+  }, [viewer, readyModels, state.selection, state.side, state.changeIndex]);
 
   function handleRunCreated(detail: RunDetail): void {
-    // A new run is immutable history from birth: patch the local delivery copy
-    // so the run pickers preserve both old and new results without refetch.
-    if (detail.run.deliveryId === state.baseDeliveryId) {
-      dispatch({ type: "SET_RUNS", baseRunId: detail.run.id, headRunId: state.headRunId });
-    } else if (detail.run.deliveryId === state.headDeliveryId) {
-      dispatch({ type: "SET_RUNS", baseRunId: state.baseRunId, headRunId: detail.run.id });
-    }
+    dispatch({ type: "RUN_CREATED", detail });
   }
 
   function applyPickers(): void {
-    const base = basePicker.trim();
-    const head = headPicker.trim();
-    if (!base || !head) return;
-    router.push(`/deliveries/compare?base=${encodeURIComponent(base)}&head=${encodeURIComponent(head)}`);
+    if (!basePicker || !headPicker || (basePicker === baseDeliveryId && headPicker === headDeliveryId)) return;
+    router.push(
+      `/deliveries/compare?base=${encodeURIComponent(basePicker)}&head=${encodeURIComponent(headPicker)}`,
+    );
   }
 
   const activeDeliveryId = state.side === "base" ? baseDeliveryId : headDeliveryId;
@@ -260,21 +346,33 @@ export function CompareScreen({
         <div className="mx-auto flex w-full max-w-6xl flex-wrap items-end gap-x-4 gap-y-3">
           <label className="grid gap-1 text-xs" htmlFor="compare-base-delivery">
             <span className="font-medium">基準デリバリー / Base delivery</span>
-            <input
+            <select
               id="compare-base-delivery"
               className="w-64 border border-border bg-background px-2 py-1.5 text-xs"
               value={basePicker}
               onChange={(event) => setBasePicker(event.target.value)}
-            />
+            >
+              {deliveryOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {deliveryOptionLabel(option)}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="grid gap-1 text-xs" htmlFor="compare-head-delivery">
             <span className="font-medium">先端デリバリー / Head delivery</span>
-            <input
+            <select
               id="compare-head-delivery"
               className="w-64 border border-border bg-background px-2 py-1.5 text-xs"
               value={headPicker}
               onChange={(event) => setHeadPicker(event.target.value)}
-            />
+            >
+              {deliveryOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {deliveryOptionLabel(option)}
+                </option>
+              ))}
+            </select>
           </label>
           <button
             type="button"
@@ -372,8 +470,6 @@ export function CompareScreen({
                 overflow={highlights.overflow}
                 modelStatus={state.modelDiffStatus}
                 modelError={state.modelDiffError}
-                profileExpected={state.profileExpected}
-                profileActual={state.profileActual}
                 baseDeliveryId={state.baseDeliveryId}
                 headDeliveryId={state.headDeliveryId}
                 baseRuns={state.baseDelivery?.runs ?? []}
