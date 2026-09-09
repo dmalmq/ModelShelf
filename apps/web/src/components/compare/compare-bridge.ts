@@ -108,7 +108,9 @@ export interface CompareOverlayReadback {
 }
 
 /**
- * One-way push: highlight, isolate, soften the rest, frame. Returns the
+ * One-way push: paint the kind groups and soften everything else. The camera
+ * is never touched here — filtering must not move the view — so isolation and
+ * framing are opt-in and belong to an explicit selection. Returns the
  * diagnostics read-back (matched / selectedHidden / drawnKeys) for the panel
  * to display. `drawnKeys` are revision-qualified strings for geometry the
  * viewer actually holds.
@@ -118,10 +120,10 @@ export function pushCompareOverlay(
   highlight: CompareHighlightGroups,
   options?: { isolate?: boolean; dimOpacity?: number; frame?: boolean },
 ): CompareOverlayReadback {
-  const { isolate = true, dimOpacity = 0.25, frame = true } = options ?? {};
+  const { isolate = false, dimOpacity = 0.25, frame = false } = options ?? {};
   controller.setHighlights(highlight.groups);
   const refs = highlight.groups.flatMap((group) => [...group.refs]);
-  controller.isolate(isolate ? refs : null);
+  if (isolate) controller.isolate(refs);
   controller.setDimOpacity(dimOpacity);
   if (frame) controller.frame(refs);
   const diagnostics = controller.diagnostics();

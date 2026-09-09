@@ -41,38 +41,39 @@ const INCOMPARABLE_DIMENSIONS: readonly string[] = [
 
 /**
  * 409 from GET /api/diff/models: the two sides were fingerprinted under
- * different profiles (or one side predates normalized fingerprints).
- * History is append-only, so the guidance is recompute-by-re-upload.
+ * different profiles (or one side predates normalized fingerprints). The
+ * backend message names both profiles and the recompute-by-re-upload
+ * guidance, so it is surfaced verbatim rather than picked apart.
  */
 export class ModelDiffProfileMismatchError extends Error {
   readonly code = "fingerprint_profile_mismatch" as const;
-  readonly expected: string | null;
-  readonly actual: string | null;
 
-  constructor(message: string, expected: string | null, actual: string | null) {
+  constructor(message: string) {
     super(message);
     this.name = "ModelDiffProfileMismatchError";
-    this.expected = expected;
-    this.actual = actual;
   }
 }
 
 /**
  * 409 from GET /api/diff/runs: the runs do not share one checking setup.
- * Carries the first-mismatch dimension code so the panel can name it.
+ * Carries the first-mismatch dimension when the backend names a known one;
+ * an unrecognised code stays null and the panel shows the raw code instead of
+ * claiming a dimension the backend never reported.
  */
 export class FindingIncomparableError extends Error {
-  readonly dimension: FindingIncomparableDimension;
+  readonly dimension: FindingIncomparableDimension | null;
   readonly rawCode: string;
 
   constructor(code: string, message: string) {
     super(message);
     this.name = "FindingIncomparableError";
     this.rawCode = code;
-    this.dimension = (INCOMPARABLE_DIMENSIONS.includes(code)
-      ? code
-      : "provenance_incomplete") as FindingIncomparableDimension;
+    this.dimension = isIncomparableDimension(code) ? code : null;
   }
+}
+
+function isIncomparableDimension(code: string): code is FindingIncomparableDimension {
+  return INCOMPARABLE_DIMENSIONS.includes(code);
 }
 
 interface ErrorEnvelope {
@@ -88,13 +89,6 @@ function errorEnvelope(value: unknown): ErrorEnvelope | null {
     code: error["code"] as string,
     message: typeof error["message"] === "string" ? (error["message"] as string) : "",
   };
-}
-
-/** "expected fp-v1 but found legacy ..." → { expected, actual }; else nulls. */
-function profileSides(message: string): { expected: string | null; actual: string | null } {
-  const match = /expected\s+(\S+)\s+but\s+found\s+(.+?)(?:;|$)/.exec(message);
-  if (!match) return { expected: null, actual: null };
-  return { expected: match[1] ?? null, actual: (match[2] ?? "").trim() || null };
 }
 
 export interface ModelDiffQuery {
@@ -120,11 +114,8 @@ export async function fetchModelDiff(query: ModelDiffQuery, signal?: AbortSignal
   if (response.status === 409) {
     const envelope = errorEnvelope(await response.json().catch(() => null));
     if (envelope?.code === "fingerprint_profile_mismatch") {
-      const sides = profileSides(envelope.message);
       throw new ModelDiffProfileMismatchError(
         envelope.message || "Fingerprint profile mismatch between the two deliveries",
-        sides.expected,
-        sides.actual,
       );
     }
     throw new Error(`Model diff request failed with HTTP 409${envelope?.message ? `: ${envelope.message}` : ""}`);

@@ -11,6 +11,7 @@ import type {
   FindingDiffResponse,
   ModelDiffResponse,
   ObjectChange,
+  RunDetail,
 } from "@/lib/types";
 import type { FindingIncomparableDimension } from "./compare-api";
 
@@ -28,7 +29,7 @@ export type CompareSelection = string | null;
 
 export interface CompareFilterSet {
   kind: ChangeKind | "all";
-  /** "uncertain" keeps heuristic and none confidences only. */
+  /** "uncertain" keeps heuristic matches only. */
   confidence: "all" | "uncertain";
   sourceModelId: string;
 }
@@ -89,8 +90,14 @@ export function buildChangeIndex(response: ModelDiffResponse): CompareChangeInde
   return { entries, byKey };
 }
 
+/**
+ * An uncertain match is a heuristic one. A one-sided addition or removal has
+ * `none` confidence because it has no counterpart at all, which is a different
+ * claim, and counting it as uncertain would overstate the backend's
+ * `uncertainMatches`.
+ */
 export function isUncertain(change: ObjectChange): boolean {
-  return change.confidence.kind !== "exact";
+  return change.confidence.kind === "heuristic";
 }
 
 export function filterCompareEntries(
@@ -104,7 +111,6 @@ export function filterCompareEntries(
       (filters.sourceModelId === ALL_SOURCES || entry.sourceModelId === filters.sourceModelId),
   );
 }
-
 export interface CompareScreenState {
   lifecycle: CompareLifecycle;
   baseDeliveryId: string | null;
@@ -114,10 +120,8 @@ export interface CompareScreenState {
   deliveryError: string | null;
   modelDiffStatus: ModelDiffStatus;
   modelDiff: ModelDiffResponse | null;
+  /** Failure or 409 message from the model diff, shown verbatim. */
   modelDiffError: string | null;
-  /** Fingerprint profile sides from the 409 message, when parseable. */
-  profileExpected: string | null;
-  profileActual: string | null;
   findingStatus: FindingStatus;
   findingDiff: FindingDiffResponse | null;
   findingError: string | null;
@@ -140,8 +144,6 @@ export const initialCompareState: CompareScreenState = {
   modelDiffStatus: "idle",
   modelDiff: null,
   modelDiffError: null,
-  profileExpected: null,
-  profileActual: null,
   findingStatus: "idle",
   findingDiff: null,
   findingError: null,
@@ -161,12 +163,13 @@ export type CompareAction =
   | { type: "MODEL_DIFF_LOADING" }
   | { type: "MODEL_DIFF_READY"; response: ModelDiffResponse }
   | { type: "MODEL_DIFF_FAILED"; error: string }
-  | { type: "MODEL_DIFF_PROFILE_MISMATCH"; error: string; expected: string | null; actual: string | null }
+  | { type: "MODEL_DIFF_PROFILE_MISMATCH"; error: string }
   | { type: "SET_RUNS"; baseRunId: string | null; headRunId: string | null }
+  | { type: "RUN_CREATED"; detail: RunDetail }
   | { type: "FINDING_LOADING" }
   | { type: "FINDING_READY"; response: FindingDiffResponse }
   | { type: "FINDING_FAILED"; error: string }
-  | { type: "FINDING_INCOMPARABLE"; error: string; dimension: FindingIncomparableDimension }
+  | { type: "FINDING_INCOMPARABLE"; error: string; dimension: FindingIncomparableDimension | null }
   | { type: "SET_SIDE"; side: CompareSide }
   | { type: "SELECT_CHANGE"; key: CompareSelection }
   | { type: "SET_FILTERS"; filters: CompareFilterSet };
@@ -198,8 +201,6 @@ export function compareReducer(state: CompareScreenState, action: CompareAction)
         modelDiffStatus: "loading",
         modelDiff: null,
         modelDiffError: null,
-        profileExpected: null,
-        profileActual: null,
         selection: null,
         changeIndex: { entries: [], byKey: {} },
       };
@@ -225,8 +226,6 @@ export function compareReducer(state: CompareScreenState, action: CompareAction)
         modelDiffStatus: "profile_mismatch_409",
         modelDiff: null,
         modelDiffError: action.error,
-        profileExpected: action.expected,
-        profileActual: action.actual,
         changeIndex: { entries: [], byKey: {} },
       };
     case "SET_RUNS":
@@ -239,6 +238,34 @@ export function compareReducer(state: CompareScreenState, action: CompareAction)
         findingError: null,
         findingDimension: null,
       };
+    case "RUN_CREATED": {
+      // A new run is immutable history from birth: patch the local delivery
+      // copy so the run pickers preserve old and new results without refetch.
+      const run = action.detail.run;
+      if (run.deliveryId === state.baseDeliveryId && state.baseDelivery) {
+        return {
+          ...state,
+          baseDelivery: { ...state.baseDelivery, runs: [...state.baseDelivery.runs, run] },
+          baseRunId: run.id,
+          findingStatus: "idle",
+          findingDiff: null,
+          findingError: null,
+          findingDimension: null,
+        };
+      }
+      if (run.deliveryId === state.headDeliveryId && state.headDelivery) {
+        return {
+          ...state,
+          headDelivery: { ...state.headDelivery, runs: [...state.headDelivery.runs, run] },
+          headRunId: run.id,
+          findingStatus: "idle",
+          findingDiff: null,
+          findingError: null,
+          findingDimension: null,
+        };
+      }
+      return state;
+    }
     case "FINDING_LOADING":
       return { ...state, findingStatus: "loading", findingDiff: null, findingError: null, findingDimension: null };
     case "FINDING_READY":
