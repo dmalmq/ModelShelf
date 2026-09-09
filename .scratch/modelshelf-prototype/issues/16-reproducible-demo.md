@@ -71,3 +71,5 @@ Append an Answer with changes, exact commands/results, evidence links, remaining
 ## Comments
 
 Created from the approved prototype plan on 2026-09-06. No implementation is claimed by ticket creation.
+
+2026-09-09, [plan-alignment review](../../../docs/reviews/plan-alignment-2026-09-09.md): three plan-named deliverables are absent and this ticket owns them. `scripts/verify-api.mjs` accepts only `revisions|worker-failure|checks|first-loop` and `scripts/verify-ui.mjs` only `findings|deliveries`, so the plan's final acceptance commands `--scenario all` exit 2 rather than running. No `comparisons` scenario exists anywhere in `scripts/`. `docs/limitations.md` does not exist; supported-profile and shape-hash facts are scattered across worker constants, `docs/contracts/http-api.md` rule 11, and ticket prose.
