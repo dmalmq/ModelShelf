@@ -12,7 +12,7 @@ import {
   SCORECARD,
   SCORECARD_CLEAN,
 } from "@/lib/fixtures";
-import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n";
+import { DEFAULT_LOCALE, UI, type Locale } from "@/lib/i18n";
 import { SEVERITY_ORDER } from "@/lib/types";
 
 export const metadata = { title: "Kitchen sink · ModelShelf" };
@@ -114,19 +114,19 @@ export default function KitchenSink() {
 
       <Case
         title="ProvenanceNotice"
-        note="Designed for incomplete as the normal case — it is the only state that occurs today, and complete is unreachable until input pinning lands. When it does, complete becomes silent."
+        note="complete is the normal case since input pinning landed and stays silent; incomplete is the one worth interrupting for. Both rendered here so the silent case is visibly silent."
       >
         <Bilingual>
           {(locale) => (
             <div className="grid gap-3">
               <ProvenanceNotice provenance={PROVENANCE_INCOMPLETE} locale={locale} />
               <ProvenanceNotice provenance={PROVENANCE_COMPLETE} locale={locale} />
-              <dl className="grid grid-cols-[110px_minmax(0,1fr)] gap-2 text-[12.5px]">
-                <dt className="text-muted-foreground">Inputs</dt>
+              <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2 text-[12.5px]">
+                <dt className="text-muted-foreground whitespace-nowrap">{UI[locale].inputsLabel}</dt>
                 <dd>
                   <ProvenanceValue provenance={PROVENANCE_INCOMPLETE} locale={locale} />
                 </dd>
-                <dt className="text-muted-foreground">Inputs (pinned)</dt>
+                <dt className="text-muted-foreground whitespace-nowrap">{UI[locale].inputsPinnedLabel}</dt>
                 <dd>
                   <ProvenanceValue provenance={PROVENANCE_COMPLETE} locale={locale} />
                 </dd>

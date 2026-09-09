@@ -62,6 +62,21 @@ export const SEVERITY_NEEDS_LABEL: Record<Severity, boolean> = {
 export const REVIEW_INCOMPLETE_COLOR = "#7c3aed";
 
 /**
+ * Run input provenance. Amber, not red: incomplete provenance limits how much
+ * a result proves, it is not a failed check — and that is precisely the
+ * distinction the colour has to survive.
+ *
+ * Validated on the light surface: contrast 7.0:1, worst adjacent pair ΔE 13.0
+ * (deuteranopia) and 36.3 (normal vision), both against `fail`/`critical`.
+ *
+ * Replaces the literal #9a3412 this shipped as. That value sat ΔE 2.2 from
+ * `fail` #9f1239 under deuteranopia — one colour, for roughly 1 in 12 men, for
+ * the two states a reader most needs to tell apart. Do not revert it toward
+ * orange-red without re-running the deutan pair check against OUTCOME_COLOR.
+ */
+export const PROVENANCE_COLOR = "#6f4f00";
+
+/**
  * Spec outcomes. `not_applicable` is a deliberate neutral: it means "this rule
  * did not apply here", which is an absence rather than a result, and it must
  * never read as a pass. It is excluded from the chroma gate for that reason.

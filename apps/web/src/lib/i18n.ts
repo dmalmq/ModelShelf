@@ -97,6 +97,8 @@ export const UI = {
     provenanceTitle: "入力モデルの来歴: 未確定",
     provenanceShort: "再構成 — 未固定",
     provenancePinned: "固定済み",
+    inputsLabel: "入力モデル",
+    inputsPinnedLabel: "入力モデル(固定済み)",
   },
   en: {
     noFindingsOfLevel: (levels: string) => `No ${levels} findings in this delivery.`,
@@ -111,6 +113,8 @@ export const UI = {
     provenanceTitle: "Inputs reconstructed, not pinned",
     provenanceShort: "Reconstructed — not pinned",
     provenancePinned: "Pinned",
+    inputsLabel: "Inputs",
+    inputsPinnedLabel: "Inputs (pinned)",
   },
 } satisfies Record<Locale, Record<string, string | ((n: never) => string)>>;
 

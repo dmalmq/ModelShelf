@@ -32,10 +32,17 @@ interface Rung {
  * evaluated check passed: a delivery where nothing failed and two regulatory
  * checks could not be evaluated is not a clean delivery, and a ladder that
  * omitted it would report one.
+ *
+ * The prop is deliberately tri-state, and it does not default to zero.
+ * `undefined` means the caller did not measure undecided results, so the rung
+ * is omitted entirely; `0` means the caller measured none, so the rung joins
+ * the absent line and the ladder states it. Defaulting to zero would make an
+ * uninformed caller publish "no undecided findings" — the exact claim this
+ * component exists to prevent.
  */
 export function SeverityLadder({
   bands,
-  incompleteCount = 0,
+  incompleteCount,
   locale = DEFAULT_LOCALE,
 }: {
   bands: LadderBand[];
@@ -53,7 +60,9 @@ export function SeverityLadder({
         objectCount: band?.objectCount ?? 0,
       };
     }),
-    { level: "review_incomplete", findingCount: incompleteCount, objectCount: null },
+    ...(incompleteCount === undefined
+      ? []
+      : [{ level: "review_incomplete" as FindingLevel, findingCount: incompleteCount, objectCount: null }]),
   ];
 
   const present = rungs.filter((r) => r.findingCount > 0);

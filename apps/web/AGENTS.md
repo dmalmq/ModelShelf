@@ -61,11 +61,17 @@ it looks right.
 3. **Not applicable is never folded into pass.** It is an absence, not a result. 19 of 36
    results on the demo delivery; folding it would roughly double the apparent pass rate.
 4. **Undecided is never green and never hidden**, even when every evaluated check passed.
+   `SeverityLadder`'s `incompleteCount` is tri-state for this reason: `undefined` omits the
+   rung, `0` states there were none. It does not default to zero — a component that has not
+   been told cannot claim "no undecided findings".
 5. **Colour always has a textual equivalent** — a ticket 15 acceptance criterion.
 6. **The viewer paints at most three classes, one by default.** Passing objects are never
    painted; pass is the absence of highlight.
-7. **Provenance: design for `incomplete` as the normal case.** It is the only status that
-   occurs today; `complete` is unreachable until input pinning lands in ticket 06.
+7. **Provenance: `complete` is the normal case and the silent one.** Input pinning landed in
+   ticket 06, so `services/checker/src/run.rs` marks every new run `complete` and records its
+   exact revisions in `run_models`. `incomplete` means a historical run from before pinning,
+   or one whose inputs could not be proven — design it as the state worth interrupting for,
+   not as the default. Do not write fixtures or copy that treat `complete` as unreachable.
 
 ## Gotchas that cost real time
 
