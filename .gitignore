@@ -21,3 +21,6 @@ omp-session-*.html
 *.tsbuildinfo
 next-env.d.ts
 .DS_Store
+
+# Rendered design mocks — regenerated on demand, never a source of truth
+.design/**/shot-*.png

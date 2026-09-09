@@ -6,30 +6,21 @@
 // the designs differ in presentation, never in facts.
 
 import type { ChangeKind, Severity, SpecOutcome } from "@/lib/types";
+import {
+  CHANGE_LABEL as I18N_CHANGE,
+  OUTCOME_LABEL as I18N_OUTCOME,
+  SEVERITY_LABEL as I18N_SEVERITY,
+} from "@/lib/i18n";
 
-export const SEVERITY_LABEL_JA: Record<Severity, string> = {
-  critical: "重大",
-  high: "高",
-  medium: "中",
-  advisory: "参考",
-};
-
-export const OUTCOME_LABEL_JA: Record<SpecOutcome, string> = {
-  pass: "合格",
-  fail: "不合格",
-  not_applicable: "対象外",
-  review_incomplete: "未判定",
-};
-
-export const CHANGE_LABEL_JA: Record<ChangeKind, string> = {
-  added: "追加",
-  removed: "削除",
-  unchanged: "変更なし",
-  moved: "移動",
-  shape_changed: "形状変更",
-  properties_changed: "属性変更",
-  mixed: "複合",
-};
+/**
+ * Deprecated aliases. Product copy moved to `lib/i18n.ts`, which carries both
+ * languages; a fixtures file is the wrong home for strings that ship. These
+ * remain so the design-exploration routes keep working — new code should import
+ * `SEVERITY_LABEL[locale]` from `@/lib/i18n` instead.
+ */
+export const SEVERITY_LABEL_JA = I18N_SEVERITY.ja;
+export const OUTCOME_LABEL_JA = I18N_OUTCOME.ja;
+export const CHANGE_LABEL_JA = I18N_CHANGE.ja;
 
 export const PROJECT = {
   name: "BLCJ S1000 標準モデル棟",
@@ -301,5 +292,5 @@ export const OBJECT_CHANGES: MockObjectChange[] = [
 export const PROVENANCE = {
   status: "incomplete" as const,
   reason:
-    "この実行の入力モデルは現在の納品メンバーシップから再構成されています。ピン留めされた入力の記録はまだ実装されていないため、表示中のモデルが当時の実入力であることは証明されていません。",
+    "この実行は入力のピン留めが実装される前のものです。入力モデルは現在の納品メンバーシップから再構成されているため、表示中のモデルが当時の実入力であることは証明されていません。",
 };

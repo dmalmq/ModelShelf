@@ -62,9 +62,18 @@ names (`Rebro_PartsData.用途`, `外径[mm]`), object names (`SD-04 片開き`)
 (`電気.ケーブルラック`) — and reviewers cross-reference against drawing legends and
 schedules that live outside the IFC.
 
-The interface is **bilingual and switchable** (Japanese / English). Both are first-class:
-the same reviewer may work in Japanese and present to an English-speaking stakeholder.
-Every label must survive roughly 1.6× length variance between the two.
+The interface is **bilingual and switchable, with Japanese as the default**. English is a
+first-class alternative rather than a fallback: the same reviewer may work in Japanese and
+present the result to an English-speaking stakeholder.
+
+Consequences that bind all UI work:
+
+- Every label must survive roughly 1.6× length variance between the two, so fixed-width
+  label columns are a defect. Size layout tracks to content.
+- `text-transform` and negative letter-spacing are Latin-only devices. They do nothing to
+  kanji, so any hierarchy resting on them collapses silently in the default language.
+  Hierarchy comes from size, weight and ink colour.
+- 11px is a Latin floor, not a CJK one. Nothing in the UI goes below 12px.
 
 ## Capabilities and Constraints
 

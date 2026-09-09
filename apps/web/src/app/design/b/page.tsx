@@ -148,7 +148,7 @@ export default function DesignB() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <SeverityLadder bands={bands} />
+            <SeverityLadder bands={bands} incompleteCount={RUN.incompleteCount} />
           </CardContent>
         </Card>
 
