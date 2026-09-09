@@ -25,16 +25,24 @@
 // record — with invalid bytes and an empty model proving honest failure and
 // empty-geometry states along the way. No mocked checker or viewer results.
 //
+// `--scenario comparisons` proves revision comparison with explicit match
+// confidence (ticket 13): two MEP sources in one delivery never cross-match,
+// every controlled A/B change in `packs/demo/fixtures` appears with correct
+// source/revision and confidence, pagination reassembles deterministically,
+// legacy rows fail loudly with `fingerprint_profile_mismatch`, and
+// re-uploading the same bytes appends a new revision without touching history.
+//
 // Usage: node scripts/verify-api.mjs --scenario revisions
 //        node scripts/verify-api.mjs --scenario worker-failure
 //        node scripts/verify-api.mjs --scenario checks
 //        node scripts/verify-api.mjs --scenario first-loop
+//        node scripts/verify-api.mjs --scenario comparisons
 
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { readFile as readFileAsync } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { BIN_PATH, REPO_ROOT, buildBinary, createChecker, freePort, runCli, stopProcess, waitForHealth } from "./lib/checker-harness.mjs";
@@ -47,8 +55,8 @@ const FIXTURES_IDS = join(REPO_ROOT, "packs", "demo", "fixtures.ids");
 function requireScenario() {
   const flagIndex = process.argv.indexOf("--scenario");
   const scenario = flagIndex >= 0 ? process.argv[flagIndex + 1] : undefined;
-  if (scenario !== "revisions" && scenario !== "worker-failure" && scenario !== "checks" && scenario !== "first-loop") {
-    console.error(`usage: node scripts/verify-api.mjs --scenario revisions|worker-failure|checks|first-loop (got ${scenario ?? "<none>"})`);
+  if (scenario !== "revisions" && scenario !== "worker-failure" && scenario !== "checks" && scenario !== "first-loop" && scenario !== "comparisons") {
+    console.error(`usage: node scripts/verify-api.mjs --scenario revisions|worker-failure|checks|first-loop|comparisons (got ${scenario ?? "<none>"})`);
     process.exit(2);
   }
   return scenario;
@@ -299,6 +307,309 @@ async function runRevisionsScenarioTop(runDir, check, log) {
     rmSync(dataDir, { recursive: true, force: true });
   }
 }
+
+// ---------------------------------------------------------------------------
+// scenario: comparisons (ticket 13)
+// ---------------------------------------------------------------------------
+
+const COMPARISONS_BASE_IFC = join(REPO_ROOT, "packs", "demo", "fixtures", "base.ifc");
+const COMPARISONS_HEAD_IFC = join(REPO_ROOT, "packs", "demo", "fixtures", "head.ifc");
+const COMPARISONS_ORACLE = join(REPO_ROOT, "packs", "demo", "fixtures", "oracle.json");
+
+const DUMP_OBJECTS_PY = `import sqlite3, json, sys
+db, rev = sys.argv[1], sys.argv[2]
+con = sqlite3.connect("file:%s?mode=ro" % db, uri=True)
+rows = con.execute("SELECT ref_object_id, express_id, profile_version, profile_id, fp_properties, fp_placement, fp_shape, fp_combined FROM objects WHERE model_id = ? ORDER BY express_id", (rev,)).fetchall()
+print(json.dumps([{"object_id": r[0], "express_id": r[1], "profile_version": r[2], "profile_id": r[3], "fp_properties": r[4], "fp_placement": r[5], "fp_shape": r[6], "fp_combined": r[7]} for r in rows]))`;
+
+const INSERT_LEGACY_PY = `import sqlite3, sys, datetime
+db, src, rev = sys.argv[1], sys.argv[2], sys.argv[3]
+now = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+con = sqlite3.connect(db)
+con.execute("INSERT INTO model_revisions (id, source_model_id, filename, content_sha256, byte_size, schema_label, entity_count, product_count, length_to_metre, storage_path, header_json, parse_ms, uploaded_at, provenance) VALUES (?, ?, 'legacy.ifc', ?, 1, 'IFC4', 0, 0, 1.0, 'blobs/legacy', NULL, NULL, ?, 'complete')", (rev, src, "0" * 64, now))
+con.execute("INSERT INTO objects (id, model_id, express_id, global_id, ifc_type, name, placement_json, fp_properties, fp_placement, fp_shape, fp_combined, ref_object_id) VALUES ('legacy-obj-1', ?, 1, 'legacy-gid', 'IfcWall', 'LegacyWall', NULL, 'p', 'l', 's', 'c', 'occ_legacy')", (rev,))
+con.commit()
+print("inserted")`;
+
+function runPython(dbPath, script, args = []) {
+  const res = spawnSync("python3", ["-c", script, dbPath, ...args], { encoding: "utf8" });
+  if (res.status !== 0) throw new Error(`python3 failed: ${res.stderr}`);
+  return res.stdout;
+}
+
+function comparisonsCargo() {
+  const rustupCargo = join(homedir(), ".cargo", "bin", "cargo");
+  return process.env.CARGO ?? (existsSync(rustupCargo) ? rustupCargo : "cargo");
+}
+
+async function runComparisonsScenario(runDir, check, log) {
+  const dataDir = mkdtempSync(join(tmpdir(), "modelshelf-verify-api-comparisons-"));
+  let server;
+  try {
+    const seed = runCli(["seed", "--data-dir", dataDir, "--packs-dir", dataDir, "--samples-dir", dataDir]);
+    check("seed succeeds", seed.status === 0, seed.stderr);
+
+    server = await startServer(dataDir);
+    const base = server.base;
+    const dbPath = join(dataDir, "modelshelf.db");
+
+    const mech = (await api(base, "POST", "/api/projects/demo-project/source-models", { name: "Mechanical", discipline: "MEP" })).json;
+    const plumb = (await api(base, "POST", "/api/projects/demo-project/source-models", { name: "Plumbing", discipline: "MEP" })).json;
+    check("two MEP sources created", Boolean(mech.id && plumb.id), JSON.stringify({ mech, plumb }));
+
+    const mechBase = await uploadFileAndAwait(base, mech.id, "mech-base.ifc", COMPARISONS_BASE_IFC);
+    const mechHead = await uploadFileAndAwait(base, mech.id, "mech-head.ifc", COMPARISONS_HEAD_IFC);
+    const plumbBase = await uploadFileAndAwait(base, plumb.id, "plumb-base.ifc", COMPARISONS_BASE_IFC);
+    check(
+      "all three fixture revisions ingest via the real worker",
+      mechBase.job?.status === "completed" && mechHead.job?.status === "completed" && plumbBase.job?.status === "completed",
+      JSON.stringify({ mechBase: mechBase.job?.status, mechHead: mechHead.job?.status, plumbBase: plumbBase.job?.status }),
+    );
+    const revBase = mechBase.job.modelRevisionId;
+    const revHead = mechHead.job.modelRevisionId;
+    const revPlumb = plumbBase.job.modelRevisionId;
+
+    // --- ingest stores the example's digests (ticket 13, unit 3) ---
+    const attemptDir = join(dataDir, "jobs", mechBase.enqueued.json.id, "attempt-0");
+    const manifest = JSON.parse(readFileSync(join(attemptDir, "manifest.json"), "utf8"));
+    check(
+      "the real attempt carries semantic + geometry artifacts",
+      Boolean(manifest.artifacts?.semantic?.path && manifest.artifacts?.geometry?.path),
+      JSON.stringify(Object.keys(manifest.artifacts ?? {})),
+    );
+    const fpOut = join(runDir, "fingerprints-example.jsonl");
+    const fpRun = spawnSync(
+      comparisonsCargo(),
+      ["run", "--quiet", "-p", "fingerprint", "--example", "fingerprint_worker", "--",
+        manifest.artifacts.semantic.path, manifest.artifacts.geometry.path, fpOut],
+      { cwd: REPO_ROOT, encoding: "utf8" },
+    );
+    check("fingerprint_worker example runs on the real attempt artifacts", fpRun.status === 0, fpRun.stderr);
+    const dbRows = JSON.parse(runPython(dbPath, DUMP_OBJECTS_PY, [revBase]));
+    const exampleById = new Map(
+      readFileSync(fpOut, "utf8").trim().split("\n").filter(Boolean).map((line) => {
+        const row = JSON.parse(line);
+        return [row.object_id, row];
+      }),
+    );
+    const digestMismatches = [];
+    for (const row of dbRows) {
+      const ex = exampleById.get(row.object_id);
+      const ok = ex
+        && row.profile_version === "fp-v1"
+        && row.profile_version === ex.profile_version
+        && /^[0-9a-f]{64}$/.test(row.profile_id ?? "")
+        && row.profile_id === ex.profile_id
+        && row.fp_properties === ex.fp_properties
+        && row.fp_placement === ex.fp_placement
+        && row.fp_shape === ex.fp_shape
+        && row.fp_combined === ex.fp_combined;
+      if (!ok) digestMismatches.push(row.object_id);
+    }
+    check(
+      `stored digests equal the example output for all ${dbRows.length} objects under fp-v1`,
+      dbRows.length === 141 && digestMismatches.length === 0 && exampleById.size === 141,
+      JSON.stringify({ stored: dbRows.length, example: exampleById.size, mismatches: digestMismatches.slice(0, 5) }),
+    );
+    log("ingest-digest-proof.json", { stored: dbRows.length, example: exampleById.size, mismatches: digestMismatches });
+
+    // --- deliveries: base vs head, plumbing reuses its revision ---
+    const delBase = (await api(base, "POST", "/api/projects/demo-project/deliveries", { label: "Compare base" })).json;
+    await api(base, "POST", `/api/deliveries/${delBase.id}/members`, { sourceModelId: mech.id, modelRevisionId: revBase });
+    await api(base, "POST", `/api/deliveries/${delBase.id}/members`, { sourceModelId: plumb.id, modelRevisionId: revPlumb });
+    const delHead = (await api(base, "POST", "/api/projects/demo-project/deliveries", { label: "Compare head" })).json;
+    await api(base, "POST", `/api/deliveries/${delHead.id}/members`, { sourceModelId: mech.id, modelRevisionId: revHead });
+    await api(base, "POST", `/api/deliveries/${delHead.id}/members`, { sourceModelId: plumb.id, modelRevisionId: revPlumb });
+
+    const diffUrl = (extra) => `/api/diff/models?baseDeliveryId=${delBase.id}&headDeliveryId=${delHead.id}${extra}`;
+    const diff = (await api(base, "GET", diffUrl("&limit=5000"))).json;
+    log("diff-unpaged.json", diff);
+    check("two pairs, one per source model", diff.pairs?.length === 2, JSON.stringify(diff.pairs?.length));
+    const bySource = new Map(diff.pairs.map((p) => [p.sourceModelId, p]));
+    check(
+      "pairs are keyed by source membership — two MEP sources never cross-match",
+      bySource.has(mech.id) && bySource.has(plumb.id)
+        && bySource.get(mech.id).sourceModelName === "Mechanical"
+        && bySource.get(plumb.id).sourceModelName === "Plumbing",
+      JSON.stringify(diff.pairs.map((p) => ({ sourceModelId: p.sourceModelId, sourceModelName: p.sourceModelName }))),
+    );
+
+    const plumbPair = bySource.get(plumb.id);
+    const zeroed = plumbPair.summary
+      && Object.values(plumbPair.summary).every((v) => v === 0);
+    check(
+      "reused revision short-circuits: reusedRevision, empty changes, zeroed summary, same model id",
+      plumbPair.reusedRevision === true && plumbPair.total === 0 && plumbPair.changes.length === 0 && zeroed
+        && plumbPair.baseModelId === revPlumb && plumbPair.headModelId === revPlumb,
+      JSON.stringify({ reusedRevision: plumbPair.reusedRevision, total: plumbPair.total, summary: plumbPair.summary }),
+    );
+
+    const mechPair = bySource.get(mech.id);
+    check(
+      "mechanical pair compares distinct revisions",
+      mechPair.reusedRevision === false && mechPair.baseModelId === revBase && mechPair.headModelId === revHead,
+      JSON.stringify({ reusedRevision: mechPair.reusedRevision, base: mechPair.baseModelId, head: mechPair.headModelId }),
+    );
+    const nameOf = (c) => (c.head ?? c.base)?.name;
+    const ofKind = (kind) => mechPair.changes.filter((c) => c.kind === kind);
+    const sortedNames = (list) => list.map(nameOf).sort();
+    check(
+      "oracle group counts: added/removed/properties/shape/moved 3 each, no mixed",
+      mechPair.summary.added === 3 && mechPair.summary.removed === 3
+        && mechPair.summary.propertiesChanged === 3 && mechPair.summary.shapeChanged === 3
+        && mechPair.summary.moved === 3 && mechPair.summary.mixed === 0,
+      JSON.stringify(mechPair.summary),
+    );
+    check("added names match the oracle", JSON.stringify(sortedNames(ofKind("added"))) === JSON.stringify(["Added-0", "Added-1", "Added-2"]), JSON.stringify(sortedNames(ofKind("added"))));
+    check("removed names match the oracle", JSON.stringify(sortedNames(ofKind("removed"))) === JSON.stringify(["Removed-0", "Removed-1", "Removed-2"]), JSON.stringify(sortedNames(ofKind("removed"))));
+    check("properties_changed names match the oracle", JSON.stringify(sortedNames(ofKind("properties_changed"))) === JSON.stringify(["PropChange-0", "PropChange-1", "PropChange-2"]), JSON.stringify(sortedNames(ofKind("properties_changed"))));
+    check("shape_changed names match the oracle", JSON.stringify(sortedNames(ofKind("shape_changed"))) === JSON.stringify(["ShapeChange-0", "ShapeChange-1", "ShapeChange-2"]), JSON.stringify(sortedNames(ofKind("shape_changed"))));
+    check("moved names match the oracle", JSON.stringify(sortedNames(ofKind("moved"))) === JSON.stringify(["Moved-0", "Moved-1", "Moved-2"]), JSON.stringify(sortedNames(ofKind("moved"))));
+    check(
+      "property edits report REI30 -> REI60 before/after",
+      ofKind("properties_changed").every((c) => {
+        const row = c.propertyChanges.find((p) => p.pset === "Pset_WallCommon" && p.name === "FireRating");
+        return row && row.base === "REI30" && row.head === "REI60";
+      }),
+      JSON.stringify(ofKind("properties_changed").map((c) => c.propertyChanges)),
+    );
+    check(
+      "moves report ~0.5 m displacement",
+      ofKind("moved").every((c) => Math.abs(c.movedDistanceM - 0.5) < 1e-9),
+      JSON.stringify(ofKind("moved").map((c) => c.movedDistanceM)),
+    );
+    const rotated = mechPair.changes.filter((c) => (nameOf(c) ?? "").startsWith("Rotated-"));
+    log("rotated-behavior.json", rotated);
+    check(
+      "rotated walls assert actual behavior: origin-only measurement sees zero displacement (unchanged + sub-threshold note, recorded limitation)",
+      rotated.length === 3 && rotated.every((c) => c.kind === "unchanged" && c.confidence.kind === "exact"
+        && (c.movedDistanceM ?? -1) === 0 && c.notes.some((n) => n.includes("sub-threshold"))),
+      JSON.stringify(rotated.map((c) => ({ name: nameOf(c), kind: c.kind, confidence: c.confidence, movedDistanceM: c.movedDistanceM, notes: c.notes }))),
+    );
+    const ambiguous = mechPair.changes.filter((c) => ["Duplicate-A", "Duplicate-B", "EmptyGlobalId"].includes(nameOf(c)));
+    check(
+      "duplicate + empty GlobalIds are never exact",
+      ambiguous.length === 3 && ambiguous.every((c) => c.confidence.kind !== "exact"),
+      JSON.stringify(ambiguous.map((c) => ({ name: nameOf(c), confidence: c.confidence, notes: c.notes }))),
+    );
+    const spatial = mechPair.changes.filter((c) => ["Demo Building", "1F", "Demo Site"].includes(nameOf(c)));
+    check(
+      "regenerated spatial GlobalIds match as explicit heuristic candidates, never exact",
+      spatial.length === 3 && spatial.every((c) => c.kind === "unchanged" && c.confidence.kind === "heuristic"
+        && (c.base?.globalId ?? null) !== (c.head?.globalId ?? null)),
+      JSON.stringify(spatial.map((c) => ({ name: nameOf(c), base: c.base?.globalId, head: c.head?.globalId, confidence: c.confidence }))),
+    );
+    check(
+      "uncertain matches are counted: 2 duplicate + 1 empty + 3 regenerated-spatial",
+      mechPair.summary.uncertainMatches === 6,
+      JSON.stringify(mechPair.summary.uncertainMatches),
+    );
+    check(
+      "120 repeated walls stay unchanged",
+      ofKind("unchanged").filter((c) => (nameOf(c) ?? "").startsWith("Repeat-")).length === 120,
+      JSON.stringify(ofKind("unchanged").length),
+    );
+    check(
+      "every change side names its own revision (base→base, head→head)",
+      mechPair.changes.every((c) => (!c.base || c.base.revisionId === revBase) && (!c.head || c.head.revisionId === revHead)),
+      JSON.stringify(mechPair.changes.slice(0, 2)),
+    );
+    const allRefs = mechPair.changes.flatMap((c) => [c.base, c.head].filter(Boolean));
+    check(
+      "no mechanical change references the plumbing revision — sources never cross-match",
+      allRefs.length > 0 && allRefs.every((r) => r.revisionId !== revPlumb && r.objectId.startsWith("occ_")),
+      JSON.stringify({ refs: allRefs.length, sample: allRefs[0] }),
+    );
+
+    // --- pagination reassembles deterministically ---
+    const paged = [];
+    let pagedTotal = -1;
+    for (let offset = 0; ; offset += 25) {
+      const page = (await api(base, "GET", diffUrl(`&limit=25&offset=${offset}`))).json;
+      const pair = page.pairs.find((p) => p.sourceModelId === mech.id);
+      if (offset === 0) pagedTotal = pair.total;
+      paged.push(...pair.changes);
+      if (pair.changes.length < 25) break;
+    }
+    check(
+      "paged total matches the unpaged total",
+      pagedTotal === mechPair.total,
+      JSON.stringify({ pagedTotal, unpaged: mechPair.total }),
+    );
+    check(
+      "limit/offset pages reassemble to the unpaged order",
+      JSON.stringify(paged) === JSON.stringify(mechPair.changes),
+      JSON.stringify({ paged: paged.length, unpaged: mechPair.changes.length }),
+    );
+    const movedPage = (await api(base, "GET", diffUrl("&kind=moved&limit=5000"))).json.pairs.find((p) => p.sourceModelId === mech.id);
+    check(
+      "kind filter pages moved only with pre-page total",
+      movedPage.total === 3 && movedPage.changes.length === 3 && movedPage.changes.every((c) => c.kind === "moved"),
+      JSON.stringify({ total: movedPage.total, kinds: movedPage.changes.map((c) => c.kind) }),
+    );
+    const pastEnd = (await api(base, "GET", diffUrl("&limit=5&offset=10000"))).json.pairs.find((p) => p.sourceModelId === mech.id);
+    check(
+      "offset past the end returns empty changes with total intact",
+      pastEnd.changes.length === 0 && pastEnd.total === mechPair.total,
+      JSON.stringify({ changes: pastEnd.changes.length, total: pastEnd.total }),
+    );
+
+    // --- legacy rows fail loudly (profile mismatch), never as fake objects ---
+    const legacySrc = (await api(base, "POST", "/api/projects/demo-project/source-models", { name: "LegacySrc", discipline: "OTHER" })).json;
+    runPython(dbPath, INSERT_LEGACY_PY, [legacySrc.id, "legacy-rev-1"]);
+    const delLegacy = (await api(base, "POST", "/api/projects/demo-project/deliveries", { label: "Legacy drop" })).json;
+    await api(base, "POST", `/api/deliveries/${delLegacy.id}/members`, { sourceModelId: legacySrc.id, modelRevisionId: "legacy-rev-1" });
+    const delEmpty = (await api(base, "POST", "/api/projects/demo-project/deliveries", { label: "Empty drop" })).json;
+    const bad = await api(base, "GET", `/api/diff/models?baseDeliveryId=${delLegacy.id}&headDeliveryId=${delEmpty.id}&limit=5000`);
+    log("profile-mismatch.json", bad.json);
+    check(
+      "legacy-sentinel rows → 409 fingerprint_profile_mismatch naming recompute",
+      bad.status === 409 && bad.json?.error?.code === "fingerprint_profile_mismatch" && /re-uploading/.test(bad.json?.error?.message ?? ""),
+      JSON.stringify(bad),
+    );
+
+    // --- re-upload appends; history is never rewritten ---
+    const blobCountBefore = readdirSync(join(dataDir, "blobs")).length;
+    const reup = await uploadFileAndAwait(base, mech.id, "mech-base-reupload.ifc", COMPARISONS_BASE_IFC);
+    check("re-upload of identical bytes completes", reup.job?.status === "completed", JSON.stringify(reup.job?.status));
+    const revReup = reup.job.modelRevisionId;
+    check("re-upload mints a new revision id", revReup !== revBase, JSON.stringify({ revReup, revBase }));
+    check(
+      "identical bytes reuse the stored blob (content-addressed)",
+      readdirSync(join(dataDir, "blobs")).length === blobCountBefore,
+      JSON.stringify({ before: blobCountBefore, after: readdirSync(join(dataDir, "blobs")).length }),
+    );
+    const oldRows = JSON.parse(runPython(dbPath, DUMP_OBJECTS_PY, [revBase]));
+    const newRows = JSON.parse(runPython(dbPath, DUMP_OBJECTS_PY, [revReup]));
+    const oldByExpress = new Map(oldRows.map((r) => [r.express_id, r.fp_combined]));
+    const historyKept = newRows.length === oldRows.length
+      && newRows.every((r) => oldByExpress.get(r.express_id) === r.fp_combined)
+      && newRows.every((r) => r.profile_version === "fp-v1");
+    check(
+      "old rows keep old digests while the new revision carries current-profile digests (append-only)",
+      historyKept,
+      JSON.stringify({ old: oldRows.length, new: newRows.length }),
+    );
+    const delReup = (await api(base, "POST", "/api/projects/demo-project/deliveries", { label: "Reupload" })).json;
+    await api(base, "POST", `/api/deliveries/${delReup.id}/members`, { sourceModelId: mech.id, modelRevisionId: revReup });
+    const sameDiff = (await api(base, "GET", `/api/diff/models?baseDeliveryId=${delBase.id}&headDeliveryId=${delReup.id}&limit=5000`)).json;
+    const samePair = sameDiff.pairs.find((p) => p.sourceModelId === mech.id);
+    log("reupload-diff.json", samePair?.summary);
+    check(
+      "identical content across revisions diffs fully unchanged (no false adds/removes)",
+      samePair.reusedRevision === false && samePair.total === 141 && samePair.summary.unchanged === 141
+        && samePair.summary.added === 0 && samePair.summary.removed === 0,
+      JSON.stringify(samePair?.summary),
+    );
+  } finally {
+    if (server) {
+      log("comparisons-serve.log", server.getLog());
+      await stopProcess(server.child);
+    }
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+}
+
 
 // ---------------------------------------------------------------------------
 // scenario: worker-failure
@@ -904,7 +1215,7 @@ async function main() {
     ".omo",
     "evidence",
     "modelshelf-prototype",
-    scenario === "checks" ? "task-6" : scenario === "first-loop" ? "task-9" : "task-2",
+    scenario === "checks" ? "task-6" : scenario === "first-loop" ? "task-9" : scenario === "comparisons" ? "ticket-13" : "task-2",
   );
   mkdirSync(evidenceRoot, { recursive: true });
   const runDir = join(evidenceRoot, `run-${new Date().toISOString().replace(/[:.]/g, "-")}`);
@@ -920,6 +1231,8 @@ async function main() {
     await runWorkerFailureScenario(check, log);
   } else if (scenario === "first-loop") {
     await runFirstLoopScenario(runDir, check, log);
+  } else if (scenario === "comparisons") {
+    await runComparisonsScenario(runDir, check, log);
   } else {
     await runChecksScenario(runDir, check, log);
   }
