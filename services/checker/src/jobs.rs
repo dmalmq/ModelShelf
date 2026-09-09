@@ -14,7 +14,7 @@
 //! directory, a protocol version this build does not understand) is checked
 //! explicitly and fails the job rather than publishing anything.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::Duration;
@@ -29,6 +29,7 @@ use crate::db::{new_id, now_iso};
 use crate::dto::{job_json, IngestionJob, IngestionJobRow, JOB_SELECT};
 use crate::error::ApiError;
 use crate::state::AppState;
+use fingerprint::normalized::{FingerprintProfile, fingerprint_normalized};
 
 /// `{request}` is substituted with the absolute path to the job's request.json.
 /// Run through `sh -c`, same as any override, so there is exactly one code path.
@@ -181,8 +182,11 @@ async fn process_job(state: &AppState, job: &IngestionJobRow) {
     }
     let revision_id = new_id();
     match run_and_validate(state, job, &attempt_dir, &revision_id).await {
-        Ok((semantic, descriptor)) => {
-            if let Err(err) = publish_revision(state, job, &revision_id, &semantic, &descriptor).await {
+        Ok((semantic, descriptor, geometry_chunks)) => {
+            if let Err(err) =
+                publish_revision(state, job, &revision_id, &semantic, &descriptor, &geometry_chunks)
+                    .await
+            {
                 fail_job(&state.pool, &job.id, format!("failed to publish revision: {err:#}")).await;
             }
         }
@@ -293,6 +297,10 @@ pub(crate) struct WorkerArtifacts {
     pub descriptor: model_contracts::ModelDescriptor,
     pub outcomes: Vec<u8>,
     pub versions: WorkerVersions,
+    /// Validated geometry chunks keyed by `ObjectRef.objectId` (last chunk wins,
+    /// mirroring the `fingerprint_worker` example join). Empty when geometry was
+    /// not requested or the render capability is not available.
+    pub geometry_chunks: HashMap<String, model_contracts::GeometryChunk>,
 }
 
 
@@ -389,7 +397,14 @@ async fn run_and_validate(
     job: &IngestionJobRow,
     job_dir: &Path,
     revision_id: &str,
-) -> Result<(model_contracts::SemanticModel, model_contracts::ModelDescriptor), String> {
+) -> Result<
+    (
+        model_contracts::SemanticModel,
+        model_contracts::ModelDescriptor,
+        HashMap<String, model_contracts::GeometryChunk>,
+    ),
+    String,
+> {
     let blob_path = state.blob_path(&job.content_sha256);
     let output = invoke_worker(
         state,
@@ -405,7 +420,7 @@ async fn run_and_validate(
         },
     )
     .await?;
-    Ok((output.semantic, output.descriptor))
+    Ok((output.semantic, output.descriptor, output.geometry_chunks))
 }
 
 pub(crate) async fn invoke_worker(
@@ -623,7 +638,7 @@ pub(crate) async fn invoke_worker(
         }
     }
 
-    validate_render_artifacts(
+    let geometry_chunks = validate_render_artifacts(
         &spec.revision_id,
         &semantic,
         &descriptor,
@@ -631,8 +646,20 @@ pub(crate) async fn invoke_worker(
         render_bytes.as_deref(),
         geometry_bytes.as_deref(),
     )?;
+    // Last chunk wins. Chunks were already validated above (revision match,
+    // membership in the semantic artifact, record counts).
+    let mut chunk_map: HashMap<String, model_contracts::GeometryChunk> = HashMap::new();
+    for chunk in geometry_chunks {
+        chunk_map.insert(chunk.ref_.object_id.to_string(), chunk);
+    }
 
-    Ok(WorkerArtifacts { semantic, descriptor, outcomes, versions: manifest.versions })
+    Ok(WorkerArtifacts {
+        semantic,
+        descriptor,
+        outcomes,
+        versions: manifest.versions,
+        geometry_chunks: chunk_map,
+    })
 }
 
 fn validate_render_artifacts(
@@ -642,7 +669,7 @@ fn validate_render_artifacts(
     manifest: &Manifest,
     render_bytes: Option<&[u8]>,
     geometry_bytes: Option<&[u8]>,
-) -> Result<(), String> {
+) -> Result<Vec<model_contracts::GeometryChunk>, String> {
     let object_ids: HashSet<&str> = semantic
         .objects
         .iter()
@@ -650,7 +677,7 @@ fn validate_render_artifacts(
         .collect();
     match (&descriptor.artifacts.render, render_bytes, geometry_bytes) {
         (model_contracts::RenderCapability::Unsupported { .. } | model_contracts::RenderCapability::Absent | model_contracts::RenderCapability::Failed { .. }, None, None) => {
-            Ok(())
+            Ok(Vec::new())
         }
         (model_contracts::RenderCapability::Available { content_hash, .. }, Some(render_bytes), Some(geometry_bytes)) => {
             let Some(geometry_ref) = &manifest.artifacts.geometry else {
@@ -710,7 +737,7 @@ fn validate_render_artifacts(
                     ));
                 }
             }
-            Ok(())
+            Ok(chunks)
         }
         _ => Err("descriptor render capability does not match the emitted render artifacts".to_owned()),
     }
@@ -746,14 +773,14 @@ async fn verify_artifact(
 }
 
 /// Only reachable after `run_and_validate` succeeds. Publication uses the
-/// worker's artifacts alone. Fingerprints wait for normalized snapshots
-/// (ticket 12); missing hashes are stored as an explicit incomplete sentinel.
+/// worker's artifacts alone.
 async fn publish_revision(
     state: &AppState,
     job: &IngestionJobRow,
     revision_id: &str,
     semantic: &model_contracts::SemanticModel,
     descriptor: &model_contracts::ModelDescriptor,
+    geometry_chunks: &HashMap<String, model_contracts::GeometryChunk>,
 ) -> anyhow::Result<()> {
     let header_json = serde_json::json!({
         "format": descriptor.source_provenance.format.as_str(),
@@ -803,24 +830,22 @@ async fn publish_revision(
     .execute(&mut *tx)
     .await?;
 
-    const NO_FINGERPRINT: &str = "incomplete:waiting-for-normalized-snapshot";
+    let profile = FingerprintProfile::v1();
     for record in &semantic.objects {
         let native = record.native_ids.as_ref();
         let express_id = native.and_then(|ids| ids.express_id).map(|id| id.get() as i64).unwrap_or(0);
         let global_id = native.and_then(|ids| ids.global_id.as_ref()).map(|id| id.to_string());
         let object_id = new_id();
-        let (fp_properties, fp_placement, fp_shape, fp_combined) = (
-            NO_FINGERPRINT.to_owned(),
-            NO_FINGERPRINT.to_owned(),
-            NO_FINGERPRINT.to_owned(),
-            NO_FINGERPRINT.to_owned(),
-        );
+        let chunk = geometry_chunks.get(record.ref_.object_id.as_str());
+        let snapshot = fingerprint_normalized(record, chunk, &profile);
         let placement_json =
             record.placement.as_ref().and_then(|values| serde_json::to_string(values.as_slice()).ok());
         sqlx::query(
             "INSERT INTO objects (id, model_id, express_id, global_id, ifc_type, name,
                  predefined_type, storey, placement_json, fp_properties, fp_placement,
-                 fp_shape, fp_combined, ref_object_id) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14)",
+                 fp_shape, fp_combined, ref_object_id, profile_version, profile_id,
+                 canonical_properties, canonical_placement, canonical_shape)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19)",
         )
         .bind(&object_id)
         .bind(revision_id)
@@ -831,11 +856,16 @@ async fn publish_revision(
         .bind(Option::<String>::None)
         .bind(&record.storey)
         .bind(&placement_json)
-        .bind(&fp_properties)
-        .bind(&fp_placement)
-        .bind(&fp_shape)
-        .bind(&fp_combined)
+        .bind(&snapshot.fingerprints.properties)
+        .bind(&snapshot.fingerprints.placement)
+        .bind(&snapshot.fingerprints.shape)
+        .bind(&snapshot.fingerprints.combined)
         .bind(record.ref_.object_id.as_str())
+        .bind(&snapshot.profile_version)
+        .bind(&snapshot.profile_id)
+        .bind(&snapshot.canonical_properties)
+        .bind(&snapshot.canonical_placement)
+        .bind(&snapshot.canonical_shape)
         .execute(&mut *tx)
         .await?;
 

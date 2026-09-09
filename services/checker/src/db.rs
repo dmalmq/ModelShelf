@@ -19,7 +19,8 @@ pub const MIGRATION_0005: &str =
     include_str!("../migrations/0005_run_input_provenance_default.sql");
 pub const MIGRATION_0006: &str = include_str!("../migrations/0006_object_prop_record.sql");
 pub const MIGRATION_0007: &str = include_str!("../migrations/0007_run_models.sql");
-pub const SCHEMA_VERSION: i64 = 7;
+pub const MIGRATION_0008: &str = include_str!("../migrations/0008_diff_snapshots.sql");
+pub const SCHEMA_VERSION: i64 = 8;
 
 pub async fn open(data_dir: &std::path::Path) -> anyhow::Result<SqlitePool> {
     let pool = connect(data_dir).await?;
@@ -100,6 +101,9 @@ pub(crate) async fn migrate_with_fault(pool: &SqlitePool, fault: MigrationFault)
     }
     if current_version(pool).await? < 7 {
         apply_sql_version(pool, 7, MIGRATION_0007).await?;
+    }
+    if current_version(pool).await? < 8 {
+        apply_sql_version(pool, 8, MIGRATION_0008).await?;
     }
     Ok(())
 }
@@ -474,6 +478,44 @@ mod tests {
                 Some(model_contracts::express_id_to_object_id(model_id, 1)),
             );
         }
+    }
+    #[tokio::test]
+    async fn version_8_adds_diff_snapshot_columns_with_legacy_rows_undiffable() {
+        // Fresh path: the new columns exist after a clean migrate.
+        let (_dir, pool) = temp_pool().await;
+        migrate(&pool).await.expect("migrate");
+        assert_eq!(current_version(&pool).await.unwrap(), SCHEMA_VERSION);
+        let cols: Vec<String> = sqlx::query("SELECT name FROM pragma_table_info('objects')")
+            .fetch_all(&pool)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|row| row.get("name"))
+            .collect();
+        for col in [
+            "profile_version",
+            "profile_id",
+            "canonical_properties",
+            "canonical_placement",
+            "canonical_shape",
+        ] {
+            assert!(cols.contains(&col.to_string()), "objects must have {col}: {cols:?}");
+        }
+        // Legacy path: v1-seeded rows migrate with NULL profile columns — undiffable
+        // sentinels, never backfilled.
+        let (_dir2, legacy) = temp_pool().await;
+        ensure_schema_migrations_table(&legacy).await.unwrap();
+        apply_sql_version(&legacy, 1, MIGRATION_0001).await.unwrap();
+        let (model_a, _) = seed_legacy_v1_data(&legacy).await;
+        migrate_with_fault(&legacy, MigrationFault::None).await.expect("migrate");
+        assert_eq!(current_version(&legacy).await.unwrap(), SCHEMA_VERSION);
+        let profile_id: Option<String> =
+            sqlx::query_scalar("SELECT profile_id FROM objects WHERE model_id = ?1")
+                .bind(&model_a)
+                .fetch_one(&legacy)
+                .await
+                .unwrap();
+        assert_eq!(profile_id, None, "legacy rows must stay NULL (undiffable), never backfilled");
     }
 
     #[tokio::test]
