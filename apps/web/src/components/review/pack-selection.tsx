@@ -206,7 +206,7 @@ function latestPackVersionId(packs: Pack[], delivery: DeliveryDetail): string | 
   return [...first].sort((a, b) => b.version - a.version)[0].id;
 }
 
-async function postRun(deliveryId: string, packVersionId: string): Promise<RunDetail> {
+export async function postRun(deliveryId: string, packVersionId: string): Promise<RunDetail> {
   const response = await fetch("/api/runs", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -220,7 +220,7 @@ async function postRun(deliveryId: string, packVersionId: string): Promise<RunDe
 }
 
 /** Poll a fresh run to its terminal status; creation is synchronous but may lag. */
-async function pollRunDetail(runId: string): Promise<RunDetail> {
+export async function pollRunDetail(runId: string): Promise<RunDetail> {
   const deadline = Date.now() + 120_000;
   for (;;) {
     const response = await fetch(`/api/runs/${encodeURIComponent(runId)}`);
