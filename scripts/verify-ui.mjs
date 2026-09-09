@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 // Dispatcher for the browser verifier scenarios. Each scenario lives in its
-// own file so the delivery shelf and the findings review verify independently:
+// own file so the delivery shelf, the findings review, and the delivery
+// comparison verify independently:
 // --scenario deliveries runs verify-ui-deliveries.mjs (ticket 10),
-// --scenario findings runs verify-ui-findings.mjs (ticket 11).
+// --scenario findings runs verify-ui-findings.mjs (ticket 11),
+// --scenario comparisons runs verify-ui-comparisons.mjs (ticket 15).
 
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
@@ -16,10 +18,12 @@ const target =
     ? "verify-ui-findings.mjs"
     : scenario === "deliveries"
       ? "verify-ui-deliveries.mjs"
-      : null;
+      : scenario === "comparisons"
+        ? "verify-ui-comparisons.mjs"
+        : null;
 if (!target) {
   console.error(
-    `usage: node scripts/verify-ui.mjs --scenario findings|deliveries (got ${scenario ?? "<none>"})`,
+    `usage: node scripts/verify-ui.mjs --scenario findings|deliveries|comparisons (got ${scenario ?? "<none>"})`,
   );
   process.exit(2);
 }

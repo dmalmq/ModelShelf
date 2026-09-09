@@ -1,0 +1,203 @@
+{
+  "scenario": "comparisons",
+  "passed": true,
+  "checks": [
+    {
+      "label": "seed exits zero",
+      "passed": true,
+      "detail": "exit 0: seeded tenant=demo-tenant project=demo-project pack=demo-pack (+0 pack version(s))\n"
+    },
+    {
+      "label": "checker becomes healthy",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "comparison pack v1 is published",
+      "passed": true,
+      "detail": "{\"id\":\"906a372f-3e9d-401e-ba75-8ad084ddcdca\",\"packId\":\"demo-pack\",\"packName\":\"Demo Check Pack\",\"version\":1,\"idsSha256\":\"4b996db6de974e8f749b445fe2d06b6b44d1c68d91372df7f14fa44aa8d64d83\",\"notes\":null,\"specCount\":3,\"createdAt\":\"2026-09-09T03:50:14.726Z\"}"
+    },
+    {
+      "label": "compare source is created",
+      "passed": true,
+      "detail": "{\"id\":\"c03d9418-05b9-4559-a930-f56491f964e5\",\"projectId\":\"demo-project\",\"name\":\"Compare ARCH\",\"discipline\":\"ARCH\",\"createdAt\":\"2026-09-09T03:50:14.743Z\",\"revisions\":[]}"
+    },
+    {
+      "label": "base and head revisions ingest via the real worker",
+      "passed": true,
+      "detail": "{\"base\":\"completed\",\"head\":\"completed\"}"
+    },
+    {
+      "label": "base and head deliveries each complete a run",
+      "passed": true,
+      "detail": "700a14cd-3226-49e6-8566-5d9291fb3040 / 19cfd836-28de-4ad5-a79a-c51b99f56b51"
+    },
+    {
+      "label": "a head run under pack v2 stages the incomparable pair",
+      "passed": true,
+      "detail": "5a0b2443-c896-4267-9591-e2cd08b7e0fa"
+    },
+    {
+      "label": "every controlled change reports its oracle kind and confidence",
+      "passed": true,
+      "detail": "{\"added\":2,\"removed\":2,\"unchanged\":4,\"moved\":1,\"shapeChanged\":1,\"propertiesChanged\":2,\"mixed\":0,\"uncertainMatches\":3}"
+    },
+    {
+      "label": "uncertain matches are counted",
+      "passed": true,
+      "detail": "3"
+    },
+    {
+      "label": "finding diff groups resolved 1 / introduced 1 / persisting 1",
+      "passed": true,
+      "detail": "{\"resolved\":1,\"introduced\":1,\"persisting\":1}"
+    },
+    {
+      "label": "pack v2 head run refuses with 409 pack_version_mismatch",
+      "passed": true,
+      "detail": "{\"code\":\"pack_version_mismatch\",\"message\":\"runs used different pack versions; findings cannot be compared\"}"
+    },
+    {
+      "label": "production Next build succeeds",
+      "passed": true,
+      "detail": "exit 0"
+    },
+    {
+      "label": "production Next app serves the shelf",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "compare route renders from ?base= and ?head=",
+      "passed": true,
+      "detail": "http://127.0.0.1:41543/deliveries/compare?base=d239be2b-38b9-4b12-bc0f-5ebb3608bff2&head=4699119e-d419-4fcf-a17f-a7486df16cd4"
+    },
+    {
+      "label": "every controlled A/B change row is listed",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "every uncertain match carries a text badge, and only those",
+      "passed": true,
+      "detail": "3 badges against uncertainMatches 3"
+    },
+    {
+      "label": "every compare label carries its Japanese copy",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "base-side geometry loads in the viewer",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "viewer holds drawable geometry for the inline fixtures",
+      "passed": true,
+      "detail": "objects=9"
+    },
+    {
+      "label": "removed selection frames base-side geometry",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "selecting a change moves the camera to its geometry",
+      "passed": true,
+      "detail": "18.751,14.313,18.751 -> 1.764,1.573,1.764"
+    },
+    {
+      "label": "added viewed from base shows the head banner",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "kind filter narrows to the moved row",
+      "passed": true,
+      "detail": "1 rows"
+    },
+    {
+      "label": "filtering never moves the camera",
+      "passed": true,
+      "detail": "1.764,1.573,1.764 -> 1.764,1.573,1.764"
+    },
+    {
+      "label": "side toggle preserves filters",
+      "passed": true,
+      "detail": "kind=moved"
+    },
+    {
+      "label": "side toggle preserves selection",
+      "passed": true,
+      "detail": "1 selected rows"
+    },
+    {
+      "label": "added selection frames head-side geometry",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "removed viewed from head shows the base banner",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "banner jump returns to the side holding the geometry",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "uncertainty filter keeps exactly the heuristic rows",
+      "passed": true,
+      "detail": "3 rows"
+    },
+    {
+      "label": "a change row takes focus and activates from the keyboard",
+      "passed": true,
+      "detail": "focusedRow=true selected=1"
+    },
+    {
+      "label": "the same key clears the selection",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "duplicate GlobalId selects its own revision",
+      "passed": true,
+      "detail": "frame-state=framed"
+    },
+    {
+      "label": "the second duplicate selects independently",
+      "passed": true,
+      "detail": "変更なし / unchangedCompare ARCH · IfcWall · 推定照合 (score 1.00 · type+gid-duplicate)版 / Revision side名称 / NameGlobalIdExpress ID階 / Storey基準 / BaseD-bI6Bet0nV6S8bi3x"
+    },
+    {
+      "label": "finding deltas group into resolved/introduced/persisting",
+      "passed": true,
+      "detail": null
+    },
+    {
+      "label": "incomparable runs name their dimension with a rerun CTA",
+      "passed": true,
+      "detail": "dimension=pack_version_mismatch rerun=true"
+    },
+    {
+      "label": "zero console errors",
+      "passed": true,
+      "detail": ""
+    },
+    {
+      "label": "zero network errors",
+      "passed": true,
+      "detail": ""
+    }
+  ],
+  "ids": {
+    "packVersionId": "906a372f-3e9d-401e-ba75-8ad084ddcdca",
+    "baseDeliveryId": "d239be2b-38b9-4b12-bc0f-5ebb3608bff2",
+    "headDeliveryId": "4699119e-d419-4fcf-a17f-a7486df16cd4",
+    "headRunV2Id": "5a0b2443-c896-4267-9591-e2cd08b7e0fa"
+  },
+  "failures": 0
+}

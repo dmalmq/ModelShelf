@@ -1,0 +1,97 @@
+{
+  "baseRun": {
+    "id": "700a14cd-3226-49e6-8566-5d9291fb3040",
+    "projectId": "demo-project",
+    "deliveryId": "d239be2b-38b9-4b12-bc0f-5ebb3608bff2",
+    "deliveryLabel": "Compare base",
+    "packVersionId": "906a372f-3e9d-401e-ba75-8ad084ddcdca",
+    "packName": "Demo Check Pack",
+    "packVersion": 1,
+    "engineVersion": "ifctester/0.8.5",
+    "parserVersion": "ifcopenshell/0.8.5",
+    "status": "completed",
+    "error": null,
+    "startedAt": "2026-09-09T03:50:18.803Z",
+    "finishedAt": "2026-09-09T03:50:19.345Z",
+    "durationMs": 539,
+    "passCount": 1,
+    "failCount": 2,
+    "notApplicableCount": 0,
+    "incompleteCount": 0,
+    "score": 0.3333333333333333,
+    "findingCount": 2,
+    "failingObjectCount": 3
+  },
+  "headRun": {
+    "id": "19cfd836-28de-4ad5-a79a-c51b99f56b51",
+    "projectId": "demo-project",
+    "deliveryId": "4699119e-d419-4fcf-a17f-a7486df16cd4",
+    "deliveryLabel": "Compare head",
+    "packVersionId": "906a372f-3e9d-401e-ba75-8ad084ddcdca",
+    "packName": "Demo Check Pack",
+    "packVersion": 1,
+    "engineVersion": "ifctester/0.8.5",
+    "parserVersion": "ifcopenshell/0.8.5",
+    "status": "completed",
+    "error": null,
+    "startedAt": "2026-09-09T03:50:19.364Z",
+    "finishedAt": "2026-09-09T03:50:19.908Z",
+    "durationMs": 541,
+    "passCount": 1,
+    "failCount": 2,
+    "notApplicableCount": 0,
+    "incompleteCount": 0,
+    "score": 0.3333333333333333,
+    "findingCount": 2,
+    "failingObjectCount": 3
+  },
+  "resolved": 1,
+  "introduced": 1,
+  "persisting": 1,
+  "changes": [
+    {
+      "findingKey": "3765c49700a090e53a125693611ab12f",
+      "delta": "introduced",
+      "title": "Site declares an evacuation width",
+      "severity": "critical",
+      "categoryId": "safety",
+      "categoryLabel": "Safety",
+      "baseObjectCount": 0,
+      "headObjectCount": 1,
+      "introducedObjects": [
+        "I6Bet0nV6S82LyTzc8__eM"
+      ],
+      "resolvedObjects": []
+    },
+    {
+      "findingKey": "b2410491742c17e7e2e2bdaae17ddbaf",
+      "delta": "resolved",
+      "title": "Wall declares a load-bearing use",
+      "severity": "high",
+      "categoryId": "regulatory",
+      "categoryLabel": "Regulatory",
+      "baseObjectCount": 1,
+      "headObjectCount": 0,
+      "introducedObjects": [],
+      "resolvedObjects": [
+        "I6Bet0nV6S8_fm_LLns0vX"
+      ]
+    },
+    {
+      "findingKey": "2a46de0f45a3e55bed07492ed376c00b",
+      "delta": "persisting",
+      "title": "Wall declares a fire rating",
+      "severity": "high",
+      "categoryId": "regulatory",
+      "categoryLabel": "Regulatory",
+      "baseObjectCount": 2,
+      "headObjectCount": 2,
+      "introducedObjects": [
+        "I6Bet0nV6S8_fm_LCsSUd$"
+      ],
+      "resolvedObjects": [
+        "I6Bet0nV6S8_fm_LLn9jgu"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,365 @@
+{
+  "base": {
+    "id": "d239be2b-38b9-4b12-bc0f-5ebb3608bff2",
+    "projectId": "demo-project",
+    "label": "Compare base",
+    "deliveryDate": null,
+    "createdAt": "2026-09-09T03:50:18.778Z",
+    "finalizedAt": null,
+    "modelCount": 1,
+    "productCount": 10
+  },
+  "head": {
+    "id": "4699119e-d419-4fcf-a17f-a7486df16cd4",
+    "projectId": "demo-project",
+    "label": "Compare head",
+    "deliveryDate": null,
+    "createdAt": "2026-09-09T03:50:19.353Z",
+    "finalizedAt": null,
+    "modelCount": 1,
+    "productCount": 10
+  },
+  "pairs": [
+    {
+      "discipline": "ARCH",
+      "sourceModelId": "c03d9418-05b9-4559-a930-f56491f964e5",
+      "sourceModelName": "Compare ARCH",
+      "reusedRevision": false,
+      "baseModelId": "348b7fc4-9af6-4434-826b-25088a36f5f0",
+      "headModelId": "74d66fb2-9b5a-496b-b3c3-bfd481042e85",
+      "baseFilename": "cmp-base.ifc",
+      "headFilename": "cmp-head.ifc",
+      "summary": {
+        "added": 2,
+        "removed": 2,
+        "unchanged": 4,
+        "moved": 1,
+        "shapeChanged": 1,
+        "propertiesChanged": 2,
+        "mixed": 0,
+        "uncertainMatches": 3
+      },
+      "total": 12,
+      "changes": [
+        {
+          "kind": "shape_changed",
+          "confidence": {
+            "kind": "exact"
+          },
+          "base": {
+            "revisionId": "348b7fc4-9af6-4434-826b-25088a36f5f0",
+            "objectId": "occ_9a18c7a50a0bffe3",
+            "expressId": 38,
+            "globalId": "I6Bet0nV6S8_fm_L2q2SDT",
+            "ifcType": "IfcWall",
+            "name": "S-0",
+            "storey": null
+          },
+          "head": {
+            "revisionId": "74d66fb2-9b5a-496b-b3c3-bfd481042e85",
+            "objectId": "occ_f3055618e1a22be2",
+            "expressId": 38,
+            "globalId": "I6Bet0nV6S8_fm_L2q2SDT",
+            "ifcType": "IfcWall",
+            "name": "S-0",
+            "storey": null
+          },
+          "propertyChanges": [],
+          "movedDistanceM": 0,
+          "notes": []
+        },
+        {
+          "kind": "moved",
+          "confidence": {
+            "kind": "exact"
+          },
+          "base": {
+            "revisionId": "348b7fc4-9af6-4434-826b-25088a36f5f0",
+            "objectId": "occ_8b2a7ccd7dbb7743",
+            "expressId": 52,
+            "globalId": "I6Bet0nV6S8_fm_LOImoZp",
+            "ifcType": "IfcWall",
+            "name": "M-0",
+            "storey": null
+          },
+          "head": {
+            "revisionId": "74d66fb2-9b5a-496b-b3c3-bfd481042e85",
+            "objectId": "occ_213b46771823b569",
+            "expressId": 52,
+            "globalId": "I6Bet0nV6S8_fm_LOImoZp",
+            "ifcType": "IfcWall",
+            "name": "M-0",
+            "storey": null
+          },
+          "propertyChanges": [],
+          "movedDistanceM": 2,
+          "notes": []
+        },
+        {
+          "kind": "properties_changed",
+          "confidence": {
+            "kind": "exact"
+          },
+          "base": {
+            "revisionId": "348b7fc4-9af6-4434-826b-25088a36f5f0",
+            "objectId": "occ_94b34b726d4c2772",
+            "expressId": 134,
+            "globalId": "I6Bet0nV6S82LyTzc8__eM",
+            "ifcType": "IfcSite",
+            "name": "CompareSite",
+            "storey": null
+          },
+          "head": {
+            "revisionId": "74d66fb2-9b5a-496b-b3c3-bfd481042e85",
+            "objectId": "occ_b9b21ce43bbb2255",
+            "expressId": 133,
+            "globalId": "I6Bet0nV6S82LyTzc8__eM",
+            "ifcType": "IfcSite",
+            "name": "CompareSite",
+            "storey": null
+          },
+          "propertyChanges": [
+            {
+              "pset": "Pset_SiteCommon",
+              "name": "EvacuationWidth",
+              "base": "1800",
+              "head": null
+            }
+          ],
+          "movedDistanceM": 0,
+          "notes": []
+        },
+        {
+          "kind": "properties_changed",
+          "confidence": {
+            "kind": "exact"
+          },
+          "base": {
+            "revisionId": "348b7fc4-9af6-4434-826b-25088a36f5f0",
+            "objectId": "occ_474fd92440b2c875",
+            "expressId": 24,
+            "globalId": "I6Bet0nV6S8_fm_Ll3J$q2",
+            "ifcType": "IfcWall",
+            "name": "P-0",
+            "storey": null
+          },
+          "head": {
+            "revisionId": "74d66fb2-9b5a-496b-b3c3-bfd481042e85",
+            "objectId": "occ_d0943b82d058dcdd",
+            "expressId": 24,
+            "globalId": "I6Bet0nV6S8_fm_Ll3J$q2",
+            "ifcType": "IfcWall",
+            "name": "P-0",
+            "storey": null
+          },
+          "propertyChanges": [
+            {
+              "pset": "Pset_WallCommon",
+              "name": "FireRating",
+              "base": "REI30",
+              "head": "REI60"
+            }
+          ],
+          "movedDistanceM": 0,
+          "notes": []
+        },
+        {
+          "kind": "added",
+          "confidence": {
+            "kind": "none"
+          },
+          "base": null,
+          "head": {
+            "revisionId": "74d66fb2-9b5a-496b-b3c3-bfd481042e85",
+            "objectId": "occ_d3d2ae4e4f85ceb0",
+            "expressId": 66,
+            "globalId": "I6Bet0nV6S8_fm_LCsSUd$",
+            "ifcType": "IfcWall",
+            "name": "A-0",
+            "storey": null
+          },
+          "propertyChanges": [],
+          "movedDistanceM": null,
+          "notes": []
+        },
+        {
+          "kind": "added",
+          "confidence": {
+            "kind": "none"
+          },
+          "base": null,
+          "head": {
+            "revisionId": "74d66fb2-9b5a-496b-b3c3-bfd481042e85",
+            "objectId": "occ_68ccd6697ae703ad",
+            "expressId": 79,
+            "globalId": "I6Bet0nV6S8_fm_LCslR8_",
+            "ifcType": "IfcWall",
+            "name": "A-1",
+            "storey": null
+          },
+          "propertyChanges": [],
+          "movedDistanceM": null,
+          "notes": []
+        },
+        {
+          "kind": "removed",
+          "confidence": {
+            "kind": "none"
+          },
+          "base": {
+            "revisionId": "348b7fc4-9af6-4434-826b-25088a36f5f0",
+            "objectId": "occ_fcec6cd261f3e0f5",
+            "expressId": 66,
+            "globalId": "I6Bet0nV6S8_fm_LLn9jgu",
+            "ifcType": "IfcWall",
+            "name": "R-0",
+            "storey": null
+          },
+          "head": null,
+          "propertyChanges": [],
+          "movedDistanceM": null,
+          "notes": []
+        },
+        {
+          "kind": "removed",
+          "confidence": {
+            "kind": "none"
+          },
+          "base": {
+            "revisionId": "348b7fc4-9af6-4434-826b-25088a36f5f0",
+            "objectId": "occ_497ee08533d6154e",
+            "expressId": 79,
+            "globalId": "I6Bet0nV6S8_fm_LLns0vX",
+            "ifcType": "IfcWall",
+            "name": "R-1",
+            "storey": null
+          },
+          "head": null,
+          "propertyChanges": [],
+          "movedDistanceM": null,
+          "notes": []
+        },
+        {
+          "kind": "unchanged",
+          "confidence": {
+            "kind": "exact"
+          },
+          "base": {
+            "revisionId": "348b7fc4-9af6-4434-826b-25088a36f5f0",
+            "objectId": "occ_3d622d2389290350",
+            "expressId": 11,
+            "globalId": "I6Bet0nV6S8_fm_LGguAhB",
+            "ifcType": "IfcWall",
+            "name": "U-0",
+            "storey": null
+          },
+          "head": {
+            "revisionId": "74d66fb2-9b5a-496b-b3c3-bfd481042e85",
+            "objectId": "occ_615eba7d7505f832",
+            "expressId": 11,
+            "globalId": "I6Bet0nV6S8_fm_LGguAhB",
+            "ifcType": "IfcWall",
+            "name": "U-0",
+            "storey": null
+          },
+          "propertyChanges": [],
+          "movedDistanceM": 0,
+          "notes": []
+        },
+        {
+          "kind": "unchanged",
+          "confidence": {
+            "kind": "heuristic",
+            "score": 1,
+            "basis": "type+gid-duplicate"
+          },
+          "base": {
+            "revisionId": "348b7fc4-9af6-4434-826b-25088a36f5f0",
+            "objectId": "occ_cdbe8f5f9e5fd38a",
+            "expressId": 92,
+            "globalId": "I6Bet0nV6S8bi3xv_a6Q1t",
+            "ifcType": "IfcWall",
+            "name": "D-a",
+            "storey": null
+          },
+          "head": {
+            "revisionId": "74d66fb2-9b5a-496b-b3c3-bfd481042e85",
+            "objectId": "occ_294263469b0ef978",
+            "expressId": 93,
+            "globalId": "I6Bet0nV6S8bi3xv_a6Q1t",
+            "ifcType": "IfcWall",
+            "name": "D-a",
+            "storey": null
+          },
+          "propertyChanges": [],
+          "movedDistanceM": 0,
+          "notes": [
+            "duplicate GlobalId in base revision",
+            "duplicate GlobalId in head revision"
+          ]
+        },
+        {
+          "kind": "unchanged",
+          "confidence": {
+            "kind": "heuristic",
+            "score": 1,
+            "basis": "type+gid-duplicate"
+          },
+          "base": {
+            "revisionId": "348b7fc4-9af6-4434-826b-25088a36f5f0",
+            "objectId": "occ_dbdc9d6e221b0c2f",
+            "expressId": 106,
+            "globalId": "I6Bet0nV6S8bi3xv_a6Q1t",
+            "ifcType": "IfcWall",
+            "name": "D-b",
+            "storey": null
+          },
+          "head": {
+            "revisionId": "74d66fb2-9b5a-496b-b3c3-bfd481042e85",
+            "objectId": "occ_43be23eca135e16f",
+            "expressId": 107,
+            "globalId": "I6Bet0nV6S8bi3xv_a6Q1t",
+            "ifcType": "IfcWall",
+            "name": "D-b",
+            "storey": null
+          },
+          "propertyChanges": [],
+          "movedDistanceM": 0,
+          "notes": [
+            "duplicate GlobalId in base revision",
+            "duplicate GlobalId in head revision"
+          ]
+        },
+        {
+          "kind": "unchanged",
+          "confidence": {
+            "kind": "heuristic",
+            "score": 0.9999999999999999,
+            "basis": "type+shape+placement+properties+name"
+          },
+          "base": {
+            "revisionId": "348b7fc4-9af6-4434-826b-25088a36f5f0",
+            "objectId": "occ_3d8e492ff3a516d1",
+            "expressId": 120,
+            "globalId": null,
+            "ifcType": "IfcWall",
+            "name": "E-0",
+            "storey": null
+          },
+          "head": {
+            "revisionId": "74d66fb2-9b5a-496b-b3c3-bfd481042e85",
+            "objectId": "occ_1884dc02cecf0b48",
+            "expressId": 121,
+            "globalId": null,
+            "ifcType": "IfcWall",
+            "name": "E-0",
+            "storey": null
+          },
+          "propertyChanges": [],
+          "movedDistanceM": 0,
+          "notes": []
+        }
+      ]
+    }
+  ]
+}
