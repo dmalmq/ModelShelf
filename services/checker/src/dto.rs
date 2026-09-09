@@ -156,6 +156,19 @@ pub struct ObjectRowDb {
     /// snapshot rebuild) do not select it at all.
     #[sqlx(default)]
     pub ref_object_id: Option<String>,
+    /// Normalized fingerprint evidence (migration 0008). NULL `profile_id` marks a
+    /// legacy undiffable row. `#[sqlx(default)]` because older queries against this
+    /// row do not select these columns.
+    #[sqlx(default)]
+    pub profile_version: Option<String>,
+    #[sqlx(default)]
+    pub profile_id: Option<String>,
+    #[sqlx(default)]
+    pub canonical_properties: Option<String>,
+    #[sqlx(default)]
+    pub canonical_placement: Option<String>,
+    #[sqlx(default)]
+    pub canonical_shape: Option<String>,
 }
 
 #[derive(sqlx::FromRow)]
@@ -699,13 +712,14 @@ pub enum MatchConfidenceOut {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ObjectChangeRefOut {
+    pub revision_id: String,
+    pub object_id: String,
     pub express_id: i64,
     pub global_id: Option<String>,
     pub ifc_type: String,
     pub name: Option<String>,
     pub storey: Option<String>,
 }
-
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PropertyChangeOut {
@@ -744,6 +758,11 @@ pub struct DiffSummaryOut {
 #[serde(rename_all = "camelCase")]
 pub struct ModelPairDiffOut {
     pub discipline: String,
+    pub source_model_id: String,
+    pub source_model_name: String,
+    /// True when both deliveries point at the same revision: no comparison ran,
+    /// `changes` is empty and the summary is zeroed.
+    pub reused_revision: bool,
     pub base_model_id: Option<String>,
     pub head_model_id: Option<String>,
     pub base_filename: Option<String>,

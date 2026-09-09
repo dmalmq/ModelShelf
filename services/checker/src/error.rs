@@ -10,6 +10,7 @@ pub enum ErrorCode {
     BadRequest,
     DeliveryLocked,
     PackVersionMismatch,
+    FingerprintProfileMismatch,
     DuplicateDiscipline,
     ParseFailed,
     Internal,
@@ -22,6 +23,7 @@ impl ErrorCode {
             ErrorCode::BadRequest => "bad_request",
             ErrorCode::DeliveryLocked => "delivery_locked",
             ErrorCode::PackVersionMismatch => "pack_version_mismatch",
+            ErrorCode::FingerprintProfileMismatch => "fingerprint_profile_mismatch",
             ErrorCode::DuplicateDiscipline => "duplicate_discipline",
             ErrorCode::ParseFailed => "parse_failed",
             ErrorCode::Internal => "internal",
@@ -59,6 +61,17 @@ impl ApiError {
             StatusCode::CONFLICT,
             ErrorCode::PackVersionMismatch,
             "runs used different pack versions; findings cannot be compared",
+        )
+    }
+    pub fn fingerprint_profile_mismatch(expected: &str, actual: &str) -> Self {
+        ApiError::new(
+            StatusCode::CONFLICT,
+            ErrorCode::FingerprintProfileMismatch,
+            format!(
+                "fingerprint profile mismatch: expected {expected} but found {actual}; \
+                 recompute both revisions under one profile by re-uploading \
+                 (history is append-only; stored artifacts are never overwritten)"
+            ),
         )
     }
     pub fn duplicate_discipline(discipline: &str) -> Self {
