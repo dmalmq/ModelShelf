@@ -282,6 +282,53 @@ export interface RunDetail {
   inputProvenance: RunInputProvenance;
 }
 
+export type DecisionOutcome = "accept" | "reject" | "conditional_accept";
+
+export interface DecisionFindingEvidence {
+  id: string;
+  title: string;
+  severity: Severity;
+  categoryLabel: string;
+  objectCount: number;
+}
+
+export interface DecisionEvidence {
+  runId: string;
+  deliveryLabel: string;
+  packVersionId: string;
+  packName: string;
+  packVersion: number;
+  engineVersion: string;
+  parserVersion: string;
+  inputProvenance: RunInputProvenance;
+  incompleteCount: number;
+  citedFindings: DecisionFindingEvidence[];
+}
+
+export interface ReviewDecision {
+  id: string;
+  runId: string;
+  outcome: DecisionOutcome;
+  rationale: string;
+  citedFindingIds: string[];
+  createdAt: string;
+  supersedesDecisionId: string | null;
+  supersededBy: string | null;
+  evidence: DecisionEvidence;
+}
+
+export interface DecisionHistory {
+  current: ReviewDecision | null;
+  history: ReviewDecision[];
+}
+
+export interface CreateDecisionBody {
+  outcome: DecisionOutcome;
+  rationale: string;
+  citedFindingIds: string[];
+  supersedesDecisionId?: string;
+}
+
 export interface ObjectRow {
   id: string;
   modelId: string;

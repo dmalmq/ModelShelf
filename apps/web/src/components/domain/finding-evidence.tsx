@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Accordion,
   AccordionContent,
@@ -12,8 +14,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { MockFinding } from "@/lib/mock";
 import type { Finding } from "@/lib/types";
+import { FINDING_EVIDENCE_COPY, UI } from "@/lib/i18n";
+import { useLocale } from "../locale-provider";
 
 interface EvidenceObject {
   expressId: number;
@@ -24,8 +27,17 @@ interface EvidenceObject {
   actual: string | null;
 }
 
+interface FixtureFindingEvidence {
+  readonly requirement: string;
+  readonly expected: string | null;
+  readonly objectCount: number;
+  readonly objects: readonly EvidenceObject[];
+}
+
+type FindingEvidenceSource = Finding | FixtureFindingEvidence;
+
 /** Real findings use `sampleObjects`; the design fixture uses `objects`. */
-function normalize(finding: Finding | MockFinding): { objects: EvidenceObject[]; expected: string | null } {
+function normalize(finding: FindingEvidenceSource): { objects: readonly EvidenceObject[]; expected: string | null } {
   if ("sampleObjects" in finding) {
     return {
       objects: finding.sampleObjects.map((object) => ({
@@ -56,36 +68,38 @@ function normalize(finding: Finding | MockFinding): { objects: EvidenceObject[];
  * A finding's review evidence: the rule, result counts, and concrete model
  * objects that a reviewer can inspect in the viewer.
  */
-export function FindingEvidence({ finding }: { finding: Finding | MockFinding }) {
+export function FindingEvidence({ finding }: { finding: FindingEvidenceSource }) {
+  const { locale } = useLocale();
+  const copy = FINDING_EVIDENCE_COPY[locale];
   const { objects, expected } = normalize(finding);
   const otherObjectCount = finding.objectCount - objects.length;
   return (
     <Accordion type="single" collapsible>
       <AccordionItem value="evidence" className="border-b-0">
         <AccordionTrigger className="py-1.5 text-xs">
-          根拠と対象オブジェクト
+          {copy.evidence}
         </AccordionTrigger>
         <AccordionContent>
           <dl className="space-y-1 text-xs">
             <div className="flex gap-2">
-              <dt className="w-10 shrink-0 text-muted-foreground">要件</dt>
+              <dt className="w-10 shrink-0 text-muted-foreground">{copy.requirement}</dt>
               <dd className="break-all font-mono">{finding.requirement}</dd>
             </div>
             <div className="flex gap-2">
-              <dt className="w-10 shrink-0 text-muted-foreground">期待値</dt>
-              <dd>{expected ?? "記載なし / Not stated"}</dd>
+              <dt className="w-10 shrink-0 text-muted-foreground">{copy.expected}</dt>
+              <dd>{expected ?? UI[locale].expectedAbsent}</dd>
             </div>
           </dl>
 
           <div className="mt-3">
-            <h3 className="mb-1.5 text-xs font-medium">対象オブジェクト</h3>
+            <h3 className="mb-1.5 text-xs font-medium">{copy.objects}</h3>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="h-7 px-2 text-xs">名称</TableHead>
-                  <TableHead className="h-7 px-2 text-xs">階</TableHead>
-                  <TableHead className="h-7 px-2 text-xs">モデル</TableHead>
-                  <TableHead className="h-7 px-2 text-xs">実測値</TableHead>
+                  <TableHead className="h-7 px-2 text-xs">{copy.name}</TableHead>
+                  <TableHead className="h-7 px-2 text-xs">{copy.storey}</TableHead>
+                  <TableHead className="h-7 px-2 text-xs">{copy.model}</TableHead>
+                  <TableHead className="h-7 px-2 text-xs">{copy.actual}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -108,7 +122,7 @@ export function FindingEvidence({ finding }: { finding: Finding | MockFinding })
             </Table>
             {otherObjectCount > 0 && (
               <p className="tnum mt-1.5 text-xs text-muted-foreground">
-                他{otherObjectCount}オブジェクト
+                {copy.other} {otherObjectCount}
               </p>
             )}
           </div>

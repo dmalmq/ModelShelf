@@ -1,0 +1,29 @@
+{
+  "run": {
+    "id": "9a50e981-8d5e-4dd8-9d05-666dbfcb9371",
+    "projectId": "demo-project",
+    "deliveryId": "40f0296c-9db4-432f-8cd8-9c494565a96a",
+    "deliveryLabel": "Findings review",
+    "packVersionId": "2547b6b2-1be6-4565-8364-342bc3d06998",
+    "packName": "Demo Check Pack",
+    "packVersion": 2,
+    "engineVersion": "ifctester/0.8.5",
+    "parserVersion": "ifcopenshell/0.8.5",
+    "status": "completed",
+    "error": null,
+    "startedAt": "2026-09-10T04:43:31.571Z",
+    "finishedAt": "2026-09-10T04:43:33.495Z",
+    "durationMs": 1922,
+    "passCount": 0,
+    "failCount": 9,
+    "notApplicableCount": 3,
+    "incompleteCount": 0,
+    "score": 0,
+    "findingCount": 3,
+    "failingObjectCount": 280
+  },
+  "bands": [
+    "critical",
+    "high"
+  ]
+}

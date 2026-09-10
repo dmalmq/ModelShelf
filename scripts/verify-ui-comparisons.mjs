@@ -563,21 +563,21 @@ async function main() {
 
   // Filters narrow the list; the toggle preserves filters and selection.
   const cameraBeforeFilter = await camera(page);
-  await page.getByLabel(/種別 \/ Kind/).selectOption("moved");
+  await page.locator("[data-compare-kind]").selectOption("moved");
   const movedRows = await page.locator("[data-change-row]").count();
   record("kind filter narrows to the moved row", movedRows === 1, `${movedRows} rows`);
   const cameraAfterFilter = await camera(page);
   record("filtering never moves the camera", cameraAfterFilter === cameraBeforeFilter,
     `${cameraBeforeFilter} -> ${cameraAfterFilter}`);
-  await page.getByRole("button", { name: /先端 \/ Head/ }).click();
+  await page.locator('[data-compare-side="head"]').click();
   await page.waitForFunction(
     () => window.__modelshelfViewer?.inspect().snapshot.models.every(({ status }) => status === "ready"),
     undefined,
     { timeout: 360_000 },
   );
-  const kindValue = await page.getByLabel(/種別 \/ Kind/).inputValue();
+  const kindValue = await page.locator("[data-compare-kind]").inputValue();
   record("side toggle preserves filters", kindValue === "moved", `kind=${kindValue}`);
-  await page.getByLabel(/種別 \/ Kind/).selectOption("all");
+  await page.locator("[data-compare-kind]").selectOption("all");
   // The kind-select re-render is async from the driver's view: poll for the
   // preserved selection instead of racing the commit with an immediate count.
   await page.waitForFunction(
@@ -594,18 +594,18 @@ async function main() {
   await rowByName(page, "R-1").click();
   await page.waitForSelector('[data-side-banner="base"]', { timeout: 30_000 });
   record("removed viewed from head shows the base banner", true);
-  await page.getByRole("button", { name: /基準で表示/ }).click();
+  await page.locator('[data-jump-side="base"]').click();
   await page.waitForSelector("[data-change-detail] [data-frame-state=\"framed\"]", { timeout: 30_000 });
   record("banner jump returns to the side holding the geometry", true);
 
   // Uncertain rows name their basis; duplicate GlobalIds select independently.
-  await page.getByLabel(/確度 \/ Confidence/).selectOption("uncertain");
+  await page.locator("[data-compare-confidence]").selectOption("uncertain");
   const uncertainRows = await page.locator("[data-change-row]").count();
   record("uncertainty filter keeps exactly the heuristic rows", uncertainRows === 3, `${uncertainRows} rows`);
 
   // Keyboard only: walk focus from the filters into the change list and
   // activate a row with Enter. No pointer events in this block.
-  await page.getByLabel(/確度 \/ Confidence/).focus();
+  await page.locator("[data-compare-confidence]").focus();
   let focusedRow = false;
   for (let step = 0; step < 30 && !focusedRow; step += 1) {
     await page.keyboard.press("Tab");
@@ -626,21 +626,21 @@ async function main() {
   const dupDetail = await page.locator("[data-change-detail]").textContent();
   record("the second duplicate selects independently", (dupDetail ?? "").includes("D-b"), (dupDetail ?? "").slice(0, 160));
   await page.screenshot({ path: join(runDir, "compare-uncertain.png"), fullPage: true });
-  await page.getByLabel(/確度 \/ Confidence/).selectOption("all");
+  await page.locator("[data-compare-confidence]").selectOption("all");
 
   // Finding deltas group with both runs selected; the v2 head run refuses.
-  await page.getByLabel(/基準ラン/).selectOption(runBase.run.id);
-  await page.getByLabel(/先端ラン/).selectOption(runHead.run.id);
+  await page.locator("#compare-base-run").selectOption(runBase.run.id);
+  await page.locator("#compare-head-run").selectOption(runHead.run.id);
   await page.waitForSelector("[data-finding-delta-list]", { timeout: 60_000 });
   snap("finding-panel.txt", await page.locator("[data-compare-inspector]").innerText());
   for (const delta of ["resolved", "introduced", "persisting"]) {
     await page.waitForSelector(`[data-finding-delta="${delta}"]`, { timeout: 30_000 });
   }
   record("finding deltas group into resolved/introduced/persisting", true);
-  await page.getByLabel(/先端ラン/).selectOption(runHeadV2.run.id);
+  await page.locator("#compare-head-run").selectOption(runHeadV2.run.id);
   await page.waitForSelector("[data-finding-incomparable]", { timeout: 30_000 });
   const dimension = await page.getAttribute("[data-incomparable-dimension]", "data-incomparable-dimension");
-  const rerunVisible = await page.getByRole("button", { name: /Rerun base/ }).isVisible();
+  const rerunVisible = await page.locator('[data-rerun="base"]').isVisible();
   record("incomparable runs name their dimension with a rerun CTA",
     dimension === "pack_version_mismatch" && rerunVisible, `dimension=${dimension} rerun=${rerunVisible}`);
 

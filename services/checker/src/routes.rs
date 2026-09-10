@@ -50,6 +50,10 @@ pub fn router() -> Router<AppState> {
         .route("/api/pack-versions/{pack_version_id}", get(get_pack_version))
         .route("/api/runs", post(crate::run::create_run))
         .route("/api/runs/{run_id}", get(crate::run::get_run))
+        .route(
+            "/api/runs/{run_id}/decisions",
+            get(crate::decisions::list_decisions).post(crate::decisions::create_decision),
+        )
         .route("/api/findings/{finding_id}/objects", get(list_finding_objects))
         .route("/api/diff/models", get(crate::diff::diff_models))
         .route("/api/diff/runs", get(crate::diff::diff_runs))

@@ -39,24 +39,6 @@ export const SEVERITY_COLOR: Record<Severity, string> = {
   advisory: "#0284c7",
 };
 
-export const SEVERITY_LABEL: Record<Severity, string> = {
-  critical: "Critical",
-  high: "High",
-  medium: "Medium",
-  advisory: "Advisory",
-};
-
-/**
- * `medium` sits at 2.45:1 against the light surface, below the 3:1 mark. The
- * relief rule applies: anything painted this colour carries a visible label or
- * appears in a table view. Consult this before using a severity swatch alone.
- */
-export const SEVERITY_NEEDS_LABEL: Record<Severity, boolean> = {
-  critical: false,
-  high: false,
-  medium: true,
-  advisory: false,
-};
 
 /** Objects the engine could not decide on. Never green, never counted as a pass. */
 export const REVIEW_INCOMPLETE_COLOR = "#7c3aed";
@@ -141,13 +123,3 @@ export const VIEWER_HIGHLIGHT = {
 
 /** Enforces the three-class ceiling above at the call site. */
 export const VIEWER_MAX_HIGHLIGHT_GROUPS = 3;
-
-/**
- * Discipline is deliberately not a hue.
- *
- * Severity already owns red, orange, amber and blue, and review-incomplete owns
- * purple. A discipline hue would compete with the only encoding that carries
- * risk — and discipline is a filter dimension, not a series compared by colour.
- * These neutral steps are for incidental fills; the label always accompanies them.
- */
-export const DISCIPLINE_NEUTRAL = ["#334155", "#64748b", "#a1aab8"] as const;

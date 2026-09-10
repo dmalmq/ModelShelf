@@ -5,7 +5,8 @@
 "use client";
 
 import { useState } from "react";
-import { CHANGE_LABEL, SEVERITY_LABEL } from "@/lib/i18n";
+import { useLocale } from "../locale-provider";
+import { CHANGE_LABEL, COMPARE_INSPECTOR_COPY as COPY, SEVERITY_LABEL, copy } from "@/lib/i18n";
 import { CHANGE_COLOR, SEVERITY_COLOR } from "@/lib/palette";
 import type {
   ChangeKind,
@@ -17,7 +18,6 @@ import type {
   RunDetail,
   RunSummary,
 } from "@/lib/types";
-import { copy } from "../review/review-i18n";
 import { pollRunDetail, postRun, runLabel } from "../review/pack-selection";
 import type { FindingIncomparableDimension } from "./compare-api";
 import { activeKeyOf, sideBannerFor } from "./compare-bridge";
@@ -30,20 +30,6 @@ import {
   type FindingStatus,
   type ModelDiffStatus,
 } from "./compare-state";
-
-const COPY = {
-  changesHeading: { ja: "モデル差分", en: "Model changes" },
-  findingsHeading: { ja: "指摘差分", en: "Finding changes" },
-  baseRunLabel: { ja: "基準ラン", en: "Base run" },
-  headRunLabel: { ja: "先端ラン", en: "Head run" },
-  selectRun: { ja: "ランを選択", en: "Select a run" },
-  uncertainBadge: { ja: "不確実", en: "Uncertain" },
-  movedDistance: { ja: "移動距離", en: "Moved" },
-  beforeValue: { ja: "変更前", en: "Before" },
-  afterValue: { ja: "変更後", en: "After" },
-  rerun: { ja: "再実行", en: "Rerun" },
-  rerunning: { ja: "実行中…", en: "Running…" },
-} as const;
 
 const KIND_ORDER: readonly ChangeKind[] = [
   "added",
@@ -101,26 +87,25 @@ export interface CompareInspectorProps {
 }
 
 export function CompareInspector(props: CompareInspectorProps): React.JSX.Element {
+  const { locale } = useLocale();
   const selected = findSelected(props.entries, props.selection);
   return (
     <div className="space-y-6" data-compare-inspector>
-      <section aria-label={copy(COPY.changesHeading, "ja")}>
-        <h2 className="text-sm font-semibold">
-          {copy(COPY.changesHeading, "ja")} / {copy(COPY.changesHeading, "en")}
-        </h2>
+      <section aria-label={copy(COPY.changesHeading, locale)}>
+        <h2 className="text-sm font-semibold">{copy(COPY.changesHeading, locale)}</h2>
         <ModelStateBlock status={props.modelStatus} error={props.modelError} />
         {props.modelStatus === "ready" && (
           <>
             <SummaryCounts summary={props.summary} filtered={props.entries.length} total={props.unfilteredCount} />
             {props.undrawable > 0 && (
               <p className="mt-2 text-xs text-muted-foreground" data-undrawable-count={props.undrawable}>
-                ジオメトリなしの変更 {props.undrawable}件 / {props.undrawable} changes without geometry
+                {locale === "ja" ? `ジオメトリなしの変更 ${props.undrawable}件` : `${props.undrawable} changes without geometry`}
               </p>
             )}
             {props.overflow.length > 0 && (
               <p className="mt-2 text-xs text-muted-foreground">
-                {props.overflow.map(({ kind, count }) => `${CHANGE_LABEL.ja[kind]} ${count}件`).join("・")}
-                は一覧のみ表示 / collapsed to the list
+                {props.overflow.map(({ kind, count }) => `${CHANGE_LABEL[locale][kind]} ${count}`).join(" · ")}
+                {locale === "ja" ? "件は一覧のみ表示" : " collapsed to the list"}
               </p>
             )}
             <ol className="mt-2 space-y-1.5">
@@ -153,21 +138,19 @@ export function CompareInspector(props: CompareInspectorProps): React.JSX.Elemen
         )}
       </section>
 
-      <section aria-label={copy(COPY.findingsHeading, "ja")}>
-        <h2 className="text-sm font-semibold">
-          {copy(COPY.findingsHeading, "ja")} / {copy(COPY.findingsHeading, "en")}
-        </h2>
+      <section aria-label={copy(COPY.findingsHeading, locale)}>
+        <h2 className="text-sm font-semibold">{copy(COPY.findingsHeading, locale)}</h2>
         <div className="mt-2 grid gap-2">
           <RunPicker
             id="compare-base-run"
-            label={copy(COPY.baseRunLabel, "ja")}
+            label={copy(COPY.baseRunLabel, locale)}
             runs={props.baseRuns}
             value={props.baseRunId}
             onChange={(runId) => props.onRunsChange(runId, props.headRunId)}
           />
           <RunPicker
             id="compare-head-run"
-            label={copy(COPY.headRunLabel, "ja")}
+            label={copy(COPY.headRunLabel, locale)}
             runs={props.headRuns}
             value={props.headRunId}
             onChange={(runId) => props.onRunsChange(props.baseRunId, runId)}
@@ -222,21 +205,19 @@ function ModelStateBlock({
   status: ModelDiffStatus;
   error: string | null;
 }): React.JSX.Element | null {
+  const { locale } = useLocale();
   if (status === "loading" || status === "idle") {
     return (
       <p className="mt-2 text-xs text-muted-foreground" role="status">
-        モデル差分を読み込み中 / Loading model diff…
+        {copy(COPY.loadingModel, locale)}
       </p>
     );
   }
   if (status === "profile_mismatch_409") {
     return (
       <div className="mt-2 border border-destructive/40 p-3 text-xs" data-profile-mismatch role="alert">
-        <p className="font-medium">指紋プロファイルが不一致 / Fingerprint profile mismatch</p>
-        <p className="mt-1 text-muted-foreground">
-          両版を同一プロファイルで再計算してください。履歴は追記専用のため、リビジョンの再アップロードで再計算されます。/
-          Recompute both revisions under one profile by re-uploading (history is append-only).
-        </p>
+        <p className="font-medium">{copy(COPY.profileMismatch, locale)}</p>
+        <p className="mt-1 text-muted-foreground">{copy(COPY.profileHint, locale)}</p>
         {error && <p className="mt-1 text-destructive">{error}</p>}
       </div>
     );
@@ -244,7 +225,7 @@ function ModelStateBlock({
   if (status === "failed") {
     return (
       <div className="mt-2 border border-destructive/40 p-3 text-xs" data-model-diff-failed role="alert">
-        <p className="font-medium">モデル差分を読み込めません / Model diff could not be loaded</p>
+        <p className="font-medium">{copy(COPY.modelFailed, locale)}</p>
         {error && <p className="mt-1 text-destructive">{error}</p>}
       </div>
     );
@@ -271,6 +252,7 @@ function SummaryCounts({
   filtered: number;
   total: number;
 }): React.JSX.Element | null {
+  const { locale } = useLocale();
   if (!summary) return null;
   const counts: Array<{ kind: ChangeKind; count: number }> = KIND_ORDER.map((kind) => ({
     kind,
@@ -286,13 +268,13 @@ function SummaryCounts({
             data-summary-kind={kind}
           >
             <span aria-hidden className="inline-block size-2 rounded-full" style={{ backgroundColor: CHANGE_COLOR[kind] }} />
-            {CHANGE_LABEL.ja[kind]} {count}件
+            {CHANGE_LABEL[locale][kind]} {count}
           </li>
         ))}
       </ul>
       {summary.uncertainMatches > 0 && (
         <p className="mt-1 text-xs text-muted-foreground" data-uncertain-count={summary.uncertainMatches}>
-          うち不確実な照合 {summary.uncertainMatches}件 / {summary.uncertainMatches} uncertain matches
+          {locale === "ja" ? `うち不確実な照合${summary.uncertainMatches}件` : `${summary.uncertainMatches} uncertain matches`}
         </p>
       )}
     </div>
@@ -310,6 +292,7 @@ function ChangeRow({
   drawn: boolean;
   onSelect: () => void;
 }): React.JSX.Element {
+  const { locale } = useLocale();
   const { change } = entry;
   const ref = change.head ?? change.base;
   return (
@@ -328,18 +311,18 @@ function ChangeRow({
       <span aria-hidden className="mt-1 inline-block size-2 shrink-0 rounded-full" style={{ backgroundColor: CHANGE_COLOR[change.kind] }} />
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-          <span className="font-medium">{CHANGE_LABEL.ja[change.kind]}</span>
-          <span className="truncate">{ref?.name ?? "(名称なし / unnamed)"}</span>
+          <span className="font-medium">{CHANGE_LABEL[locale][change.kind]}</span>
+          <span className="truncate">{ref?.name ?? `(${copy(COPY.unnamed, locale)})`}</span>
           {isUncertain(change) && (
             <span className="border border-border px-1 py-px" data-uncertain-badge>
-              {copy(COPY.uncertainBadge, "ja")}
+              {copy(COPY.uncertainBadge, locale)}
             </span>
           )}
         </span>
         <span className="mt-0.5 block truncate text-muted-foreground">
           {ref?.ifcType ?? "—"} · express #{ref?.expressId ?? "—"}
-          {ref?.globalId ? ` · ${ref.globalId}` : " · GlobalIdなし"}
-          {!drawn && change.kind !== "unchanged" ? " · 一覧のみ" : ""}
+          {ref?.globalId ? ` · ${ref.globalId}` : ` · ${copy(COPY.noGlobalId, locale)}`}
+          {!drawn && change.kind !== "unchanged" ? ` · ${copy(COPY.listedOnly, locale)}` : ""}
         </span>
       </span>
     </button>
@@ -357,6 +340,7 @@ function SelectedDetail({
   drawnKeys: readonly string[];
   onJumpSide: (side: CompareSide) => void;
 }): React.JSX.Element {
+  const { locale } = useLocale();
   const { change } = entry;
   const banner = sideBannerFor(change, side);
   const activeKey = activeKeyOf(change, side);
@@ -365,7 +349,7 @@ function SelectedDetail({
     <div className="mt-2 border border-border p-3 text-xs" data-change-detail data-change-kind={change.kind}>
       <p className="font-medium">
         <span aria-hidden className="mr-1.5 inline-block size-2 rounded-full" style={{ backgroundColor: CHANGE_COLOR[change.kind] }} />
-        {CHANGE_LABEL.ja[change.kind]} / {change.kind}
+        {CHANGE_LABEL[locale][change.kind]}
       </p>
       <p className="mt-1 text-muted-foreground">
         {entry.sourceModelName} · {(change.head ?? change.base)?.ifcType ?? "—"}
@@ -379,17 +363,17 @@ function SelectedDetail({
       <table className="mt-2 w-full border-collapse text-xs" data-change-identity>
         <thead>
           <tr className="text-left text-muted-foreground">
-            <th className="border border-border px-1.5 py-1 font-normal">版 / Revision side</th>
-            <th className="border border-border px-1.5 py-1 font-normal">名称 / Name</th>
+            <th className="border border-border px-1.5 py-1 font-normal">{copy(COPY.revisionSide, locale)}</th>
+            <th className="border border-border px-1.5 py-1 font-normal">{copy(COPY.name, locale)}</th>
             <th className="border border-border px-1.5 py-1 font-normal">GlobalId</th>
             <th className="border border-border px-1.5 py-1 font-normal">Express ID</th>
-            <th className="border border-border px-1.5 py-1 font-normal">階 / Storey</th>
+            <th className="border border-border px-1.5 py-1 font-normal">{copy(COPY.storey, locale)}</th>
           </tr>
         </thead>
         <tbody>
           {([
-            ["base", "基準 / Base", change.base],
-            ["head", "先端 / Head", change.head],
+            ["base", copy(COPY.base, locale), change.base],
+            ["head", copy(COPY.head, locale), change.head],
           ] as const).map(([sideKey, sideLabel, ref]) => (
             <tr key={sideKey} data-identity-side={sideKey}>
               <td className="border border-border px-1.5 py-1">{sideLabel}</td>
@@ -402,11 +386,11 @@ function SelectedDetail({
         </tbody>
       </table>
       {banner && (
-        <div className="mt-2 border border-amber-500/50 p-2" data-side-banner={banner.missingSide} role="status">
+        <div className="mt-2 border border-border border-l-4 border-l-primary bg-accent/30 p-2" data-side-banner={banner.missingSide} role="status">
           <p>
             {banner.reason === "added"
-              ? "この追加は先端版にのみ存在します / This addition exists only on the head side"
-              : "この削除は基準版にのみ存在します / This removal exists only on the base side"}
+              ? copy(COPY.addedSide, locale)
+              : copy(COPY.removedSide, locale)}
           </p>
           <button
             type="button"
@@ -414,28 +398,27 @@ function SelectedDetail({
             data-jump-side={banner.missingSide}
             onClick={() => onJumpSide(banner.missingSide)}
           >
-            {banner.missingSide === "head" ? "先端で表示 / Show in head" : "基準で表示 / Show in base"}
+            {banner.missingSide === "head" ? copy(COPY.showHead, locale) : copy(COPY.showBase, locale)}
           </button>
         </div>
       )}
       {activeKey && !banner && (
         <p className="mt-1 text-muted-foreground" data-frame-state={framed ? "framed" : "listed"}>
-          {framed ? "形状を選択中 / Geometry framed" : "一覧のみ / Listed without geometry"}
+          {framed ? copy(COPY.geometryFramed, locale) : copy(COPY.listedWithoutGeometry, locale)}
         </p>
       )}
       {change.movedDistanceM != null && (
         <p className="mt-1">
-          {copy(COPY.movedDistance, "ja")} {change.movedDistanceM.toFixed(3)} m / {copy(COPY.movedDistance, "en")}{" "}
-          {change.movedDistanceM.toFixed(3)} m
+          {copy(COPY.movedDistance, locale)} {change.movedDistanceM.toFixed(3)} m
         </p>
       )}
       {change.propertyChanges.length > 0 && (
         <table className="mt-2 w-full border-collapse text-xs" data-property-changes>
           <thead>
             <tr className="text-left text-muted-foreground">
-              <th className="border border-border px-1.5 py-1 font-normal">属性 / Property</th>
-              <th className="border border-border px-1.5 py-1 font-normal">{copy(COPY.beforeValue, "ja")}</th>
-              <th className="border border-border px-1.5 py-1 font-normal">{copy(COPY.afterValue, "ja")}</th>
+              <th className="border border-border px-1.5 py-1 font-normal">{copy(COPY.property, locale)}</th>
+              <th className="border border-border px-1.5 py-1 font-normal">{copy(COPY.beforeValue, locale)}</th>
+              <th className="border border-border px-1.5 py-1 font-normal">{copy(COPY.afterValue, locale)}</th>
             </tr>
           </thead>
           <tbody>
@@ -467,9 +450,10 @@ function UncertainText({
 }: {
   confidence: Extract<MatchConfidence, { kind: "heuristic" }>;
 }): React.JSX.Element {
+  const { locale } = useLocale();
   return (
     <span data-confidence="heuristic">
-      推定照合 (score {confidence.score.toFixed(2)} · {confidence.basis})
+      {locale === "ja" ? "推定照合" : "Heuristic match"} (score {confidence.score.toFixed(2)} · {confidence.basis})
     </span>
   );
 }
@@ -487,19 +471,20 @@ function RunPicker({
   value: string | null;
   onChange: (runId: string | null) => void;
 }): React.JSX.Element {
+  const { locale } = useLocale();
   return (
     <label className="grid gap-1 text-xs" htmlFor={id}>
       <span className="font-medium">{label}</span>
       <select
         id={id}
-        className="border border-border bg-background px-2 py-1.5 text-xs"
+        className="min-h-11 border border-border bg-background px-2 py-1.5 text-xs sm:min-h-8"
         value={value ?? ""}
         onChange={(event) => onChange(event.target.value === "" ? null : event.target.value)}
       >
-        <option value="">{`${copy(COPY.selectRun, "ja")} / ${copy(COPY.selectRun, "en")}`}</option>
+        <option value="">{copy(COPY.selectRun, locale)}</option>
         {runs.map((run) => (
           <option key={run.id} value={run.id}>
-            {runLabel(run)}
+            {runLabel(run, locale)}
           </option>
         ))}
       </select>
@@ -519,20 +504,21 @@ function FindingStateBlock(props: {
   headRuns: readonly RunSummary[];
   onRunCreated: (detail: RunDetail) => void;
 }): React.JSX.Element | null {
+  const { locale } = useLocale();
   if (props.status === "loading") {
     return (
       <p className="mt-2 text-xs text-muted-foreground" role="status">
-        指摘差分を読み込み中 / Loading finding diff…
+        {copy(COPY.loadingFinding, locale)}
       </p>
     );
   }
   if (props.status === "incomparable_409") {
     return (
       <div className="mt-2 border border-destructive/40 p-3 text-xs" data-finding-incomparable role="alert">
-        <p className="font-medium">比較できない設定差 / Incomparable checking settings</p>
+        <p className="font-medium">{copy(COPY.incomparable, locale)}</p>
         {props.dimension && (
           <p className="mt-1" data-incomparable-dimension={props.dimension}>
-            {DIMENSION_COPY[props.dimension].ja} / {DIMENSION_COPY[props.dimension].en} ({props.dimension})
+            {DIMENSION_COPY[props.dimension][locale]} ({props.dimension})
           </p>
         )}
         {props.error && <p className="mt-1 text-destructive">{props.error}</p>}
@@ -551,7 +537,7 @@ function FindingStateBlock(props: {
   if (props.status === "failed") {
     return (
       <div className="mt-2 border border-destructive/40 p-3 text-xs" data-finding-diff-failed role="alert">
-        <p className="font-medium">指摘差分を読み込めません / Finding diff could not be loaded</p>
+        <p className="font-medium">{copy(COPY.findingFailed, locale)}</p>
         {props.error && <p className="mt-1 text-destructive">{props.error}</p>}
       </div>
     );
@@ -559,7 +545,7 @@ function FindingStateBlock(props: {
   if (props.status === "idle") {
     return (
       <p className="mt-2 text-xs text-muted-foreground" data-no-runs-selected>
-        両方のランを選択してください / Select both runs to compare their findings.
+        {copy(COPY.selectBothRuns, locale)}
       </p>
     );
   }
@@ -567,6 +553,7 @@ function FindingStateBlock(props: {
 }
 
 function FindingDeltaList({ diff }: { diff: FindingDiffResponse }): React.JSX.Element {
+  const { locale } = useLocale();
   const byDelta = new Map<FindingDelta, FindingChange[]>();
   for (const change of diff.changes) {
     const bucket = byDelta.get(change.delta);
@@ -576,13 +563,14 @@ function FindingDeltaList({ diff }: { diff: FindingDiffResponse }): React.JSX.El
   return (
     <div className="mt-2 space-y-3" data-finding-delta-list>
       <p className="text-xs text-muted-foreground">
-        解消 {diff.resolved}件 · 新規 {diff.introduced}件 · 継続 {diff.persisting}件 / resolved {diff.resolved},
-        introduced {diff.introduced}, persisting {diff.persisting}
+        {locale === "ja"
+          ? `解消${diff.resolved}件 · 新規${diff.introduced}件 · 継続${diff.persisting}件`
+          : `${diff.resolved} resolved · ${diff.introduced} introduced · ${diff.persisting} persisting`}
       </p>
       {DELTA_ORDER.map((delta) => (
-        <section key={delta} aria-label={`${DELTA_COPY[delta].ja} / ${DELTA_COPY[delta].en}`} data-finding-delta={delta}>
+        <section key={delta} aria-label={DELTA_COPY[delta][locale]} data-finding-delta={delta}>
           <h3 className="text-xs font-semibold">
-            {DELTA_COPY[delta].ja} ({byDelta.get(delta)?.length ?? 0}) / {DELTA_COPY[delta].en}
+            {DELTA_COPY[delta][locale]} ({byDelta.get(delta)?.length ?? 0})
           </h3>
           <ul className="mt-1 space-y-1">
             {(byDelta.get(delta) ?? []).map((change) => (
@@ -594,11 +582,12 @@ function FindingDeltaList({ diff }: { diff: FindingDiffResponse }): React.JSX.El
                 />
                 <span className="min-w-0">
                   <span className="block font-medium">
-                    {SEVERITY_LABEL.ja[change.severity]} · {change.title}
+                    {SEVERITY_LABEL[locale][change.severity]} · {change.title}
                   </span>
                   <span className="block truncate text-muted-foreground">
-                    {change.categoryLabel} · 基準 {change.baseObjectCount}件 / 先端 {change.headObjectCount}件
-                  </span>
+                    {change.categoryLabel} · {copy(COPY.base, locale)} {change.baseObjectCount} ·{" "}
+                    {copy(COPY.head, locale)} {change.headObjectCount}
+                </span>
                 </span>
               </li>
             ))}
@@ -622,6 +611,7 @@ function RerunButtons(props: {
   headRuns: readonly RunSummary[];
   onRunCreated: (detail: RunDetail) => void;
 }): React.JSX.Element {
+  const { locale } = useLocale();
   const [busy, setBusy] = useState<"base" | "head" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -648,21 +638,25 @@ function RerunButtons(props: {
       <div className="flex gap-1.5">
         <button
           type="button"
-          className="border border-border px-2 py-1"
+          data-rerun="base"
+          className="min-h-11 border border-border px-2 py-1 sm:min-h-8"
           disabled={busy !== null}
           onClick={() => void rerun("base")}
         >
-          {busy === "base" ? copy(COPY.rerunning, "ja") : `${copy(COPY.rerun, "ja")} (基準)`} /{" "}
-          {busy === "base" ? copy(COPY.rerunning, "en") : `${copy(COPY.rerun, "en")} base`}
+          {busy === "base"
+            ? copy(COPY.rerunning, locale)
+            : `${copy(COPY.rerun, locale)} ${copy(COPY.base, locale)}`}
         </button>
         <button
           type="button"
-          className="border border-border px-2 py-1"
+          data-rerun="head"
+          className="min-h-11 border border-border px-2 py-1 sm:min-h-8"
           disabled={busy !== null}
           onClick={() => void rerun("head")}
         >
-          {busy === "head" ? copy(COPY.rerunning, "ja") : `${copy(COPY.rerun, "ja")} (先端)`} /{" "}
-          {busy === "head" ? copy(COPY.rerunning, "en") : `${copy(COPY.rerun, "en")} head`}
+          {busy === "head"
+            ? copy(COPY.rerunning, locale)
+            : `${copy(COPY.rerun, locale)} ${copy(COPY.head, locale)}`}
         </button>
       </div>
       {error && <p className="mt-1 text-destructive">{error}</p>}

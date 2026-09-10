@@ -8,7 +8,9 @@
 
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CHANGE_LABEL } from "@/lib/i18n";
+import { LocaleSwitcher } from "../domain/locale-switcher";
+import { useLocale } from "../locale-provider";
+import { CHANGE_LABEL, COMPARE_COPY } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
 import { fetchProject } from "@/lib/shelf-api";
 import type {
@@ -100,6 +102,8 @@ export function CompareScreen({
   baseDeliveryId: string;
   headDeliveryId: string;
 }): React.JSX.Element {
+  const { locale } = useLocale();
+  const copy = COMPARE_COPY[locale];
   const router = useRouter();
   const [state, dispatch] = useReducer(compareReducer, initialCompareState);
   const [viewer, setViewer] = useState<DeliveryViewerController | null>(null);
@@ -309,14 +313,14 @@ export function CompareScreen({
     return (
       <main className="grid min-h-screen place-items-center bg-background p-6">
         <div className="max-w-lg border border-border bg-card p-6">
-          <h1 className="text-xl font-semibold">比較を開けません / Comparison unavailable</h1>
+          <h1 className="text-xl font-semibold">{copy.unavailable}</h1>
           <p className="mt-2 text-sm text-destructive">{state.deliveryError}</p>
           <button
             type="button"
-            className="mt-5 border border-border px-3 py-1.5 text-sm"
+            className="mt-5 min-h-11 border border-border px-3 py-1.5 text-sm sm:min-h-8"
             onClick={() => window.location.reload()}
           >
-            再試行 / Retry
+            {copy.retry}
           </button>
         </div>
       </main>
@@ -327,10 +331,11 @@ export function CompareScreen({
       <div className="border-b border-border bg-card px-4 py-3" data-compare-toolbar>
         <div className="mx-auto flex w-full max-w-6xl flex-wrap items-end gap-x-4 gap-y-3">
           <label className="grid gap-1 text-xs" htmlFor="compare-base-delivery">
-            <span className="font-medium">基準デリバリー / Base delivery</span>
+            <span className="font-medium">{copy.baseDelivery}</span>
             <select
               id="compare-base-delivery"
-              className="w-64 border border-border bg-background px-2 py-1.5 text-xs"
+              data-compare-base-delivery
+              className="min-h-11 w-full border border-border bg-background px-2 py-1.5 text-xs sm:min-h-8 sm:w-64"
               value={basePicker}
               onChange={(event) => setBasePicker(event.target.value)}
             >
@@ -342,10 +347,11 @@ export function CompareScreen({
             </select>
           </label>
           <label className="grid gap-1 text-xs" htmlFor="compare-head-delivery">
-            <span className="font-medium">先端デリバリー / Head delivery</span>
+            <span className="font-medium">{copy.headDelivery}</span>
             <select
               id="compare-head-delivery"
-              className="w-64 border border-border bg-background px-2 py-1.5 text-xs"
+              data-compare-head-delivery
+              className="min-h-11 w-full border border-border bg-background px-2 py-1.5 text-xs sm:min-h-8 sm:w-64"
               value={headPicker}
               onChange={(event) => setHeadPicker(event.target.value)}
             >
@@ -358,25 +364,27 @@ export function CompareScreen({
           </label>
           <button
             type="button"
-            className="border border-border px-3 py-1.5 text-xs"
+            data-compare-apply
+            className="min-h-11 border border-border px-3 py-1.5 text-xs sm:min-h-8"
             onClick={applyPickers}
             disabled={!basePicker.trim() || !headPicker.trim()}
           >
-            比較する / Compare
+            {copy.compare}
           </button>
-          <div className="flex items-end gap-1.5" role="group" aria-label="表示する版 / Viewing side">
-            <SideButton active={state.side === "base"} onClick={() => dispatch({ type: "SET_SIDE", side: "base" })}>
-              基準 / Base
+          <div className="flex items-end gap-1.5" role="group" aria-label={copy.viewingSide}>
+            <SideButton side="base" active={state.side === "base"} onClick={() => dispatch({ type: "SET_SIDE", side: "base" })}>
+              {copy.base}
             </SideButton>
-            <SideButton active={state.side === "head"} onClick={() => dispatch({ type: "SET_SIDE", side: "head" })}>
-              先端 / Head
+            <SideButton side="head" active={state.side === "head"} onClick={() => dispatch({ type: "SET_SIDE", side: "head" })}>
+              {copy.head}
             </SideButton>
           </div>
           <label className="grid gap-1 text-xs" htmlFor="compare-kind-filter">
-            <span className="font-medium">種別 / Kind</span>
+            <span className="font-medium">{copy.kind}</span>
             <select
               id="compare-kind-filter"
-              className="border border-border bg-background px-2 py-1.5 text-xs"
+              data-compare-kind
+              className="min-h-11 border border-border bg-background px-2 py-1.5 text-xs sm:min-h-8"
               value={state.filters.kind}
               onChange={(event) =>
                 dispatch({
@@ -387,16 +395,17 @@ export function CompareScreen({
             >
               {KIND_OPTIONS.map((kind) => (
                 <option key={kind} value={kind}>
-                  {kind === "all" ? "すべて / All" : `${CHANGE_LABEL.ja[kind]} / ${kind}`}
+                  {kind === "all" ? copy.all : CHANGE_LABEL[locale][kind]}
                 </option>
               ))}
             </select>
           </label>
           <label className="grid gap-1 text-xs" htmlFor="compare-confidence-filter">
-            <span className="font-medium">確度 / Confidence</span>
+            <span className="font-medium">{copy.confidence}</span>
             <select
               id="compare-confidence-filter"
-              className="border border-border bg-background px-2 py-1.5 text-xs"
+              data-compare-confidence
+              className="min-h-11 border border-border bg-background px-2 py-1.5 text-xs sm:min-h-8"
               value={state.filters.confidence}
               onChange={(event) =>
                 dispatch({
@@ -405,21 +414,22 @@ export function CompareScreen({
                 })
               }
             >
-              <option value="all">すべて / All</option>
-              <option value="uncertain">不確実のみ / Uncertain only</option>
+              <option value="all">{copy.all}</option>
+              <option value="uncertain">{copy.uncertainOnly}</option>
             </select>
           </label>
           <label className="grid gap-1 text-xs" htmlFor="compare-source-filter">
-            <span className="font-medium">ソース / Source</span>
+            <span className="font-medium">{copy.source}</span>
             <select
               id="compare-source-filter"
-              className="border border-border bg-background px-2 py-1.5 text-xs"
+              data-compare-source
+              className="min-h-11 border border-border bg-background px-2 py-1.5 text-xs sm:min-h-8"
               value={state.filters.sourceModelId}
               onChange={(event) =>
                 dispatch({ type: "SET_FILTERS", filters: { ...state.filters, sourceModelId: event.target.value } })
               }
             >
-              <option value={ALL_SOURCES}>すべて / All</option>
+              <option value={ALL_SOURCES}>{copy.all}</option>
               {sources.map((pair) => (
                 <option key={pair.sourceModelId} value={pair.sourceModelId}>
                   {pair.sourceModelName}
@@ -427,6 +437,7 @@ export function CompareScreen({
               ))}
             </select>
           </label>
+          <LocaleSwitcher />
         </div>
       </div>
       <CombinedDeliveryViewer
@@ -434,10 +445,11 @@ export function CompareScreen({
         loadDelivery={fetchDelivery}
         resolveModelFileUrl={viewerFileUrl}
         onController={handleController}
+        locale={locale}
         inspector={
           state.lifecycle === "loading" ? (
             <p className="text-xs text-muted-foreground" role="status">
-              比較を読み込み中 / Loading comparison…
+              {copy.loading}
             </p>
           ) : (
             <div data-compare-panel>
@@ -476,10 +488,12 @@ export function CompareScreen({
 }
 
 function SideButton({
+  side,
   active,
   onClick,
   children,
 }: {
+  side: "base" | "head";
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
@@ -488,12 +502,12 @@ function SideButton({
     <button
       type="button"
       aria-pressed={active}
+      data-compare-side={side}
       onClick={onClick}
-      className={`border px-3 py-1.5 text-xs ${active ? "border-primary bg-accent font-medium" : "border-border"}`}
+      className={`min-h-11 border px-3 py-1.5 text-xs sm:min-h-8 ${active ? "border-primary bg-accent font-medium" : "border-border"}`}
     >
       {children}
     </button>
   );
 }
-
 

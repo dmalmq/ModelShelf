@@ -7,6 +7,7 @@
 //! Contract: docs/contracts/http-api.md + services/checker/migrations/*.sql.
 
 mod db;
+mod decisions;
 mod diff;
 mod dto;
 mod error;

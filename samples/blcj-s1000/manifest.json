@@ -11,7 +11,7 @@
     "ifcSha256": "0f674223f596c483c5abea0b58fe6c05ef3c68692409c977782040ffa501cca4",
     "ifcBytes": 36232021,
     "retrievedAt": "2026-09-06T09:58:35.192Z",
-    "lastVerifiedAt": "2026-09-09T06:33:30.317Z"
+    "lastVerifiedAt": "2026-09-09T07:22:03.688Z"
   },
   {
     "discipline": "structure",
@@ -25,7 +25,7 @@
     "ifcSha256": "64084908b3eda8f2a34cb0e5d51532b98882d62aa42839b9fa9b27e1ca1e75d5",
     "ifcBytes": 836678,
     "retrievedAt": "2026-09-06T09:58:35.220Z",
-    "lastVerifiedAt": "2026-09-09T06:33:30.317Z"
+    "lastVerifiedAt": "2026-09-09T07:22:03.688Z"
   },
   {
     "discipline": "mep",
@@ -39,6 +39,6 @@
     "ifcSha256": "46eae66e578211012ee8c6d3d03eb3876670852cc62d452f40bc98c5215c08c2",
     "ifcBytes": 48736361,
     "retrievedAt": "2026-09-06T09:58:35.461Z",
-    "lastVerifiedAt": "2026-09-09T06:33:30.317Z"
+    "lastVerifiedAt": "2026-09-09T07:22:03.688Z"
   }
 ]

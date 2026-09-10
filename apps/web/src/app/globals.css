@@ -66,10 +66,10 @@
   --destructive: #b42318;
   --destructive-foreground: #ffffff;
 
-  /* The 3D canvas. A rendering surface, not a themed one: it stays this value
-     in every theme, because geometry legibility is not a style choice.
-     White per product decision — the model space matches the light chrome. */
+  /* The white model plate needs its own boundary and ground grid. */
   --viewer: #ffffff;
+  --viewer-edge: #d7dee7;
+  --viewer-grid: rgb(215 222 231 / 0.42);
 
   /* Neutral steps for incidental chart fills. Severity, outcome and change kind
      never come from here — see the rule at the top of this file. */
@@ -198,6 +198,26 @@
     font-size: 12px;
   }
 
+  /* ------------------------------------------------------------------
+     Touch targets.
+
+     Every interactive control clears 44px below the `sm` breakpoint —
+     the site survey is done on a tablet, one-handed, and the desktop
+     kit is sized for a mouse. This lives here rather than in
+     `components/ui/button.tsx`, which is CLI-vendored and would lose
+     the rule on the next regeneration; it also covers native buttons,
+     selects and file inputs the primitive never sees.
+     ------------------------------------------------------------------ */
+  @media (width < 40rem) {
+    button,
+    [role="button"],
+    select,
+    textarea,
+    input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]) {
+      min-height: 44px;
+    }
+  }
+
   /* Identifiers, hashes, counts and timestamps scan vertically. */
   .tnum {
     font-variant-numeric: tabular-nums;
@@ -225,6 +245,14 @@
   *::-webkit-scrollbar-track {
     background: transparent;
   }
+}
+
+.viewer-plate {
+  border-inline: 1px solid var(--viewer-edge);
+  background-color: var(--viewer);
+  background-image: linear-gradient(to right, var(--viewer-grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--viewer-grid) 1px, transparent 1px);
+  background-size: 32px 32px;
 }
 
 /* ---------------------------------------------------------------------------

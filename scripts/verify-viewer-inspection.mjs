@@ -140,6 +140,23 @@ async function waitForModelsReady(page, timeout) {
   );
 }
 
+async function toggleDiscipline(page, discipline) {
+  try {
+    await page.locator(`[data-discipline-toggle="${discipline}"]`).click({ timeout: 30_000 });
+  } catch (error) {
+    const buttons = await page.evaluate(() =>
+      [...document.querySelectorAll("button")]
+        .filter((button) => button.offsetParent !== null)
+        .map((button) => ({
+          text: (button.textContent ?? "").trim().slice(0, 40),
+          aria: button.getAttribute("aria-label"),
+          data: [...button.attributes].filter(({ name }) => name.startsWith("data-")).map(({ name, value }) => `${name}=${value}`).join(" "),
+        })),
+    );
+    throw new Error(`toggle ${discipline} failed; visible buttons: ${JSON.stringify(buttons).slice(0, 2000)}\n${error}`);
+  }
+}
+
 export async function runInspectionScenario() {
   const runDir = mkdtempSync(join(tmpdir(), "modelshelf-verify-inspection-"));
   buildBinary(runDir);
@@ -254,7 +271,6 @@ export async function runInspectionScenario() {
         }
       }).observe({ type: "longtask", buffered: true });
     });
-    page.on("console", (message) => nextLogs.push(`browser ${message.type()}: ${message.text()}\n`));
     page.on("pageerror", (error) => nextLogs.push(`browser error: ${error.stack ?? error.message}\n`));
 
     const perf = {
@@ -337,9 +353,8 @@ export async function runInspectionScenario() {
     await delay(500);
     perf.readyPerfNow = await page.evaluate(() => performance.now());
     perf.orbitFpsStructOnly = [];
-    await review.getByRole("button", { name: "ARCH", exact: true }).click();
-    await review.getByRole("button", { name: "MEP", exact: true }).click();
-
+    await toggleDiscipline(page, "ARCH");
+    await toggleDiscipline(page, "MEP");
     await delay(500);
     await mark(page, perf.marks, "orbit-struct-start");
     for (let sample = 0; sample < 2; sample += 1) {
@@ -360,9 +375,8 @@ export async function runInspectionScenario() {
       perf.orbitFpsStructOnly.push((frames / ms) * 1000);
     }
     await mark(page, perf.marks, "orbit-struct-end");
-    await review.getByRole("button", { name: "ARCH", exact: true }).click();
-    await review.getByRole("button", { name: "MEP", exact: true }).click();
-
+    await toggleDiscipline(page, "ARCH");
+    await toggleDiscipline(page, "MEP");
     await delay(500);
     const selectRefs = paged.objects.slice(0, 21).map((o) => o.ref);
     perf.selectMs = await page.evaluate((refs) => {
@@ -375,9 +389,11 @@ export async function runInspectionScenario() {
       window.__modelshelfViewer?.select(null);
       return samples;
     }, selectRefs);
-    await review.getByRole("tab", { name: /Findings/ }).click();
-    await review.locator(`[data-finding-id="${flow.id}"]`).click();
-    await page.waitForSelector(`[data-inspector-active="${flow.id}"]`, { timeout: 120_000 });
+    await page.locator('[data-inspector-tab="findings"]').click();
+    await page.locator(`[data-finding-id="${flow.id}"]`).click();
+    await page.waitForSelector(`[data-evidence-panel="${flow.id}"]`, { timeout: 120_000 });
+    // The panel highlights the embedded sample first, then pages every member
+    // in; the spatial proof below is about the complete set.
     await page.waitForFunction(
       (expected) => window.__modelshelfViewer?.inspect().renderer.highlightGroups[0]?.requested === expected,
       flow.objectCount,
@@ -405,9 +421,8 @@ export async function runInspectionScenario() {
     const [narrowStorey, narrowCount] = narrow;
     const otherRef = paged.objects.find((o) => o.storey !== narrowStorey)?.ref;
     check(Boolean(otherRef), "a member outside the narrowed storey exists for the hidden-selection proof");
+    await page.locator('[data-filter="storey"]').selectOption(narrowStorey);
     const filterStart = Date.now();
-    await review.getByLabel("Storey filter").selectOption(narrowStorey);
-
     await page.waitForFunction(
       (expected) => window.__modelshelfViewer?.inspect().isolatedRequested === expected,
       narrowCount,
@@ -427,28 +442,30 @@ export async function runInspectionScenario() {
 
     await page.screenshot({ path: join(EVIDENCE_DIR, "inspection-selection.png") });
 
-    await page.evaluate(() => {
-      const viewer = window.__modelshelfViewer;
-      viewer?.isolate(null);
-      viewer?.section(null);
-      viewer?.dim(1);
-    });
+    await page.locator("[data-reset-view]").click();
+    await page.waitForFunction(
+      () => {
+        const state = window.__modelshelfViewer?.inspect();
+        return state?.selectedHidden === false && state?.isolatedRequested === null;
+      },
+      undefined,
+      { timeout: 30_000 },
+    );
+    const afterReset = await inspect(page);
+    check(
+      afterReset.isolatedRequested === null && afterReset.renderer.highlightGroups.length === 1,
+      "reset view drops isolation and keeps the finding highlighted in the full delivery",
+    );
 
-    await page.waitForFunction(() => window.__modelshelfViewer?.inspect().selectedHidden === false, undefined, {
-      timeout: 30_000,
-    });
-    check(true, "reset view clears isolation and reveals the selection");
-
-    await review.getByLabel(/Section Z metres|断面 Z メートル/).fill("1.5");
-    await review.getByLabel(/Section Z metres|断面 Z メートル/).press("Enter");
-
+    await page.locator("[data-section-z]").fill("1.5");
+    await page.locator("[data-section-z]").press("Enter");
     await page.waitForFunction(() => window.__modelshelfViewer?.inspect().renderer.clipping === true, undefined, {
       timeout: 30_000,
     });
     check(true, "section cut clips above the project height");
     await page.screenshot({ path: join(EVIDENCE_DIR, "inspection-section.png") });
-    await review.getByLabel(/Section Z metres|断面 Z メートル/).fill("");
-    await review.getByLabel(/Section Z metres|断面 Z メートル/).press("Enter");
+    await page.locator("[data-section-z]").fill("");
+    await page.locator("[data-section-z]").press("Enter");
 
     const refreshedBox = await canvas.boundingBox();
     if (!refreshedBox) throw new Error("Inspector canvas has no layout box");
@@ -465,7 +482,7 @@ export async function runInspectionScenario() {
     check(Boolean(picked), "canvas picking selects geometry beside the inspector");
     const memberRef = paged.objects[0].ref;
     await page.evaluate((ref) => window.__modelshelfViewer?.select(ref), memberRef);
-    await review.getByRole("button", { name: /Inspect selection properties|選択オブジェクトの属性を表示/ }).click();
+    await page.locator("[data-inspect-selection]").click();
     await page.waitForSelector("[data-property-panel]", { timeout: 30_000 });
     const panelText = (await review.locator("[data-property-panel]").innerText()).slice(0, 400);
     results.propertySample = panelText;
@@ -514,7 +531,6 @@ export async function runInspectionScenario() {
       uiCount: uiTasks.length,
       maxUiMs: maxUiTask,
       orbitCount: orbitTasks.length,
-      maxOrbitMs: maxOrbitTask,
     };
     // Threshold verdicts are the Wave 1 gate (ticket 09), requested explicitly
     // with --assert-perf. The default run records the same numbers without
@@ -530,20 +546,32 @@ export async function runInspectionScenario() {
     gate(selectP95 < 200, `p95 selection stays below 200 ms (${selectP95.toFixed(1)} ms)`);
     gate(perf.filterMs < 500, `filtering stays below 500 ms (${perf.filterMs} ms)`);
     gate(maxUiTask < 200, `no non-render UI task over 200 ms (${maxUiTask.toFixed(1)} ms max)`);
-
     await page.goto(`${appOrigin}/deliveries/${deliveryB.id}?run=${runB.run.id}`, { waitUntil: "domcontentloaded" });
+
     await waitForModelsReady(page, 180_000);
-    await review.getByRole("tab", { name: /Findings/ }).click();
+    await page.locator('[data-inspector-tab="findings"]').click();
     await page.waitForSelector(`[data-finding-id="${incompleteFinding.id}"]`, { timeout: 60_000 });
     await page.locator(`[data-finding-id="${incompleteFinding.id}"]`).click();
-    await page.waitForSelector(`[data-inspector-active="${incompleteFinding.id}"]`, { timeout: 60_000 });
-    await page.waitForSelector("[data-evidence-panel]", { timeout: 30_000 });
-    const evidenceText = await page.locator("[data-evidence-panel]").innerText();
-    check(/review incomplete|レビュー未判定/i.test(evidenceText), "non-geometric finding renders evidence with an explanation");
+    await page.waitForSelector(`[data-evidence-panel="${incompleteFinding.id}"]`, { timeout: 60_000 });
+    await page.waitForSelector(`[data-evidence-panel="${incompleteFinding.id}"] [data-incomplete-evidence]`, { timeout: 30_000 });
+    const evidenceText = await page.locator(`[data-evidence-panel="${incompleteFinding.id}"]`).innerText();
+    const undecidedText = await page
+      .locator(`[data-evidence-panel="${incompleteFinding.id}"] [data-incomplete-evidence]`)
+      .innerText();
+    results.incompleteEvidence = evidenceText.slice(0, 400);
+    // An undecided requirement must say so in its own panel and must never be
+    // explained away as "not applicable".
+    check(
+      /未判定|Review incomplete/i.test(undecidedText) && !/対象外|not applicable/i.test(undecidedText),
+      `review-incomplete finding states that it could not be decided (${undecidedText.slice(0, 80)})`,
+    );
     await page.screenshot({ path: join(EVIDENCE_DIR, "inspection-evidence.png"), fullPage: true });
 
     results.passed = true;
     console.log("viewer inspection verification passed");
+  } catch (error) {
+    results.error = error instanceof Error ? `${error.message}\n${error.stack ?? ""}` : String(error);
+    throw error;
   } finally {
     if (browser) await browser.close();
     if (nextProcess) await stopProcess(nextProcess);

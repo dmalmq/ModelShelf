@@ -1,58 +1,70 @@
-// Run header: rule totals vs distinct affected objects vs not-applicable vs
-// incomplete. No overall success percentage is ever rendered — RunSummary.score
-// stays wire-compatible but invisible (a single percent would mislead).
+// Run header: rule totals, distinct affected objects, not-applicable and
+// incomplete. No overall success percentage is ever rendered.
 "use client";
 
-import { OutcomeBar } from "../domain/outcome-bar";
+import { OutcomeBar, outcomeCountsFromRun } from "../domain/outcome-bar";
+import { UI } from "@/lib/i18n";
 import type { RunSummary } from "@/lib/types";
-import { copy, REVIEW_COPY, type ReviewLang } from "./review-i18n";
+import { useLocale } from "../locale-provider";
 
 export function TotalsHeader({
   run,
-  lang = "ja",
+  presentation = "desk",
 }: {
-  run: RunSummary;
-  lang?: ReviewLang;
+  readonly run: RunSummary;
+  readonly presentation?: "desk" | "meeting";
 }): React.JSX.Element {
+  const { locale } = useLocale();
+  const copy = UI[locale];
   return (
-    <section aria-label={copy(REVIEW_COPY.totalsHeading, lang)} data-totals-header>
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+    <section aria-label={copy.totalsHeading} data-totals-header>
+      <dl
+        className={`grid gap-x-4 gap-y-1.5 text-xs ${
+          presentation === "meeting" ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2"
+        }`}
+      >
         <div>
-          <dt className="text-muted-foreground">
-            {copy(REVIEW_COPY.ruleTotals, lang)} · {copy(REVIEW_COPY.pass, lang)}/
-          </dt>
-          <dd className="tnum text-sm font-semibold" data-totals-rules>
-            {run.passCount} / {run.failCount}
+          <dt className="text-muted-foreground">{copy.ruleTotals}</dt>
+          <dd
+            className={`tnum flex flex-wrap gap-x-3 font-semibold ${
+              presentation === "meeting" ? "text-xl" : "text-sm"
+            }`}
+            data-totals-rules
+          >
+            <span data-totals-pass>{copy.pass} {run.passCount}</span>
+            <span data-totals-fail>{copy.fail} {run.failCount}</span>
           </dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">{copy(REVIEW_COPY.distinctObjects, lang)}</dt>
-          <dd className="tnum text-sm font-semibold" data-totals-distinct-objects>
+          <dt className="text-muted-foreground">{copy.distinctObjects}</dt>
+          <dd
+            className={`tnum font-semibold ${presentation === "meeting" ? "text-2xl" : "text-sm"}`}
+            data-totals-distinct-objects
+          >
             {run.failingObjectCount}
           </dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">{copy(REVIEW_COPY.notApplicable, lang)}</dt>
-          <dd className="tnum text-sm font-semibold" data-totals-not-applicable>
+          <dt className="text-muted-foreground">{copy.notApplicable}</dt>
+          <dd
+            className={`tnum font-semibold ${presentation === "meeting" ? "text-2xl" : "text-sm"}`}
+            data-totals-not-applicable
+          >
             {run.notApplicableCount}
           </dd>
         </div>
         <div>
-          <dt className="text-muted-foreground">{copy(REVIEW_COPY.incomplete, lang)}</dt>
-          <dd className="tnum text-sm font-semibold" data-totals-incomplete>
+          <dt className="text-muted-foreground">{copy.incomplete}</dt>
+          <dd
+            className={`tnum font-semibold ${presentation === "meeting" ? "text-2xl" : "text-sm"}`}
+            data-totals-incomplete
+          >
             {run.incompleteCount}
           </dd>
         </div>
       </dl>
       <div className="mt-2">
-        <OutcomeBar
-          counts={{
-            pass: run.passCount,
-            fail: run.failCount,
-            notApplicable: run.notApplicableCount,
-            incomplete: run.incompleteCount,
-          }}
-        />
+        <OutcomeBar counts={outcomeCountsFromRun(run)} locale={locale} />
       </div>
     </section>
   );

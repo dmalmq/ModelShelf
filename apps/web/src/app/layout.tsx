@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { LocaleProvider } from "@/components/locale-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
 
@@ -18,9 +19,11 @@ export const metadata: Metadata = {
  */
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="ja">
       <body>
-        <TooltipProvider>{children}</TooltipProvider>
+        <LocaleProvider>
+          <TooltipProvider>{children}</TooltipProvider>
+        </LocaleProvider>
       </body>
     </html>
   );
