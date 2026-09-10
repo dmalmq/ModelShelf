@@ -20,7 +20,8 @@ pub const MIGRATION_0005: &str =
 pub const MIGRATION_0006: &str = include_str!("../migrations/0006_object_prop_record.sql");
 pub const MIGRATION_0007: &str = include_str!("../migrations/0007_run_models.sql");
 pub const MIGRATION_0008: &str = include_str!("../migrations/0008_diff_snapshots.sql");
-pub const SCHEMA_VERSION: i64 = 8;
+pub const MIGRATION_0009: &str = include_str!("../migrations/0009_review_decisions.sql");
+pub const SCHEMA_VERSION: i64 = 9;
 
 pub async fn open(data_dir: &std::path::Path) -> anyhow::Result<SqlitePool> {
     let pool = connect(data_dir).await?;
@@ -104,6 +105,9 @@ pub(crate) async fn migrate_with_fault(pool: &SqlitePool, fault: MigrationFault)
     }
     if current_version(pool).await? < 8 {
         apply_sql_version(pool, 8, MIGRATION_0008).await?;
+    }
+    if current_version(pool).await? < 9 {
+        apply_sql_version(pool, 9, MIGRATION_0009).await?;
     }
     Ok(())
 }

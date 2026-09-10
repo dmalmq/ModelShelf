@@ -9,6 +9,7 @@ pub enum ErrorCode {
     NotFound,
     BadRequest,
     DeliveryLocked,
+    DecisionConflict,
     PackVersionMismatch,
     PackDigestMismatch,
     ScopeMismatch,
@@ -28,6 +29,7 @@ impl ErrorCode {
             ErrorCode::NotFound => "not_found",
             ErrorCode::BadRequest => "bad_request",
             ErrorCode::DeliveryLocked => "delivery_locked",
+            ErrorCode::DecisionConflict => "decision_conflict",
             ErrorCode::PackVersionMismatch => "pack_version_mismatch",
             ErrorCode::PackDigestMismatch => "pack_digest_mismatch",
             ErrorCode::ScopeMismatch => "scope_mismatch",
@@ -60,6 +62,9 @@ impl ApiError {
     }
     pub fn bad_request(message: impl Into<String>) -> Self {
         ApiError::new(StatusCode::BAD_REQUEST, ErrorCode::BadRequest, message)
+    }
+    pub fn decision_conflict(message: impl Into<String>) -> Self {
+        ApiError::new(StatusCode::CONFLICT, ErrorCode::DecisionConflict, message)
     }
     pub fn delivery_locked() -> Self {
         ApiError::new(
