@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { VIEWER_HIGHLIGHT } from "@/lib/palette";
 import type { Discipline } from "@/lib/types";
 import {
   objectRefKey,
@@ -31,10 +32,10 @@ interface RevisionResource {
 
 // Installed three types omit BatchedMesh.instanceColor even though setColorAt maintains it at runtime.
 type ColoredMesh = THREE.BatchedMesh & { instanceColor?: { needsUpdate: boolean } };
-const SELECTED_COLOR = new THREE.Color(0x1d4ed8);
 
 export class RendererOwner implements ViewerRenderer {
   private readonly scene = new THREE.Scene();
+  private readonly selectionOutlines = new THREE.Group();
   private readonly camera = new THREE.PerspectiveCamera(45, 1, 0.01, 100_000);
   private readonly controls: OrbitControls;
   private readonly renderer: THREE.WebGLRenderer;
@@ -74,11 +75,12 @@ export class RendererOwner implements ViewerRenderer {
   constructor(options: RendererOptions) {
     this.canvas = options.canvas;
     this.onPick = options.onPick;
-    this.renderer = new THREE.WebGLRenderer({ canvas: options.canvas, antialias: true });
+    this.renderer = new THREE.WebGLRenderer({ canvas: options.canvas, antialias: true, alpha: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.localClippingEnabled = true;
-    this.scene.background = new THREE.Color(0xffffff);
+    this.selectionOutlines.name = "selection-outline";
+    this.scene.add(this.selectionOutlines);
 
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0xcbd5e1, 2.4));
     const light = new THREE.DirectionalLight(0xffffff, 2.2);
@@ -180,6 +182,7 @@ export class RendererOwner implements ViewerRenderer {
     }
 
     this.applyVisibility();
+    if (this.selected !== null) this.updateSelectionOutlines();
   }
 
   removeRevision(revisionId: RevisionId): void {
@@ -200,7 +203,10 @@ export class RendererOwner implements ViewerRenderer {
     for (const key of this.targetRecords.keys()) {
       if (key.startsWith(prefix)) this.targetRecords.delete(key);
     }
-    if (this.selected?.ref.revisionId === revisionId) this.selected = null;
+    if (this.selected?.ref.revisionId === revisionId) {
+      this.selected = null;
+      this.updateSelectionOutlines();
+    }
     let highlightsChanged = false;
     for (const key of this.highlightColors.keys()) {
       if (key.startsWith(prefix)) {
@@ -229,6 +235,7 @@ export class RendererOwner implements ViewerRenderer {
       resource.root.position.set(-origin[0], -origin[1], -origin[2]);
       resource.root.updateMatrixWorld(true);
     }
+    this.updateSelectionOutlines();
   }
 
   reveal(fitCamera: boolean): void {
@@ -236,11 +243,12 @@ export class RendererOwner implements ViewerRenderer {
       resource.root.visible = true;
       resource.root.updateMatrixWorld(true);
     }
+    this.updateSelectionOutlines();
     if (fitCamera) this.fitAll();
   }
-
   select(record: SelectionRecord | null): void {
     this.selected = record;
+    this.updateSelectionOutlines();
     this.repaint();
   }
 
@@ -327,6 +335,31 @@ export class RendererOwner implements ViewerRenderer {
     if (!box.isEmpty()) this.positionCamera(box);
   }
 
+  nudgeCamera(horizontal: number, vertical: number): void {
+    if (!Number.isFinite(horizontal) || !Number.isFinite(vertical)) {
+      throw new Error("camera nudge must use finite values");
+    }
+    const direction = new THREE.Vector3().subVectors(this.controls.target, this.camera.position).normalize();
+    const right = new THREE.Vector3().crossVectors(direction, this.camera.up).normalize();
+    const screenUp = new THREE.Vector3().crossVectors(right, direction).normalize();
+    const distance = Math.max(this.camera.position.distanceTo(this.controls.target), 1);
+    const offset = right
+      .multiplyScalar(horizontal * distance * 0.04)
+      .add(screenUp.multiplyScalar(vertical * distance * 0.04));
+    this.camera.position.add(offset);
+    this.controls.target.add(offset);
+    this.controls.update();
+  }
+
+  zoomCamera(factor: number): void {
+    if (!Number.isFinite(factor) || factor <= 0) {
+      throw new Error("camera zoom factor must be a positive finite number");
+    }
+    const offset = new THREE.Vector3().subVectors(this.camera.position, this.controls.target);
+    this.camera.position.copy(this.controls.target).add(offset.multiplyScalar(factor));
+    this.controls.update();
+  }
+
   diagnostics(): RendererDiagnostics {
     return {
       cameraPosition: this.camera.position.toArray(),
@@ -362,7 +395,6 @@ export class RendererOwner implements ViewerRenderer {
       triangles: this.disposed ? 0 : triangles,
     };
   }
-
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
@@ -379,6 +411,7 @@ export class RendererOwner implements ViewerRenderer {
     this.highlightColors.clear();
     this.highlightGroups = [];
     this.isolated = null;
+    this.clearSelectionOutlines();
     this.scene.clear();
     this.renderer.renderLists.dispose();
     this.renderer.dispose();
@@ -401,6 +434,7 @@ export class RendererOwner implements ViewerRenderer {
         this.visibleByDiscipline[record.discipline] && (this.isolated === null || this.isolated.has(key));
       for (const target of record.targets) this.setTargetVisible(target, visible);
     }
+    this.updateSelectionOutlines();
   }
 
   private setTargetVisible(target: DrawTarget, visible: boolean): void {
@@ -414,13 +448,44 @@ export class RendererOwner implements ViewerRenderer {
     }
     return matched;
   }
+  private clearSelectionOutlines(): void {
+    for (const child of this.selectionOutlines.children) {
+      if (!(child instanceof THREE.LineSegments)) continue;
+      child.geometry.dispose();
+      if (Array.isArray(child.material)) {
+        for (const material of child.material) material.dispose();
+      } else {
+        child.material.dispose();
+      }
+    }
+    this.selectionOutlines.clear();
+  }
+
+  private updateSelectionOutlines(): void {
+    this.clearSelectionOutlines();
+    if (this.selected === null) return;
+    const key = objectRefKey(this.selected.ref);
+    if (
+      !this.visibleByDiscipline[this.selected.discipline] ||
+      (this.isolated !== null && !this.isolated.has(key))
+    ) {
+      return;
+    }
+    for (const target of this.selected.targets) {
+      const resource = this.resources.get(target.revisionId);
+      if (!resource?.root.visible) continue;
+      const box = new THREE.Box3();
+      this.expandTargetBox(box, target);
+      if (!box.isEmpty()) this.selectionOutlines.add(new THREE.Box3Helper(box, VIEWER_HIGHLIGHT.selection));
+    }
+  }
+
 
   private repaint(): void {
     if (this.disposed) return;
     const dimming = this.highlightColors.size > 0 && this.dimOpacity < 1;
     const dimBlend = 1 - this.dimOpacity;
     const touched = new Set<THREE.BatchedMesh>();
-    const selectedKey = this.selected === null ? null : objectRefKey(this.selected.ref);
     const scratch = new THREE.Color();
     for (const [key, record] of this.records) {
       const highlight = this.highlightColors.get(key);
@@ -430,7 +495,6 @@ export class RendererOwner implements ViewerRenderer {
         scratch.setRGB(target.baseColor[0], target.baseColor[1], target.baseColor[2]);
         if (dimming && !highlight) scratch.lerp(this.dimWhite, dimBlend);
         if (highlight) scratch.copy(highlight);
-        if (key === selectedKey) scratch.copy(SELECTED_COLOR);
         mesh.setColorAt(target.instanceId, scratch);
         touched.add(mesh);
       }

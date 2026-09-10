@@ -191,6 +191,10 @@ export interface DeliveryViewerController {
   /** Blend factor for non-highlighted objects while highlights are active, 0..1. */
   setDimOpacity(opacity: number): void;
   fitAll(): void;
+  /** Move the camera and target in screen-relative increments. */
+  nudgeCamera(horizontal: number, vertical: number): void;
+  /** Scale camera distance from its target; values below 1 zoom in. */
+  zoomCamera(factor: number): void;
   resourceStats(): ViewerResourceStats;
   diagnostics(): ViewerDiagnostics;
   dispose(): void;
@@ -217,6 +221,8 @@ export interface ViewerRenderer {
   setSectionZ(worldZ: number | null): void;
   setDimOpacity(opacity: number): void;
   fitAll(): void;
+  nudgeCamera(horizontal: number, vertical: number): void;
+  zoomCamera(factor: number): void;
   diagnostics(): RendererDiagnostics;
   dispose(): void;
   resourceStats(): ViewerResourceStats;

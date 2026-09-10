@@ -192,6 +192,14 @@ class DeliveryViewerControllerImpl implements DeliveryViewerController {
     if (!this.disposed) this.renderer.fitAll();
   }
 
+  nudgeCamera(horizontal: number, vertical: number): void {
+    if (!this.disposed) this.renderer.nudgeCamera(horizontal, vertical);
+  }
+
+  zoomCamera(factor: number): void {
+    if (!this.disposed) this.renderer.zoomCamera(factor);
+  }
+
   resourceStats(): ViewerResourceStats {
     const stats = this.renderer.resourceStats();
     return { ...stats, workers: this.worker === null ? 0 : 1 };

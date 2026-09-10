@@ -7,23 +7,27 @@
 
 import { useState } from "react";
 import { SeverityBadge } from "../domain/severity-badge";
+import { SeverityLadder } from "../domain/severity-ladder";
 import { OUTCOME_COLOR } from "@/lib/palette";
-import { OUTCOME_LABEL_JA } from "@/lib/mock";
+import { OUTCOME_LABEL, SEVERITY_LABEL, UI } from "@/lib/i18n";
 import type { Finding, Severity, SeverityBand, SpecOutcome, SpecResultRow } from "@/lib/types";
 import type { FindingSelection } from "./review-state";
+import { useLocale } from "../locale-provider";
 
 interface ScorecardTreeProps {
   readonly bands: readonly SeverityBand[];
+  readonly incompleteCount?: number;
   readonly selection: FindingSelection;
   readonly onSelect: (band: Severity | null, categoryId: string | null, findingId: string | null) => void;
 }
 
-export function ScorecardTree({ bands, selection, onSelect }: ScorecardTreeProps): React.JSX.Element {
+export function ScorecardTree({ bands, incompleteCount, selection, onSelect }: ScorecardTreeProps): React.JSX.Element {
+  const { locale } = useLocale();
   if (bands.length === 0) {
     return (
-      <p className="text-xs text-muted-foreground" data-scorecard-empty>
-        指摘はありません / No findings — all evaluated checks pass.
-      </p>
+      <div data-scorecard-empty>
+        <SeverityLadder bands={bands} incompleteCount={incompleteCount} locale={locale} />
+      </div>
     );
   }
   return (
@@ -52,7 +56,7 @@ function BandSection({
           type="button"
           aria-expanded={open}
           onClick={() => setOpen((value) => !value)}
-          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+          className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-left sm:min-h-8"
         >
           <SeverityBadge severity={band.severity as Severity} />
           <span className="tnum truncate text-xs text-muted-foreground" data-band-counts>
@@ -83,11 +87,11 @@ function BandSection({
                           ? onSelect(null, null, null)
                           : onSelect(band.severity as Severity, category.categoryId, finding.id)
                       }
-                      className="flex w-full items-center gap-2 border border-border px-2 py-1.5 text-left text-xs transition-colors hover:bg-muted aria-pressed:border-primary aria-pressed:bg-accent"
+                      className="flex min-h-11 w-full items-center gap-2 border border-border px-2 py-1.5 text-left text-xs transition-colors hover:bg-muted aria-pressed:border-primary aria-pressed:bg-accent sm:min-h-8"
                     >
                       <span className="min-w-0 flex-1">
                         <span className="block truncate font-medium">{finding.title}</span>
-                        <span className="tnum block text-[11px] text-muted-foreground">
+                        <span className="tnum block text-xs text-muted-foreground">
                           {finding.objectCount}オブジェクト
                           {finding.specIdentifier ? ` · ${finding.specIdentifier}` : ""}
                         </span>
@@ -104,30 +108,41 @@ function BandSection({
   );
 }
 
-export function IncompleteSection({ findings }: { findings: readonly Finding[] }): React.JSX.Element {
+export function IncompleteSection({
+  findings,
+  selection,
+  onSelect,
+}: {
+  readonly findings: readonly Finding[];
+  readonly selection?: { findingId: string | null };
+  readonly onSelect?: (findingId: string | null) => void;
+}): React.JSX.Element | null {
+  const { locale } = useLocale();
+  if (findings.length === 0) return null;
   return (
-    <section aria-label="Incomplete review / 未判定" data-incomplete-section>
-      <h2 className="text-sm font-semibold">未判定のレビュー / Incomplete review</h2>
-      {findings.length === 0 ? (
-        <p className="tnum mt-1 text-xs text-muted-foreground" data-incomplete-empty>
-          未判定はありません / Nothing awaiting review.
-        </p>
-      ) : (
-        <ul className="mt-1.5 space-y-1.5">
-          {findings.map((finding) => (
-            <li
-              key={finding.id}
-              data-incomplete-finding={finding.id}
-              className="border border-dashed border-border px-2 py-1.5 text-xs"
+    <section aria-label={SEVERITY_LABEL[locale].review_incomplete} data-incomplete-section>
+      <h2 className="text-sm font-semibold">{SEVERITY_LABEL[locale].review_incomplete}</h2>
+      <ul className="mt-1.5 space-y-1.5">
+        {findings.map((finding) => (
+          <li key={finding.id} data-incomplete-finding={finding.id}>
+            <button
+              type="button"
+              data-finding-id={finding.id}
+              data-finding-key={finding.findingKey}
+              aria-pressed={selection?.findingId === finding.id}
+              onClick={() =>
+                onSelect?.(selection?.findingId === finding.id ? null : finding.id)
+              }
+              className="flex min-h-11 w-full flex-col items-start border border-dashed border-border px-2 py-1.5 text-left text-xs transition-colors hover:bg-muted aria-pressed:border-primary aria-pressed:bg-accent sm:min-h-8"
             >
-              <p className="truncate font-medium">{finding.title}</p>
-              <p className="tnum mt-0.5 text-[11px] text-muted-foreground">
-                {finding.objectCount}オブジェクト · エンジンが判定できませんでした
-              </p>
-            </li>
-          ))}
-        </ul>
-      )}
+              <span className="w-full truncate font-medium">{finding.title}</span>
+              <span className="tnum mt-0.5 text-xs text-muted-foreground">
+                {finding.objectCount} · {UI[locale].notAPass}
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -135,25 +150,26 @@ export function IncompleteSection({ findings }: { findings: readonly Finding[] }
 const OUTCOME_ORDER: SpecOutcome[] = ["fail", "review_incomplete", "not_applicable", "pass"];
 
 export function SpecTable({ specs }: { specs: readonly SpecResultRow[] }): React.JSX.Element {
-  if (specs.length === 0) return <p className="text-xs text-muted-foreground">仕様結果なし / No spec rows.</p>;
+  const { locale } = useLocale();
+  if (specs.length === 0) return <p className="text-xs text-muted-foreground">{UI[locale].nothingEvaluated}</p>;
   // Backend order is stable (spec_name); group display by severity of outcome
   // without hiding any row — not_applicable stays visible as its own outcome.
   const ordered = [...specs].sort(
     (a, b) => OUTCOME_ORDER.indexOf(a.outcome) - OUTCOME_ORDER.indexOf(b.outcome),
   );
   return (
-    <section aria-label="Spec results / 仕様結果" data-spec-table>
-      <h2 className="text-sm font-semibold">仕様結果 / Spec results</h2>
+    <section aria-label={locale === "ja" ? "仕様結果" : "Spec results"} data-spec-table>
+      <h2 className="text-sm font-semibold">{locale === "ja" ? "仕様結果" : "Spec results"}</h2>
       <div className="mt-1.5 overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
           <tr className="text-left text-muted-foreground">
-            <th scope="col" className="py-1 pr-2 font-medium">仕様 / Spec</th>
-            <th scope="col" className="py-1 pr-2 font-medium">結果 / Outcome</th>
-            <th scope="col" className="tnum py-1 text-right font-medium">適用</th>
-            <th scope="col" className="tnum py-1 text-right font-medium">合格</th>
-            <th scope="col" className="tnum py-1 text-right font-medium">不合格</th>
-            <th scope="col" className="tnum py-1 text-right font-medium">未判定</th>
+            <th scope="col" className="py-1 pr-2 font-medium">{locale === "ja" ? "仕様" : "Spec"}</th>
+            <th scope="col" className="py-1 pr-2 font-medium">{locale === "ja" ? "結果" : "Outcome"}</th>
+            <th scope="col" className="tnum py-1 text-right font-medium">{locale === "ja" ? "適用" : "Applicable"}</th>
+            <th scope="col" className="tnum py-1 text-right font-medium">{locale === "ja" ? "合格" : "Pass"}</th>
+            <th scope="col" className="tnum py-1 text-right font-medium">{locale === "ja" ? "不合格" : "Fail"}</th>
+            <th scope="col" className="tnum py-1 text-right font-medium">{locale === "ja" ? "未判定" : "Incomplete"}</th>
           </tr>
         </thead>
         <tbody>
@@ -170,7 +186,7 @@ export function SpecTable({ specs }: { specs: readonly SpecResultRow[] }): React
                     className="inline-block size-2 rounded-full"
                     style={{ backgroundColor: OUTCOME_COLOR[spec.outcome] }}
                   />
-                  {OUTCOME_LABEL_JA[spec.outcome]}
+                  {OUTCOME_LABEL[locale][spec.outcome]}
                 </span>
               </td>
               <td className="tnum py-1 text-right">{spec.applicableCount}</td>

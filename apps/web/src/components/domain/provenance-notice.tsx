@@ -1,7 +1,6 @@
 import { CircleDashed } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { DEFAULT_LOCALE, UI, type Locale } from "@/lib/i18n";
-import { PROVENANCE } from "@/lib/mock";
 import { PROVENANCE_COLOR } from "@/lib/palette";
 import type { RunInputProvenance } from "@/lib/types";
 
@@ -29,15 +28,8 @@ export function ProvenanceNotice({
   reason?: string | null;
   locale?: Locale;
 } = {}) {
-  // Design routes render bare `<ProvenanceNotice />` against the shared mock;
-  // the review screen passes the live run's provenance instead.
-  const effectiveStatus = provenance?.status ?? status ?? PROVENANCE.status;
-  const effectiveReason =
-    provenance !== undefined
-      ? provenance.reason
-      : reason === undefined
-        ? PROVENANCE.reason
-        : reason;
+  const effectiveStatus = provenance?.status ?? status;
+  const effectiveReason = provenance?.reason ?? reason ?? null;
   if (effectiveStatus !== "incomplete") return null;
   return (
     <Alert>

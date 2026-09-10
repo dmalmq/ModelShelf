@@ -9,12 +9,15 @@
 "use client";
 
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { REVIEW_COPY, VIEWER_COPY } from "@/lib/i18n";
 import { ProvenanceNotice } from "../domain/provenance-notice";
 import type { DeliveryDetail, Finding, RunDetail, Severity } from "@/lib/types";
 import { fetchDelivery } from "../viewer/delivery-api";
 import { fetchRunDetail } from "../viewer/findings-api";
 import type { DeliveryViewerController } from "../viewer/types";
 import { CombinedDeliveryViewer } from "../viewer/combined-delivery-viewer";
+import { useLocale } from "../locale-provider";
+import { DecisionPanel } from "./decision-panel";
 import { EvidencePanel } from "./evidence-panel";
 import { PackSelection } from "./pack-selection";
 import { initialReviewState, reviewReducer } from "./review-state";
@@ -26,7 +29,16 @@ function flattenFindings(detail: RunDetail): Finding[] {
   return detail.scorecard.flatMap((band) => band.categories.flatMap((category) => category.findings));
 }
 
-export function ReviewScreen({ deliveryId }: { deliveryId: string }): React.JSX.Element {
+export function ReviewScreen({
+  deliveryId,
+  presentation = "desk",
+}: {
+  readonly deliveryId: string;
+  readonly presentation?: "desk" | "meeting";
+}): React.JSX.Element {
+  const { locale } = useLocale();
+  const reviewCopy = REVIEW_COPY[locale];
+  const viewerCopy = VIEWER_COPY[locale];
   const [delivery, setDelivery] = useState<DeliveryDetail | null>(null);
   const [deliveryError, setDeliveryError] = useState<string | null>(null);
   const [state, dispatch] = useReducer(reviewReducer, initialReviewState);
@@ -88,7 +100,11 @@ export function ReviewScreen({ deliveryId }: { deliveryId: string }): React.JSX.
     if (initial) loadRun(initial);
   }, [delivery, state.lifecycle, loadRun]);
 
-  const findings = state.detail ? flattenFindings(state.detail) : [];
+  // Review-incomplete findings are selectable evidence too: a reviewer must be
+  // able to open the reason, not just read that something was undecided.
+  const findings = state.detail
+    ? [...flattenFindings(state.detail), ...state.detail.reviewIncomplete]
+    : [];
   const selectedFinding = findings.find((finding) => finding.id === state.selection.findingId) ?? null;
 
   function handleSelect(band: Severity | null, categoryId: string | null, findingId: string | null): void {
@@ -115,14 +131,14 @@ export function ReviewScreen({ deliveryId }: { deliveryId: string }): React.JSX.
     return (
       <main className="grid min-h-screen place-items-center bg-background p-6">
         <div className="max-w-lg border border-border bg-card p-6">
-          <h1 className="text-xl font-semibold">Delivery unavailable / デリバリーを開けません</h1>
+          <h1 className="text-xl font-semibold">{viewerCopy.deliveryUnavailable}</h1>
           <p className="mt-2 text-sm text-destructive">{deliveryError}</p>
           <button
             type="button"
             className="mt-5 border border-border px-3 py-1.5 text-sm"
             onClick={() => window.location.reload()}
           >
-            Retry / 再試行
+            {viewerCopy.retry}
           </button>
         </div>
       </main>
@@ -134,10 +150,11 @@ export function ReviewScreen({ deliveryId }: { deliveryId: string }): React.JSX.
       <CombinedDeliveryViewer
         deliveryId={deliveryId}
         onController={handleController}
+        presentation={presentation}
         inspector={
           !delivery ? (
             <p className="text-xs text-muted-foreground" role="status">
-              Loading delivery / デリバリーを読み込み中
+              {viewerCopy.loadingDelivery}
             </p>
           ) : (
             <div className="space-y-4" data-review-panel>
@@ -152,11 +169,11 @@ export function ReviewScreen({ deliveryId }: { deliveryId: string }): React.JSX.
 
               {state.lifecycle === "loading" || (state.lifecycle === "idle" && state.runId) ? (
                 <p className="text-xs text-muted-foreground" role="status">
-                  Loading run findings…
+                  {reviewCopy.loadingRun}
                 </p>
               ) : state.lifecycle === "failed" ? (
                 <div className="border border-destructive/40 p-3 text-xs" data-run-failed>
-                  <p className="font-medium">ランを読み込めません / Run could not be loaded</p>
+                  <p className="font-medium">{reviewCopy.runUnavailable}</p>
                   <p className="mt-1 text-destructive">{state.error}</p>
                   <div className="mt-2 flex gap-1.5">
                     {state.runId && (
@@ -165,19 +182,24 @@ export function ReviewScreen({ deliveryId }: { deliveryId: string }): React.JSX.
                         className="border border-border px-2 py-1"
                         onClick={() => state.runId && loadRun(state.runId)}
                       >
-                        再試行 / Retry
+                        {viewerCopy.retry}
                       </button>
                     )}
                   </div>
                 </div>
               ) : state.detail ? (
                 <>
-                  <TotalsHeader run={state.detail.run} />
+                  <TotalsHeader run={state.detail.run} presentation={presentation} />
                   <ProvenanceNotice
                     status={state.detail.inputProvenance.status}
                     reason={state.detail.inputProvenance.reason}
                   />
-                  <ScorecardTree bands={state.detail.scorecard} selection={state.selection} onSelect={handleSelect} />
+                  <ScorecardTree
+                    bands={state.detail.scorecard}
+                    incompleteCount={state.detail.run.incompleteCount}
+                    selection={state.selection}
+                    onSelect={handleSelect}
+                  />
                   {selectedFinding && (
                     <EvidencePanel
                       finding={selectedFinding}
@@ -196,14 +218,20 @@ export function ReviewScreen({ deliveryId }: { deliveryId: string }): React.JSX.
                       }
                       onMembersFailed={() => dispatch({ type: "MEMBERS_FAILED" })}
                       viewer={viewer}
+                      lang={locale}
                     />
                   )}
-                  <IncompleteSection findings={state.detail.reviewIncomplete} />
+                  <IncompleteSection
+                    findings={state.detail.reviewIncomplete}
+                    selection={state.selection}
+                    onSelect={(findingId) => handleSelect(null, null, findingId)}
+                  />
                   <SpecTable specs={state.detail.specs} />
+                  <DecisionPanel run={state.detail} findings={findings} />
                 </>
               ) : (
                 <p className="text-xs text-muted-foreground" data-no-run-selected>
-                  ランを選択してください / Select a run to review its findings.
+                  {reviewCopy.selectRun}
                 </p>
               )}
             </div>

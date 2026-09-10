@@ -5,8 +5,49 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "../ui/button";
+import { useLocale } from "../locale-provider";
+import type { Locale } from "@/lib/i18n";
 import type { DeliveryDetail, Pack, RunDetail, RunSummary } from "@/lib/types";
 import { formatDateTime, shortHash } from "@/lib/format";
+
+const PACK_COPY = {
+  ja: {
+    section: "チェックパックとラン",
+    run: "ラン",
+    noRuns: "このデリバリーにはランがありません。",
+    failed: "ラン失敗:",
+    failedHint: "失敗したランは残ります。同じパックで再試行するか、別バージョンで新規ランを作成してください。",
+    newRun: "新規ラン",
+    loadingPacks: "チェックパックを読み込み中",
+    packVersion: "パックバージョン",
+    selectVersion: "パックバージョンを選択…",
+    specs: "仕様",
+    running: "実行中…",
+    runChecks: "ラン実行",
+    retrySame: "同じパックで再試行",
+    immutableHint: "パックを切り替えると新しい不変ランが作成され、過去の結果はラン選択で保持されます。",
+    unknownError: "不明なエラー",
+    status: { queued: "待機中", running: "実行中", completed: "完了", failed: "失敗" },
+  },
+  en: {
+    section: "Check pack and run",
+    run: "Run",
+    noRuns: "No runs for this delivery yet.",
+    failed: "Run failed:",
+    failedHint: "The failed run remains in history. Retry the same pack or create a run under another version.",
+    newRun: "New run",
+    loadingPacks: "Loading check packs",
+    packVersion: "Pack version",
+    selectVersion: "Select a pack version…",
+    specs: "specs",
+    running: "Running…",
+    runChecks: "Run checks",
+    retrySame: "Retry same pack",
+    immutableHint: "Switching packs creates a new immutable run; old results remain in the run selector.",
+    unknownError: "unknown error",
+    status: { queued: "Queued", running: "Running", completed: "Completed", failed: "Failed" },
+  },
+} as const;
 
 interface PackSelectionProps {
   readonly delivery: DeliveryDetail;
@@ -25,6 +66,8 @@ export function PackSelection({
   onRunCreated,
   onCreatingChange,
 }: PackSelectionProps): React.JSX.Element {
+  const { locale } = useLocale();
+  const copy = PACK_COPY[locale];
   const [packs, setPacks] = useState<Pack[] | null>(null);
   const [packsError, setPacksError] = useState<string | null>(null);
   const [packVersionId, setPackVersionId] = useState<string>("");
@@ -76,17 +119,17 @@ export function PackSelection({
   const selectedRun = runs.find((run) => run.id === selectedRunId) ?? null;
 
   return (
-    <section aria-label="Pack and run / パックとラン" data-pack-selection>
+    <section aria-label={copy.section} data-pack-selection>
       <label className="block text-xs">
-        <span className="mb-1 block font-medium">ラン / Run</span>
+        <span className="mb-1 block font-medium">{copy.run}</span>
         {runs.length === 0 ? (
           <p className="text-xs text-muted-foreground" data-no-runs>
-            このデリバリーにはランがありません / No runs for this delivery yet.
+            {copy.noRuns}
           </p>
         ) : (
           <select
-            aria-label="Run"
-            className="w-full border border-border bg-card px-2 py-1.5 text-xs"
+            aria-label={copy.run}
+            className="min-h-11 w-full border border-border bg-card px-2 py-1.5 text-xs sm:min-h-8"
             value={selectedRunId ?? ""}
             onChange={(event) => {
               if (event.target.value) onSelectRun(event.target.value);
@@ -95,7 +138,7 @@ export function PackSelection({
           >
             {runs.map((run) => (
               <option key={run.id} value={run.id} data-run-option={run.id}>
-                {runLabel(run)}
+                {runLabel(run, locale)}
               </option>
             ))}
           </select>
@@ -104,32 +147,30 @@ export function PackSelection({
 
       {selectedRun?.status === "failed" && (
         <p className="mt-1.5 border border-destructive/40 bg-destructive/5 px-2 py-1.5 text-xs" data-failed-run>
-          <span className="font-medium">ラン失敗 / Run failed:</span> {selectedRun.error ?? "unknown error"}{" "}
-          <span className="text-muted-foreground">
-            — 失敗したランは残ります。同じパックで再試行するか、別バージョンで新規ランを作成してください。
-          </span>
+          <span className="font-medium">{copy.failed}</span> {selectedRun.error ?? copy.unknownError}{" "}
+          <span className="text-muted-foreground">— {copy.failedHint}</span>
         </p>
       )}
 
       <div className="mt-2 space-y-1.5 border-t border-border pt-2">
-        <p className="text-xs font-medium">新規ラン / New run</p>
+        <p className="text-xs font-medium">{copy.newRun}</p>
         {packsError ? (
           <p className="text-xs text-destructive">{packsError}</p>
         ) : !packs ? (
           <p className="text-xs text-muted-foreground" role="status">
-            Loading packs…
+            {copy.loadingPacks}
           </p>
         ) : (
           <label className="block text-xs">
-            <span className="mb-1 block text-muted-foreground">パックバージョン / Pack version</span>
+            <span className="mb-1 block text-muted-foreground">{copy.packVersion}</span>
             <select
-              aria-label="Pack version"
-              className="w-full border border-border bg-card px-2 py-1.5 text-xs"
+              aria-label={copy.packVersion}
+              className="min-h-11 w-full border border-border bg-card px-2 py-1.5 text-xs sm:min-h-8"
               value={packVersionId}
               onChange={(event) => setPackVersionId(event.target.value)}
               data-pack-version-selector
             >
-              <option value="">Select a pack version…</option>
+              <option value="">{copy.selectVersion}</option>
               {packs.map((pack) => (
                 <optgroup key={pack.id} label={pack.name}>
                   {[...pack.versions]
@@ -140,7 +181,7 @@ export function PackSelection({
                         value={version.id}
                         data-pack-version-option={version.id}
                       >
-                        {pack.name} v{version.version} · {version.specCount} specs ·{" "}
+                        {pack.name} v{version.version} · {version.specCount} {copy.specs} ·{" "}
                         {formatDateTime(version.createdAt)}
                       </option>
                     ))}
@@ -162,7 +203,7 @@ export function PackSelection({
             onClick={() => void createRun()}
             data-create-run
           >
-            {creating ? "実行中… / Running…" : "ラン実行 / Run checks"}
+            {creating ? copy.running : copy.runChecks}
           </Button>
           {selectedRun?.status === "failed" && (
             <Button
@@ -181,21 +222,18 @@ export function PackSelection({
               }}
               data-retry-run
             >
-              再試行 / Retry same pack
+              {copy.retrySame}
             </Button>
           )}
         </div>
-        <p className="text-[11px] text-muted-foreground">
-          パックを切り替えると新しい不変ランが作成され、過去の結果はラン選択で保持されます / Switching packs
-          creates a new immutable run; old results stay in the run selector.
-        </p>
+        <p className="text-xs text-muted-foreground">{copy.immutableHint}</p>
       </div>
     </section>
   );
 }
 
-export function runLabel(run: RunSummary): string {
-  return `${run.packName} v${run.packVersion} · ${run.status} · ${shortHash(run.id)}`;
+export function runLabel(run: RunSummary, locale: Locale): string {
+  return `${run.packName} v${run.packVersion} · ${PACK_COPY[locale].status[run.status]} · ${shortHash(run.id)}`;
 }
 
 function latestPackVersionId(packs: Pack[], delivery: DeliveryDetail): string | null {

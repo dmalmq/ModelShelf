@@ -6,7 +6,7 @@
     "dev": "next dev -p 3210",
     "build": "next build",
     "start": "next start -p 3210",
-    "lint": "next lint",
+    "lint": "node scripts/check-design-rules.mjs",
     "typecheck": "tsc --noEmit",
     "postinstall": "node scripts/copy-wasm.mjs"
   },

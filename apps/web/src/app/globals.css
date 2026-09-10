@@ -65,10 +65,10 @@
   --destructive: #b42318;
   --destructive-foreground: #ffffff;
 
-  /* The 3D canvas. A rendering surface, not a themed one: it stays this value
-     in every theme, because geometry legibility is not a style choice.
-     White per product decision — the model space matches the light chrome. */
+  /* The white model plate needs its own boundary and ground grid. */
   --viewer: #ffffff;
+  --viewer-edge: #d7dee7;
+  --viewer-grid: rgb(215 222 231 / 0.42);
 
   /* Neutral steps for incidental chart fills. Severity, outcome and change kind
      never come from here — see the rule at the top of this file. */
@@ -224,6 +224,14 @@
   *::-webkit-scrollbar-track {
     background: transparent;
   }
+}
+
+.viewer-plate {
+  border-inline: 1px solid var(--viewer-edge);
+  background-color: var(--viewer);
+  background-image: linear-gradient(to right, var(--viewer-grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--viewer-grid) 1px, transparent 1px);
+  background-size: 32px 32px;
 }
 
 /* ---------------------------------------------------------------------------
