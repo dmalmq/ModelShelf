@@ -253,9 +253,7 @@ function parseFailureStage(value: unknown): FailureStage | null {
 }
 
 function parseDiscipline(value: unknown): ModelDiscipline | null {
-  return value === "ARCH" || value === "STRUCT" || value === "MEP" || value === "OTHER"
-    ? value
-    : null;
+  return nonEmptyString(value);
 }
 
 function safeRevisionId(value: unknown): RevisionId | null {
