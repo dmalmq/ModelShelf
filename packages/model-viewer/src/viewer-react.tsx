@@ -249,6 +249,10 @@ export function CombinedDeliveryViewer({
   const keyboardHelpId = useId();
   const onControllerRef = useRef(onController);
   onControllerRef.current = onController;
+  const resolveModelFileUrlRef = useRef(resolveModelFileUrl);
+  resolveModelFileUrlRef.current = resolveModelFileUrl;
+  const visibleRef = useRef(visible);
+  visibleRef.current = visible;
 
   function handleCanvasKeyDown(event: React.KeyboardEvent<HTMLCanvasElement>): void {
     const controller = controllerRef.current;
@@ -290,7 +294,7 @@ export function CombinedDeliveryViewer({
       delivery,
       canvas,
       geometryLoader: geometryLoader ?? createIfcGeometryLoader({ wasmBaseUrl }),
-      modelFileUrl: resolveModelFileUrl,
+      modelFileUrl: (model) => resolveModelFileUrlRef.current(model),
     });
     const verificationHandle: ViewerVerificationHandle = {
       inspect: () => controller.diagnostics(),
@@ -315,6 +319,9 @@ export function CombinedDeliveryViewer({
       window.__modelshelfViewers = [...(window.__modelshelfViewers ?? []), verificationHandle];
     }
     controller.start();
+    for (const [discipline, shown] of Object.entries(visibleRef.current)) {
+      if (shown === false) controller.setDisciplineVisibility(discipline, false);
+    }
 
     return () => {
       unsubscribe();
@@ -334,7 +341,7 @@ export function CombinedDeliveryViewer({
         }
       }
     };
-  }, [delivery, geometryLoader, resolveModelFileUrl, wasmBaseUrl]);
+  }, [delivery, geometryLoader, wasmBaseUrl]);
 
   if (error) {
     return (

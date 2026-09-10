@@ -68,7 +68,7 @@ function parseModel(value: unknown): ModelInfo {
   if (lengthToMetre <= 0) throw new Error("model.lengthToMetre must be positive");
 
   return {
-    id: stringValue(record.id, "model.id"),
+    id: nonEmptyString(record.id, "model.id"),
     deliveryId: stringValue(record.deliveryId, "model.deliveryId"),
     discipline: disciplineValue(record.discipline),
     sourceModelId: stringValue(record.sourceModelId, "model.sourceModelId"),
@@ -133,6 +133,12 @@ function requireRecord(value: unknown, field: string): Record<string, unknown> {
 function stringValue(value: unknown, field: string): string {
   if (typeof value !== "string") throw new Error(`${field} must be a string`);
   return value;
+}
+
+function nonEmptyString(value: unknown, field: string): string {
+  const text = stringValue(value, field);
+  if (text.trim().length === 0) throw new Error(`${field} must not be empty`);
+  return text;
 }
 
 function nullableString(value: unknown, field: string): string | null {

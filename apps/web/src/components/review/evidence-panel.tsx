@@ -168,7 +168,7 @@ export function EvidencePanel({
         return;
       }
       setProperty(detail);
-    } catch (reason: unknown) {
+    } catch {
       const currentKey = refKey(viewer.snapshot().selected?.ref ?? null);
       if (
         controller.signal.aborted ||
@@ -177,7 +177,7 @@ export function EvidencePanel({
       ) {
         return;
       }
-      setPropertyError(reason instanceof Error ? reason.message : copy.propertyFailed);
+      setPropertyError(copy.propertyFailed);
     } finally {
       if (propertyRequest.current?.version === requestVersion) {
         propertyRequest.current = null;
