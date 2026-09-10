@@ -97,9 +97,12 @@ export function applyFindingToViewer(
   };
 }
 
-export function clearFindingFromViewer(controller: DeliveryViewerController): void {
+export function clearFindingFromViewer(
+  controller: DeliveryViewerController,
+  options?: { clearSection?: boolean },
+): void {
   controller.setHighlights([]);
   controller.isolate(null);
   controller.setDimOpacity(1);
-  controller.setSectionZ(null);
+  if (options?.clearSection !== false) controller.setSectionZ(null);
 }

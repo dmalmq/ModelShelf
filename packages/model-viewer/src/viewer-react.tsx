@@ -247,6 +247,8 @@ export function CombinedDeliveryViewer({
   });
   const [panelTab, setPanelTab] = useState<"selection" | "findings">("findings");
   const keyboardHelpId = useId();
+  const onControllerRef = useRef(onController);
+  onControllerRef.current = onController;
 
   function handleCanvasKeyDown(event: React.KeyboardEvent<HTMLCanvasElement>): void {
     const controller = controllerRef.current;
@@ -306,7 +308,7 @@ export function CombinedDeliveryViewer({
       },
     };
     controllerRef.current = controller;
-    onController?.(controller);
+    onControllerRef.current?.(controller);
     const unsubscribe = controller.subscribe(setSnapshot);
     if (window.__modelshelfViewerVerify) {
       window.__modelshelfViewer = verificationHandle;
@@ -318,7 +320,7 @@ export function CombinedDeliveryViewer({
       unsubscribe();
       controller.dispose();
       controllerRef.current = null;
-      onController?.(null);
+      onControllerRef.current?.(null);
       if (window.__modelshelfViewerVerify) {
         const remaining = (window.__modelshelfViewers ?? []).filter(
           (candidate) => candidate !== verificationHandle,
@@ -332,7 +334,7 @@ export function CombinedDeliveryViewer({
         }
       }
     };
-  }, [delivery, geometryLoader, onController, resolveModelFileUrl, wasmBaseUrl]);
+  }, [delivery, geometryLoader, resolveModelFileUrl, wasmBaseUrl]);
 
   if (error) {
     return (

@@ -287,10 +287,20 @@ export function EvidencePanel({
     setSectionActive(false);
     setProperty(null);
     setPropertyError(null);
+    try {
+      viewer?.setSectionZ(null);
+    } catch {
+      // Viewer already disposed.
+    }
     return () => {
       propertyRequest.current?.controller.abort();
       propertyRequest.current = null;
       propertyRequestVersion.current += 1;
+      try {
+        viewer?.setSectionZ(null);
+      } catch {
+        // Viewer already disposed.
+      }
     };
   }, [finding.id, viewer]);
 
@@ -339,7 +349,7 @@ export function EvidencePanel({
       return;
     }
     if (finding.objectCount === 0 || filtered.length === 0) {
-      clearFindingFromViewer(viewer);
+      clearFindingFromViewer(viewer, { clearSection: false });
       setMatched(0);
       setSelectedHidden(viewer.diagnostics().selectedHidden);
       setNotDrawn({});
@@ -371,7 +381,7 @@ export function EvidencePanel({
     return () => {
       // Unmount (run switch, deselect) must not leave stale highlights behind.
       try {
-        clearFindingFromViewer(viewer);
+        clearFindingFromViewer(viewer, { clearSection: false });
       } catch {
         // Viewer already disposed; nothing to clear.
       }
