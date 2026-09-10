@@ -35,6 +35,9 @@ export function DecisionPanel({ run, findings }: { readonly run: RunDetail; read
   const copy = DECISION_COPY[locale];
   const current = history.kind === "ready" ? history.value.current : null;
   const cited = useMemo(() => new Set(citedFindingIds), [citedFindingIds]);
+  // Only a completed run can carry a decision; the checker answers anything
+  // else with decision_conflict, so the form must not invite the attempt.
+  const decidable = run.run.status === "completed";
 
   // A decision belongs to one immutable run. Switching runs must clear the
   // draft: carrying a rationale across would attach it to the wrong run, and
@@ -143,7 +146,12 @@ export function DecisionPanel({ run, findings }: { readonly run: RunDetail; read
         </Alert>
       ) : null}
       {current ? <CurrentDecision decision={current} locale={locale} onDownload={downloadCurrent} saved={saved} /> : null}
-      <fieldset className="space-y-2" disabled={submitting || history.kind === "loading"}>
+      {decidable ? null : (
+        <p className="border border-border bg-muted px-2 py-1.5 text-xs" data-decision-blocked={run.run.status}>
+          {copy.runNotDecidable(run.run.status)}
+        </p>
+      )}
+      <fieldset className="space-y-2" disabled={!decidable || submitting || history.kind === "loading"}>
         <legend className="text-sm font-medium">{current ? copy.supersede : copy.title}</legend>
         <div className="flex flex-wrap gap-2" role="group" aria-label={copy.title}>
           {OUTCOMES.map((candidate) => (

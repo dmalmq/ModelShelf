@@ -439,10 +439,19 @@ export async function runInspectionScenario() {
     await page.screenshot({ path: join(EVIDENCE_DIR, "inspection-selection.png") });
 
     await page.locator("[data-reset-view]").click();
-    await page.waitForFunction(() => window.__modelshelfViewer?.inspect().selectedHidden === false, undefined, {
-      timeout: 30_000,
-    });
-    check(true, "reset view clears isolation and reveals the selection");
+    await page.waitForFunction(
+      () => {
+        const state = window.__modelshelfViewer?.inspect();
+        return state?.selectedHidden === false && state?.isolatedRequested === null;
+      },
+      undefined,
+      { timeout: 30_000 },
+    );
+    const afterReset = await inspect(page);
+    check(
+      afterReset.isolatedRequested === null && afterReset.renderer.highlightGroups.length === 1,
+      "reset view drops isolation and keeps the finding highlighted in the full delivery",
+    );
 
     await page.locator("[data-section-z]").fill("1.5");
     await page.locator("[data-section-z]").press("Enter");

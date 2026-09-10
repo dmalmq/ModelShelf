@@ -97,6 +97,8 @@ export const DECISION_LABEL: Dict<DecisionOutcome> = {
 
 export const DECISION_COPY = {
   ja: {
+    runNotDecidable: (status: string) =>
+      `判定を記録できるのは完了したランだけです。このランは「${status}」です。`,
     title: "判定を記録",
     description: "このランに対する結論と、その根拠を記録します。記録後も履歴は変更されません。",
     rationale: "判定理由",
@@ -119,6 +121,8 @@ export const DECISION_COPY = {
     copied: "保存しました",
   },
   en: {
+    runNotDecidable: (status: string) =>
+      `Only a completed run can carry a decision; this run is ${status}.`,
     title: "Record decision",
     description: "Record the conclusion for this run and the rationale a submitter can inspect. History stays intact.",
     rationale: "Rationale",
@@ -817,5 +821,27 @@ export const FINDING_EVIDENCE_COPY = {
     model: "Model",
     actual: "Actual",
     other: "Other",
+  },
+} as const;
+
+/** Copy for the spec-results table in `src/components/review/scorecard.tsx`. */
+export const SPEC_TABLE_COPY = {
+  ja: {
+    heading: "仕様結果",
+    spec: "仕様",
+    outcome: "結果",
+    applicable: "適用",
+    pass: "合格",
+    fail: "不合格",
+    incomplete: "未判定",
+  },
+  en: {
+    heading: "Spec results",
+    spec: "Spec",
+    outcome: "Outcome",
+    applicable: "Applicable",
+    pass: "Pass",
+    fail: "Fail",
+    incomplete: "Incomplete",
   },
 } as const;

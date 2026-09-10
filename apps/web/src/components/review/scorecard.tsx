@@ -9,7 +9,7 @@ import { useState } from "react";
 import { SeverityBadge } from "../domain/severity-badge";
 import { SeverityLadder } from "../domain/severity-ladder";
 import { OUTCOME_COLOR } from "@/lib/palette";
-import { OUTCOME_LABEL, SEVERITY_LABEL, UI } from "@/lib/i18n";
+import { OUTCOME_LABEL, SEVERITY_LABEL, UI, SPEC_TABLE_COPY } from "@/lib/i18n";
 import type { Finding, Severity, SeverityBand, SpecOutcome, SpecResultRow } from "@/lib/types";
 import type { FindingSelection } from "./review-state";
 import { useLocale } from "../locale-provider";
@@ -151,6 +151,7 @@ const OUTCOME_ORDER: SpecOutcome[] = ["fail", "review_incomplete", "not_applicab
 
 export function SpecTable({ specs }: { specs: readonly SpecResultRow[] }): React.JSX.Element {
   const { locale } = useLocale();
+  const copy = SPEC_TABLE_COPY[locale];
   if (specs.length === 0) return <p className="text-xs text-muted-foreground">{UI[locale].nothingEvaluated}</p>;
   // Backend order is stable (spec_name); group display by severity of outcome
   // without hiding any row — not_applicable stays visible as its own outcome.
@@ -158,18 +159,18 @@ export function SpecTable({ specs }: { specs: readonly SpecResultRow[] }): React
     (a, b) => OUTCOME_ORDER.indexOf(a.outcome) - OUTCOME_ORDER.indexOf(b.outcome),
   );
   return (
-    <section aria-label={locale === "ja" ? "仕様結果" : "Spec results"} data-spec-table>
-      <h2 className="text-sm font-semibold">{locale === "ja" ? "仕様結果" : "Spec results"}</h2>
+    <section aria-label={copy.heading} data-spec-table>
+      <h2 className="text-sm font-semibold">{copy.heading}</h2>
       <div className="mt-1.5 overflow-x-auto">
       <table className="w-full text-xs">
         <thead>
           <tr className="text-left text-muted-foreground">
-            <th scope="col" className="py-1 pr-2 font-medium">{locale === "ja" ? "仕様" : "Spec"}</th>
-            <th scope="col" className="py-1 pr-2 font-medium">{locale === "ja" ? "結果" : "Outcome"}</th>
-            <th scope="col" className="tnum py-1 text-right font-medium">{locale === "ja" ? "適用" : "Applicable"}</th>
-            <th scope="col" className="tnum py-1 text-right font-medium">{locale === "ja" ? "合格" : "Pass"}</th>
-            <th scope="col" className="tnum py-1 text-right font-medium">{locale === "ja" ? "不合格" : "Fail"}</th>
-            <th scope="col" className="tnum py-1 text-right font-medium">{locale === "ja" ? "未判定" : "Incomplete"}</th>
+            <th scope="col" className="py-1 pr-2 font-medium">{copy.spec}</th>
+            <th scope="col" className="py-1 pr-2 font-medium">{copy.outcome}</th>
+            <th scope="col" className="tnum py-1 text-right font-medium">{copy.applicable}</th>
+            <th scope="col" className="tnum py-1 text-right font-medium">{copy.pass}</th>
+            <th scope="col" className="tnum py-1 text-right font-medium">{copy.fail}</th>
+            <th scope="col" className="tnum py-1 text-right font-medium">{copy.incomplete}</th>
           </tr>
         </thead>
         <tbody>

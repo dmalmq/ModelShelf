@@ -1,0 +1,71 @@
+{
+  "run": {
+    "id": "a88f2c0e-ba4b-422a-800e-832f6e6b5145",
+    "projectId": "demo-project",
+    "deliveryId": "cd72b47e-9277-4047-9f4b-6407f0f0e346",
+    "deliveryLabel": "Empty review",
+    "packVersionId": "1496be1c-8307-4cc2-9622-011b67104f4c",
+    "packName": "Demo Check Pack",
+    "packVersion": 1,
+    "engineVersion": "ifctester/0.8.5",
+    "parserVersion": "ifcopenshell/0.8.5",
+    "status": "completed",
+    "error": null,
+    "startedAt": "2026-09-10T00:29:29.970Z",
+    "finishedAt": "2026-09-10T00:29:30.604Z",
+    "durationMs": 631,
+    "passCount": 0,
+    "failCount": 0,
+    "notApplicableCount": 4,
+    "incompleteCount": 0,
+    "score": null,
+    "findingCount": 0,
+    "failingObjectCount": 0
+  },
+  "specs": [
+    {
+      "id": "b28447c9-c487-452d-a044-eadcb66be07d",
+      "specIdentifier": "Door declares a fire rating",
+      "specName": "Door declares a fire rating",
+      "outcome": "not_applicable",
+      "applicableCount": 0,
+      "passCount": 0,
+      "failCount": 0,
+      "incompleteCount": 0,
+      "notes": []
+    },
+    {
+      "id": "2b037e2f-10ae-4aff-8594-7423e5227dd5",
+      "specIdentifier": "Site declares an evacuation width",
+      "specName": "Site declares an evacuation width",
+      "outcome": "not_applicable",
+      "applicableCount": 0,
+      "passCount": 0,
+      "failCount": 0,
+      "incompleteCount": 0,
+      "notes": []
+    },
+    {
+      "id": "c71548bc-82fc-43e5-96c2-0b43a658da57",
+      "specIdentifier": "Wall declares a fire rating",
+      "specName": "Wall declares a fire rating",
+      "outcome": "not_applicable",
+      "applicableCount": 0,
+      "passCount": 0,
+      "failCount": 0,
+      "incompleteCount": 0,
+      "notes": []
+    },
+    {
+      "id": "7a7616a9-909c-48f9-807b-993ab3528196",
+      "specIdentifier": "Wall declares a load-bearing use",
+      "specName": "Wall declares a load-bearing use",
+      "outcome": "not_applicable",
+      "applicableCount": 0,
+      "passCount": 0,
+      "failCount": 0,
+      "incompleteCount": 0,
+      "notes": []
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "run": {
+    "id": "213b1d47-ae15-4c36-a3ad-122e1e01f374",
+    "projectId": "demo-project",
+    "deliveryId": "52c019a5-c7f7-493d-a201-be49481ef73b",
+    "deliveryLabel": "Findings review",
+    "packVersionId": "39ee9542-60c7-4ea9-82c9-100a7b55123f",
+    "packName": "Demo Check Pack",
+    "packVersion": 1,
+    "engineVersion": "ifctester/0.8.5",
+    "parserVersion": "ifcopenshell/0.8.5",
+    "status": "completed",
+    "error": null,
+    "startedAt": "2026-09-09T07:01:50.106Z",
+    "finishedAt": "2026-09-09T07:01:52.098Z",
+    "durationMs": 1990,
+    "passCount": 0,
+    "failCount": 9,
+    "notApplicableCount": 3,
+    "incompleteCount": 0,
+    "score": 0,
+    "findingCount": 3,
+    "failingObjectCount": 280
+  },
+  "scorecard": [
+    {
+      "severity": "critical",
+      "findingCount": 1,
+      "objectCount": 3
+    },
+    {
+      "severity": "high",
+      "findingCount": 1,
+      "objectCount": 277
+    },
+    {
+      "severity": "advisory",
+      "findingCount": 1,
+      "objectCount": 271
+    }
+  ],
+  "specs": [
+    {
+      "id": "71be4786-bf81-47c9-aa70-226080272548",
+      "specIdentifier": "Door declares a fire rating",
+      "specName": "Door declares a fire rating",
+      "outcome": "not_applicable",
+      "applicableCount": 0,
+      "passCount": 0,
+      "failCount": 0,
+      "incompleteCount": 0,
+      "notes": []
+    },
+    {
+      "id": "0f74566b-22ee-4623-bba4-a523f22a8017",
+      "specIdentifier": "Site declares an evacuation width",
+      "specName": "Site declares an evacuation width",
+      "outcome": "fail",
+      "applicableCount": 3,
+      "passCount": 0,
+      "failCount": 3,
+      "incompleteCount": 0,
+      "notes": []
+    },
+    {
+      "id": "ff9dda71-b5e4-4c54-8724-5eaeddb78ea8",
+      "specIdentifier": "Wall declares a fire rating",
+      "specName": "Wall declares a fire rating",
+      "outcome": "fail",
+      "applicableCount": 277,
+      "passCount": 6,
+      "failCount": 271,
+      "incompleteCount": 0,
+      "notes": []
+    },
+    {
+      "id": "4d1ea808-b8cd-4388-ac5b-6ec8ba581bc6",
+      "specIdentifier": "Wall declares a load-bearing use",
+      "specName": "Wall declares a load-bearing use",
+      "outcome": "fail",
+      "applicableCount": 277,
+      "passCount": 0,
+      "failCount": 277,
+      "incompleteCount": 0,
+      "notes": []
+    }
+  ],
+  "reviewIncomplete": []
+}

@@ -1,0 +1,12 @@
+   ▲ Next.js 15.5.25
+   - Local:        http://localhost:36745
+   - Network:      http://10.255.255.254:36745
+
+ ✓ Starting...
+ ✓ Ready in 1130ms
+ ○ Compiling /deliveries/[deliveryId] ...
+ ✓ Compiled /deliveries/[deliveryId] in 2.5s (990 modules)
+ GET /deliveries/b7b2fdaa-7bf0-4203-b9ef-13f8126da0fa 200 in 3125ms
+ GET /deliveries/b7b2fdaa-7bf0-4203-b9ef-13f8126da0fa 200 in 53ms
+ ⚠ Cross origin request detected from 127.0.0.1 to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins

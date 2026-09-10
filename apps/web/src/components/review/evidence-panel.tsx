@@ -93,6 +93,13 @@ export function EvidencePanel({
   const [sectionActive, setSectionActive] = useState(false);
   const [property, setProperty] = useState<ObjectDetail | null>(null);
   const [propertyError, setPropertyError] = useState<string | null>(null);
+  /** True after "Reset view": the finding stays coloured, nothing stays hidden. */
+  const [isolationOff, setIsolationOff] = useState(false);
+
+  // A new finding is a new question: it isolates again.
+  useEffect(() => {
+    setIsolationOff(false);
+  }, [finding.id]);
 
   function applySection(): void {
     if (!viewer) return;
@@ -113,7 +120,14 @@ export function EvidencePanel({
     viewer.setSectionZ(null);
     setSectionInput("");
     setSectionActive(false);
+    setIsolationOff(true);
     onFiltersChange({ source: "all", discipline: "all", storey: "all", ifcType: "all" });
+  }
+
+  /** Any deliberate narrowing re-isolates; reset is a one-shot, not a mode. */
+  function changeFilters(next: ObjectFilterSet): void {
+    setIsolationOff(false);
+    onFiltersChange(next);
   }
 
   async function inspectSelection(): Promise<void> {
@@ -268,9 +282,12 @@ export function EvidencePanel({
       return;
     }
     try {
+      // "Reset view" keeps the finding highlighted but stops hiding the rest of
+      // the delivery: colour without isolation, full opacity, camera untouched.
       const readback = applyFindingToViewer(
         viewer,
         { refs, color: SEVERITY_COLOR[finding.severity], label: finding.title },
+        isolationOff ? { isolate: false, dimOpacity: 1, frame: false } : undefined,
       );
       setMatched(readback.matched);
       setSelectedHidden(readback.selectedHidden);
@@ -296,7 +313,7 @@ export function EvidencePanel({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewer, finding.id, finding.objectCount, refs.length === 0 ? "empty" : refs.map((r) => `${r.revisionId}${r.objectId}`).join(",")]);
+  }, [viewer, finding.id, finding.objectCount, isolationOff, refs.length === 0 ? "empty" : refs.map((r) => `${r.revisionId}${r.objectId}`).join(",")]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount - 1);
@@ -406,7 +423,7 @@ export function EvidencePanel({
         </p>
       )}
 
-      <ObjectFilters filters={filters} options={filterOptions} onChange={onFiltersChange} />
+      <ObjectFilters filters={filters} options={filterOptions} onChange={changeFilters} />
       <div className="flex flex-wrap items-center gap-1.5">
         <Button
           variant="outline"
