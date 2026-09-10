@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "r
 import { useRouter } from "next/navigation";
 import { LocaleSwitcher } from "../domain/locale-switcher";
 import { useLocale } from "../locale-provider";
-import { CHANGE_LABEL } from "@/lib/i18n";
+import { CHANGE_LABEL, COMPARE_COPY } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
 import { fetchProject } from "@/lib/shelf-api";
 import type {
@@ -57,41 +57,6 @@ const KIND_OPTIONS: readonly (ChangeKind | "all")[] = [
   "mixed",
   "unchanged",
 ];
-
-const COMPARE_COPY = {
-  ja: {
-    unavailable: "比較を開けません",
-    retry: "再試行",
-    baseDelivery: "基準デリバリー",
-    headDelivery: "先端デリバリー",
-    compare: "比較する",
-    viewingSide: "表示する版",
-    base: "基準",
-    head: "先端",
-    kind: "種別",
-    all: "すべて",
-    confidence: "確度",
-    uncertainOnly: "不確実のみ",
-    source: "ソース",
-    loading: "比較を読み込み中…",
-  },
-  en: {
-    unavailable: "Comparison unavailable",
-    retry: "Retry",
-    baseDelivery: "Base delivery",
-    headDelivery: "Head delivery",
-    compare: "Compare",
-    viewingSide: "Viewing side",
-    base: "Base",
-    head: "Head",
-    kind: "Kind",
-    all: "All",
-    confidence: "Confidence",
-    uncertainOnly: "Uncertain only",
-    source: "Source",
-    loading: "Loading comparison…",
-  },
-} as const;
 
 function latestCompletedRunId(delivery: DeliveryDetail): string | null {
   const runs = [...delivery.runs].sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1));
@@ -542,5 +507,4 @@ function SideButton({
     </button>
   );
 }
-
 

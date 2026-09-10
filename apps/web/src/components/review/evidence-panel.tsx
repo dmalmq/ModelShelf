@@ -10,7 +10,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../ui/button";
 import { SEVERITY_COLOR } from "@/lib/palette";
-import { UI, type Locale } from "@/lib/i18n";
+import { EVIDENCE_COPY, UI, type Locale } from "@/lib/i18n";
 import type { Finding, FindingObject, ModelInfo, ObjectDetail, RunSummary, SpecResultRow } from "@/lib/types";
 import { fetchAllFindingObjects, fetchObjectDetail } from "../viewer/findings-api";
 import type { DeliveryViewerController } from "../viewer/types";
@@ -27,85 +27,6 @@ import {
 
 const PAGE_SIZE = 25;
 const VIRTUALIZE_AFTER = 100;
-
-const EVIDENCE_COPY = {
-  ja: {
-    requirement: "要件",
-    expected: "期待値",
-    section: "断面 Z (m)",
-    sectionLabel: "断面 Z メートル",
-    sectionActive: "適用中",
-    inspect: "選択オブジェクトの属性を表示",
-    resetView: "表示をリセット",
-    type: "タイプ",
-    noOccurrence: "このメンバーには照会できるモデル出現がありません。",
-    propertyFailed: "オブジェクト属性を読み込めませんでした",
-    undecided: "未判定: エンジンはこの要件を判定できませんでした。合格ではありません。",
-    reasons: (reasons: readonly string[]) =>
-      reasons.length > 0 ? `理由: ${reasons.join(" / ")}` : "エンジンからの理由の記載はありません。",
-    instructions: "指示",
-    firstMember: "代表メンバー",
-    actual: "実測値",
-    unnamed: "名称なし",
-    scopeSummary: (name: string, applicable: number, pass: number) =>
-      `${name}: 適用${applicable} · 合格${pass}`,
-    scopeCounts: (name: string, applicable: number, pass: number, fail: number, incomplete: number) =>
-      `${name}: 適用${applicable} · 合格${pass} · 不合格${fail} · 未判定${incomplete}`,
-    seeSpecTable: "適用範囲の詳細は仕様表を参照してください。",
-    issueCount: (count: number) => `${count}件`,
-    memberCounts: (shown: number, valid: number, unique: number, matched: number | null, undrawable: number) =>
-      `${shown}/${valid}件表示${valid !== unique ? ` · 一意${unique}件` : ""}${matched !== null ? ` · ビューア一致${matched}件` : ""} · 描画不可${undrawable}件`,
-    loadFailed: (sample: number) => `全件の読み込みに失敗しました。${sample}件のサンプルを表示しています。`,
-    refetch: "再取得",
-    loadingMembers: (count: number) => `対象オブジェクトを読み込み中… ${count}件`,
-    name: "名称",
-    storey: "階",
-    model: "モデル",
-    textEvidenceOnly: "テキスト証拠のみのメンバーです。描画対象から除外し、一覧に保持しています。",
-    noGlobalId: "GlobalIdなし",
-    selectedHidden: "選択中のオブジェクトは現在の絞り込みで非表示です。選択は保持されます。",
-    previousPage: "前のオブジェクトページ",
-    nextPage: "次のオブジェクトページ",
-  },
-  en: {
-    requirement: "Requirement",
-    expected: "Expected",
-    section: "Section Z (m)",
-    sectionLabel: "Section Z metres",
-    sectionActive: "active",
-    inspect: "Inspect selection properties",
-    resetView: "Reset view",
-    type: "Type",
-    noOccurrence: "This finding member has no model occurrence to inspect.",
-    propertyFailed: "Object properties could not be loaded",
-    instructions: "Instructions",
-    undecided: "Review incomplete: the engine could not decide this requirement. This is never a pass.",
-    reasons: (reasons: readonly string[]) =>
-      reasons.length > 0 ? `Reason: ${reasons.join(" / ")}` : "The engine recorded no reason.",
-    firstMember: "First member",
-    actual: "Actual",
-    unnamed: "Unnamed",
-    scopeSummary: (name: string, applicable: number, pass: number) =>
-      `${name}: ${applicable} applicable · ${pass} passed`,
-    scopeCounts: (name: string, applicable: number, pass: number, fail: number, incomplete: number) =>
-      `${name}: ${applicable} applicable · ${pass} passed · ${fail} failed · ${incomplete} incomplete`,
-    seeSpecTable: "See the spec table for scope details.",
-    issueCount: (count: number) => `${count} issues`,
-    memberCounts: (shown: number, valid: number, unique: number, matched: number | null, undrawable: number) =>
-      `${shown}/${valid} shown${valid !== unique ? ` · ${unique} unique` : ""}${matched !== null ? ` · ${matched} matched in viewer` : ""} · ${undrawable} undrawable`,
-    loadFailed: (sample: number) => `Could not load all members. Showing the ${sample}-object sample.`,
-    refetch: "Retry",
-    loadingMembers: (count: number) => `Loading affected objects… ${count}`,
-    name: "Name",
-    storey: "Storey",
-    model: "Model",
-    textEvidenceOnly: "These members have text evidence but no geometry. They remain listed and are excluded from drawing.",
-    noGlobalId: "no GlobalId",
-    selectedHidden: "The selected object is hidden by the current filter. Its selection is preserved.",
-    previousPage: "Previous objects page",
-    nextPage: "Next objects page",
-  },
-} as const;
 
 interface EvidencePanelProps {
   readonly finding: Finding;

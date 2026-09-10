@@ -197,6 +197,26 @@
     font-size: 12px;
   }
 
+  /* ------------------------------------------------------------------
+     Touch targets.
+
+     Every interactive control clears 44px below the `sm` breakpoint —
+     the site survey is done on a tablet, one-handed, and the desktop
+     kit is sized for a mouse. This lives here rather than in
+     `components/ui/button.tsx`, which is CLI-vendored and would lose
+     the rule on the next regeneration; it also covers native buttons,
+     selects and file inputs the primitive never sees.
+     ------------------------------------------------------------------ */
+  @media (width < 40rem) {
+    button,
+    [role="button"],
+    select,
+    textarea,
+    input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]) {
+      min-height: 44px;
+    }
+  }
+
   /* Identifiers, hashes, counts and timestamps scan vertically. */
   .tnum {
     font-variant-numeric: tabular-nums;

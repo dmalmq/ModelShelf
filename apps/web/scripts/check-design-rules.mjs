@@ -65,6 +65,11 @@ for (const file of componentFiles) {
       /(?:[A-Za-z][^\n"'`]* \/ [^\n"'`]*[\u3040-\u30ff\u3400-\u9fff]|[\u3040-\u30ff\u3400-\u9fff][^\n"'`]* \/ [^\n"'`]*[A-Za-z])/g,
       () => "bilingual slash copy bypasses the locale switch",
     ),
+    ...linesFor(
+      text,
+      /const\s+[A-Z][A-Z0-9_]*\s*=\s*\{\s*\n\s*(?:ja|en):\s*\{/g,
+      () => "component-local copy dictionary; every string belongs in src/lib/i18n.ts",
+    ),
   ];
   for (const finding of findings) violations.push(`${relative(file)}:${finding}`);
 }

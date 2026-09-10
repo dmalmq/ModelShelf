@@ -6,7 +6,7 @@
 
 import { useState } from "react";
 import { useLocale } from "../locale-provider";
-import { CHANGE_LABEL, SEVERITY_LABEL, copy } from "@/lib/i18n";
+import { CHANGE_LABEL, COMPARE_INSPECTOR_COPY as COPY, SEVERITY_LABEL, copy } from "@/lib/i18n";
 import { CHANGE_COLOR, SEVERITY_COLOR } from "@/lib/palette";
 import type {
   ChangeKind,
@@ -31,46 +31,6 @@ import {
   type ModelDiffStatus,
 } from "./compare-state";
 
-const COPY = {
-  changesHeading: { ja: "モデル差分", en: "Model changes" },
-  findingsHeading: { ja: "指摘差分", en: "Finding changes" },
-  baseRunLabel: { ja: "基準ラン", en: "Base run" },
-  headRunLabel: { ja: "先端ラン", en: "Head run" },
-  selectRun: { ja: "ランを選択", en: "Select a run" },
-  uncertainBadge: { ja: "不確実", en: "Uncertain" },
-  movedDistance: { ja: "移動距離", en: "Moved" },
-  beforeValue: { ja: "変更前", en: "Before" },
-  afterValue: { ja: "変更後", en: "After" },
-  rerun: { ja: "再実行", en: "Rerun" },
-  rerunning: { ja: "実行中…", en: "Running…" },
-
-  loadingModel: { ja: "モデル差分を読み込み中…", en: "Loading model diff…" },
-  profileMismatch: { ja: "指紋プロファイルが不一致", en: "Fingerprint profile mismatch" },
-  profileHint: {
-    ja: "両版を同一プロファイルで再計算してください。履歴は追記専用のため、リビジョンの再アップロードで再計算されます。",
-    en: "Recompute both revisions under one profile by re-uploading; history remains append-only.",
-  },
-  modelFailed: { ja: "モデル差分を読み込めません", en: "Model diff could not be loaded" },
-  unnamed: { ja: "名称なし", en: "unnamed" },
-  noGlobalId: { ja: "GlobalIdなし", en: "no GlobalId" },
-  listedOnly: { ja: "一覧のみ", en: "list only" },
-  revisionSide: { ja: "版", en: "Revision side" },
-  name: { ja: "名称", en: "Name" },
-  storey: { ja: "階", en: "Storey" },
-  base: { ja: "基準", en: "Base" },
-  head: { ja: "先端", en: "Head" },
-  addedSide: { ja: "この追加は先端版にのみ存在します", en: "This addition exists only on the head side" },
-  removedSide: { ja: "この削除は基準版にのみ存在します", en: "This removal exists only on the base side" },
-  showHead: { ja: "先端で表示", en: "Show in head" },
-  showBase: { ja: "基準で表示", en: "Show in base" },
-  geometryFramed: { ja: "形状を選択中", en: "Geometry framed" },
-  listedWithoutGeometry: { ja: "一覧のみ", en: "Listed without geometry" },
-  property: { ja: "属性", en: "Property" },
-  loadingFinding: { ja: "指摘差分を読み込み中…", en: "Loading finding diff…" },
-  incomparable: { ja: "比較できない設定差", en: "Incomparable checking settings" },
-  findingFailed: { ja: "指摘差分を読み込めません", en: "Finding diff could not be loaded" },
-  selectBothRuns: { ja: "両方のランを選択してください。", en: "Select both runs to compare their findings." },
-} as const;
 const KIND_ORDER: readonly ChangeKind[] = [
   "added",
   "removed",

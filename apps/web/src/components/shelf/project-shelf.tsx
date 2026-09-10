@@ -31,87 +31,9 @@ import {
   type Remote,
 } from "@/lib/shelf-api";
 import type { DeliverySummary, Discipline, ProjectDetail, SourceModel } from "@/lib/types";
+import { SHELF_COPY } from "@/lib/i18n";
 
 type ShelfStatus = "draft" | "finalized" | "processing" | "failed" | "checked";
-
-const SHELF_COPY = {
-  ja: {
-    shelf: "プロジェクト棚",
-    loadingProjects: "プロジェクトを読み込み中",
-    projectsUnavailable: "プロジェクトを開けません",
-    retry: "再試行",
-    noProjects: "プロジェクトがありません",
-    seedHint: "チェッカーサービスにデモプロジェクトを投入してから、このページを再読み込みしてください。",
-    context: "デリバリー、ソース、構成",
-    project: "プロジェクト",
-    selectProject: "プロジェクトを選択",
-    deliveries: "デリバリー",
-    deliveryCount: (count: number) => `${count}件`,
-    newDeliveryLabel: "新規デリバリー名",
-    deliveryPlaceholder: "例: 第3回提出",
-    createDelivery: "デリバリーを作成",
-    deliveryNotCreated: "デリバリーを作成できませんでした",
-    loadingDeliveries: "デリバリーを読み込み中",
-    deliveriesUnavailable: "デリバリーを開けません",
-    noDeliveries: "デリバリーはまだありません。上で名前を付けて最初の提出を始めてください。",
-    modelCounts: (models: number, products: number) => `${models}ソース · ${products}プロダクト`,
-    sources: "ソース",
-    discipline: "分野",
-    filterDiscipline: "分野でソースを絞り込み",
-    all: "すべて",
-    newSourceName: "新規ソース名",
-    sourcePlaceholder: "例: MEP 北棟",
-    sourceDiscipline: "新規ソースの分野",
-    createSource: "ソースを作成",
-    sourceNotCreated: "ソースを作成できませんでした",
-    loadingSources: "ソースを読み込み中",
-    sourcesUnavailable: "ソースを開けません",
-    noSources: "ソースはまだありません。上で名前を付けてください。同じ分野に複数のソースを作成できます。",
-    noFilteredSources: (discipline: string) => `${discipline}のソースはありません。絞り込みを解除すると全ソースを表示できます。`,
-    revisions: (count: number) => `${count}リビジョン`,
-    latest: "最新",
-    noRevisions: "リビジョンなし",
-    status: { draft: "下書き", finalized: "確定", processing: "実行中", failed: "実行失敗", checked: "実行完了" },
-  },
-  en: {
-    shelf: "Project shelf",
-    loadingProjects: "Loading projects",
-    projectsUnavailable: "Projects unavailable",
-    retry: "Retry",
-    noProjects: "No projects yet",
-    seedHint: "Seed the checker service to create the demo project, then reload this page.",
-    context: "deliveries, sources, and assembly context",
-    project: "Project",
-    selectProject: "Select project",
-    deliveries: "Deliveries",
-    deliveryCount: (count: number) => `${count} ${count === 1 ? "delivery" : "deliveries"}`,
-    newDeliveryLabel: "New delivery label",
-    deliveryPlaceholder: "e.g. drop-3",
-    createDelivery: "Create delivery",
-    deliveryNotCreated: "Delivery was not created",
-    loadingDeliveries: "Loading deliveries",
-    deliveriesUnavailable: "Deliveries unavailable",
-    noDeliveries: "No deliveries yet. Name one above to start the first drop.",
-    modelCounts: (models: number, products: number) => `${models} sources · ${products} products`,
-    sources: "Sources",
-    discipline: "Discipline",
-    filterDiscipline: "Filter sources by discipline",
-    all: "All",
-    newSourceName: "New source name",
-    sourcePlaceholder: "e.g. MEP North",
-    sourceDiscipline: "New source discipline",
-    createSource: "Create source",
-    sourceNotCreated: "Source was not created",
-    loadingSources: "Loading sources",
-    sourcesUnavailable: "Sources unavailable",
-    noSources: "No sources yet. Name one above. Two sources may share a discipline.",
-    noFilteredSources: (discipline: string) => `No ${discipline} sources. Clear the filter to see every source.`,
-    revisions: (count: number) => `${count} ${count === 1 ? "revision" : "revisions"}`,
-    latest: "latest",
-    noRevisions: "no revisions yet",
-    status: { draft: "Draft", finalized: "Finalized", processing: "Run in progress", failed: "Run failed", checked: "Run complete" },
-  },
-} as const;
 
 function shelfDeliveryStatus(summary: DeliverySummary): ShelfStatus {
   if (summary.finalizedAt && summary.finalizedAt.length > 0) return "finalized";
@@ -126,7 +48,6 @@ type DisciplineFilter = Discipline | "all";
 function isDiscipline(value: string | null): value is Discipline {
   return value === "ARCH" || value === "STRUCT" || value === "MEP" || value === "OTHER";
 }
-
 
 function shortHash(hash: string): string {
   return hash.length > 12 ? `${hash.slice(0, 12)}…` : hash;

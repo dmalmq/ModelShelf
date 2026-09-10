@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { Finding } from "@/lib/types";
-import { UI } from "@/lib/i18n";
+import { FINDING_EVIDENCE_COPY, UI } from "@/lib/i18n";
 import { useLocale } from "../locale-provider";
 
 interface EvidenceObject {
@@ -70,10 +70,7 @@ function normalize(finding: FindingEvidenceSource): { objects: readonly Evidence
  */
 export function FindingEvidence({ finding }: { finding: FindingEvidenceSource }) {
   const { locale } = useLocale();
-  const copy =
-    locale === "ja"
-      ? { evidence: "根拠と対象オブジェクト", requirement: "要件", expected: "期待値", objects: "対象オブジェクト", name: "名称", storey: "階", model: "モデル", actual: "実測値", other: "ほか" }
-      : { evidence: "Evidence and affected objects", requirement: "Requirement", expected: "Expected", objects: "Affected objects", name: "Name", storey: "Storey", model: "Model", actual: "Actual", other: "Other" };
+  const copy = FINDING_EVIDENCE_COPY[locale];
   const { objects, expected } = normalize(finding);
   const otherObjectCount = finding.objectCount - objects.length;
   return (

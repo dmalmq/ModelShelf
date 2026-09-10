@@ -6,48 +6,9 @@
 import { useEffect, useState } from "react";
 import { Button } from "../ui/button";
 import { useLocale } from "../locale-provider";
-import type { Locale } from "@/lib/i18n";
+import { PACK_COPY, type Locale } from "@/lib/i18n";
 import type { DeliveryDetail, Pack, RunDetail, RunSummary } from "@/lib/types";
 import { formatDateTime, shortHash } from "@/lib/format";
-
-const PACK_COPY = {
-  ja: {
-    section: "チェックパックとラン",
-    run: "ラン",
-    noRuns: "このデリバリーにはランがありません。",
-    failed: "ラン失敗:",
-    failedHint: "失敗したランは残ります。同じパックで再試行するか、別バージョンで新規ランを作成してください。",
-    newRun: "新規ラン",
-    loadingPacks: "チェックパックを読み込み中",
-    packVersion: "パックバージョン",
-    selectVersion: "パックバージョンを選択…",
-    specs: "仕様",
-    running: "実行中…",
-    runChecks: "ラン実行",
-    retrySame: "同じパックで再試行",
-    immutableHint: "パックを切り替えると新しい不変ランが作成され、過去の結果はラン選択で保持されます。",
-    unknownError: "不明なエラー",
-    status: { queued: "待機中", running: "実行中", completed: "完了", failed: "失敗" },
-  },
-  en: {
-    section: "Check pack and run",
-    run: "Run",
-    noRuns: "No runs for this delivery yet.",
-    failed: "Run failed:",
-    failedHint: "The failed run remains in history. Retry the same pack or create a run under another version.",
-    newRun: "New run",
-    loadingPacks: "Loading check packs",
-    packVersion: "Pack version",
-    selectVersion: "Select a pack version…",
-    specs: "specs",
-    running: "Running…",
-    runChecks: "Run checks",
-    retrySame: "Retry same pack",
-    immutableHint: "Switching packs creates a new immutable run; old results remain in the run selector.",
-    unknownError: "unknown error",
-    status: { queued: "Queued", running: "Running", completed: "Completed", failed: "Failed" },
-  },
-} as const;
 
 interface PackSelectionProps {
   readonly delivery: DeliveryDetail;

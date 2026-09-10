@@ -1,9 +1,9 @@
-checker: 2026-09-10T00:20:45.764468Z  INFO modelshelf_checker: modelshelf-checker listening addr=127.0.0.1:42167
+checker: 2026-09-10T04:17:58.518539Z  INFO modelshelf_checker: modelshelf-checker listening addr=127.0.0.1:37711
 next build exited 0
    ▲ Next.js 15.5.25
 
    Creating an optimized production build ...
- ✓ Compiled successfully in 2.3s
+ ✓ Compiled successfully in 1687ms
    Linting and checking validity of types ...
    Collecting page data ...
    Generating static pages (0/11) ...
@@ -15,15 +15,15 @@ next build exited 0
    Collecting build traces ...
 
 Route (app)                                 Size  First Load JS
-┌ ○ /                                    7.93 kB         167 kB
+┌ ○ /                                    6.66 kB         171 kB
 ├ ○ /_not-found                            998 B         104 kB
-├ ƒ /deliveries/[deliveryId]             23.7 kB         341 kB
-├ ○ /deliveries/compare                  13.2 kB         295 kB
+├ ƒ /deliveries/[deliveryId]             20.1 kB         342 kB
+├ ○ /deliveries/compare                  12.2 kB         298 kB
 ├ ○ /design                                816 B         107 kB
 ├ ○ /design/a                            3.91 kB         195 kB
 ├ ○ /design/b                            1.76 kB         193 kB
 ├ ○ /design/c                            3.52 kB         195 kB
-├ ○ /design/d                             9.4 kB         201 kB
+├ ○ /design/d                            5.16 kB         206 kB
 └ ○ /kitchen-sink                          290 B         182 kB
 + First Load JS shared by all             103 kB
   ├ chunks/255-37e0f0325134c4d7.js       46.4 kB
@@ -37,8 +37,8 @@ Route (app)                                 Size  First Load JS
 
 
    ▲ Next.js 15.5.25
-   - Local:        http://localhost:41931
-   - Network:      http://10.255.255.254:41931
+   - Local:        http://localhost:45061
+   - Network:      http://10.255.255.254:45061
 
  ✓ Starting...
- ✓ Ready in 185ms
+ ✓ Ready in 187ms

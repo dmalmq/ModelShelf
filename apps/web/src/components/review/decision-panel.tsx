@@ -36,26 +36,31 @@ export function DecisionPanel({ run, findings }: { readonly run: RunDetail; read
   const current = history.kind === "ready" ? history.value.current : null;
   const cited = useMemo(() => new Set(citedFindingIds), [citedFindingIds]);
 
+  // A decision belongs to one immutable run. Switching runs must clear the
+  // draft: carrying a rationale across would attach it to the wrong run, and
+  // carrying citations would submit findings the new run never produced.
   useEffect(() => {
     const abort = new AbortController();
     setHistory({ kind: "loading" });
     setSubmitError(null);
+    setSaved(false);
+    setOutcome("conditional_accept");
+    setRationale("");
+    setCitedFindingIds([]);
     void fetchDecisionHistory(run.run.id, abort.signal)
       .then((value) => {
-        if (!abort.signal.aborted) setHistory({ kind: "ready", value });
+        if (abort.signal.aborted) return;
+        setHistory({ kind: "ready", value });
+        if (value.current === null) return;
+        setOutcome(value.current.outcome);
+        setRationale(value.current.rationale);
+        setCitedFindingIds(value.current.citedFindingIds);
       })
       .catch((reason: unknown) => {
         if (!abort.signal.aborted) setHistory({ kind: "failed", error: reason });
       });
     return () => abort.abort();
   }, [run.run.id]);
-
-  useEffect(() => {
-    if (current === null) return;
-    setOutcome(current.outcome);
-    setRationale(current.rationale);
-    setCitedFindingIds(current.citedFindingIds);
-  }, [current]);
 
   function toggleFinding(findingId: string): void {
     setSaved(false);
@@ -77,20 +82,37 @@ export function DecisionPanel({ run, findings }: { readonly run: RunDetail; read
       return;
     }
     setSubmitting(true);
+    let created: ReviewDecision;
     try {
-      const decision = await createReviewDecision(run.run.id, {
+      created = await createReviewDecision(run.run.id, {
         outcome,
         rationale: trimmed,
         citedFindingIds: [...citedFindingIds],
         ...(current ? { supersedesDecisionId: current.id } : {}),
       });
-      const refreshed = await fetchDecisionHistory(run.run.id);
-      setHistory({ kind: "ready", value: refreshed });
-      setOutcome(decision.outcome);
-      setRationale(decision.rationale);
-      setCitedFindingIds(decision.citedFindingIds);
     } catch (reason: unknown) {
       setSubmitError(errorMessage(reason));
+      setSubmitting(false);
+      return;
+    }
+    // The decision is committed and immutable from here. A failed history
+    // refresh must not report it as a failed submission, or the next attempt
+    // supersedes a stale id and gets a conflict.
+    setOutcome(created.outcome);
+    setRationale(created.rationale);
+    setCitedFindingIds(created.citedFindingIds);
+    setHistory((existing) =>
+      existing.kind === "ready"
+        ? {
+            kind: "ready",
+            value: { current: created, history: [created, ...existing.value.history] },
+          }
+        : { kind: "ready", value: { current: created, history: [created] } },
+    );
+    try {
+      setHistory({ kind: "ready", value: await fetchDecisionHistory(run.run.id) });
+    } catch {
+      // The committed decision above stands; history reloads on the next view.
     } finally {
       setSubmitting(false);
     }

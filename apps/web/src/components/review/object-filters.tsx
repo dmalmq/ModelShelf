@@ -3,37 +3,9 @@
 // consumes without knowing finding types.
 "use client";
 
+import { FILTER_COPY } from "@/lib/i18n";
 import { useLocale } from "../locale-provider";
 import type { ObjectFilterSet } from "./review-state";
-
-const FILTER_COPY = {
-  ja: {
-    group: "対象オブジェクトの絞り込み",
-    source: "ソース",
-    sourceFilter: "ソースで絞り込み",
-    allSources: "全ソース",
-    discipline: "分野",
-    disciplineFilter: "分野で絞り込み",
-    storey: "階",
-    storeyFilter: "階で絞り込み",
-    ifcType: "IFCタイプ",
-    typeFilter: "IFCタイプで絞り込み",
-    all: "すべて",
-  },
-  en: {
-    group: "Affected-object filters",
-    source: "Source",
-    sourceFilter: "Source filter",
-    allSources: "All sources",
-    discipline: "Discipline",
-    disciplineFilter: "Discipline filter",
-    storey: "Storey",
-    storeyFilter: "Storey filter",
-    ifcType: "IFC type",
-    typeFilter: "Type filter",
-    all: "All",
-  },
-} as const;
 
 export interface FilterOptions {
   sources: { value: string; label: string }[];

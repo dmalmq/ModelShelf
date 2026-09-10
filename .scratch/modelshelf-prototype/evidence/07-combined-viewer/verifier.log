@@ -2,7 +2,7 @@ next build exited 0
    ▲ Next.js 15.5.25
 
    Creating an optimized production build ...
- ✓ Compiled successfully in 2.1s
+ ✓ Compiled successfully in 1765ms
    Linting and checking validity of types ...
    Collecting page data ...
    Generating static pages (0/11) ...
@@ -22,7 +22,7 @@ Route (app)                                 Size  First Load JS
 ├ ○ /design/a                            3.91 kB         195 kB
 ├ ○ /design/b                            1.76 kB         193 kB
 ├ ○ /design/c                            3.52 kB         195 kB
-├ ○ /design/d                             9.4 kB         201 kB
+├ ○ /design/d                            9.38 kB         201 kB
 └ ○ /kitchen-sink                          290 B         182 kB
 + First Load JS shared by all             103 kB
   ├ chunks/255-37e0f0325134c4d7.js       46.4 kB
@@ -36,17 +36,17 @@ Route (app)                                 Size  First Load JS
 
 
    ▲ Next.js 15.5.25
-   - Local:        http://localhost:37915
-   - Network:      http://10.255.255.254:37915
+   - Local:        http://localhost:40327
+   - Network:      http://10.255.255.254:40327
 
  ✓ Starting...
- ✓ Ready in 210ms
+ ✓ Ready in 220ms
 browser error: Failed to load resource: the server responded with a status of 404 (Not Found)
-browser warning: [.WebGL-0x2844001a8a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-browser warning: [.WebGL-0x2844001a8a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-browser warning: [.WebGL-0x2844001a8a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+browser warning: [.WebGL-0x37cc00194a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+browser warning: [.WebGL-0x37cc00194a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+browser warning: [.WebGL-0x37cc00194a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
 browser error: Failed to load resource: the server responded with a status of 404 (Not Found)
-browser warning: [.WebGL-0x2844001a8a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)
+browser warning: [.WebGL-0x37cc00194a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)
 browser error: Failed to load resource: the server responded with a status of 404 (Not Found)
 browser error: Failed to load resource: the server responded with a status of 404 (Not Found)
 browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 343644

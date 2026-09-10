@@ -117,7 +117,11 @@ pub async fn create_decision(
     let decision_id = new_id();
     let cited_json = serde_json::to_string(&body.cited_finding_ids)
         .map_err(|error| ApiError::internal(format!("serialize cited findings: {error}")))?;
-    let mut tx = state.pool.begin().await?;
+    // BEGIN IMMEDIATE: the read below decides whether this insert supersedes or
+    // conflicts, so it must happen under the write lock. A deferred transaction
+    // lets two first-decision requests read the same empty state and turns the
+    // loser's conflict into an unwritable-snapshot error.
+    let mut tx = state.pool.begin_with("BEGIN IMMEDIATE").await?;
     let current_id: Option<String> = sqlx::query_scalar(
         "SELECT id FROM review_decisions
           WHERE run_id = ?1 AND superseded_by IS NULL
@@ -172,7 +176,11 @@ pub async fn create_decision(
     .bind(now_iso())
     .bind(body.supersedes_decision_id.as_deref())
     .execute(&mut *tx)
-    .await?;
+    .await
+    .map_err(|error| match unique_current_violation(&error) {
+        true => ApiError::decision_conflict("this run already has a current decision; reload before deciding again"),
+        false => ApiError::from(error),
+    })?;
     tx.commit().await?;
 
     let history = load_history(&state, &run_id).await?;
@@ -327,6 +335,13 @@ fn validate_citations(
         )));
     }
     Ok(())
+}
+
+/// True when SQLite rejected the insert through the one-current-decision index.
+fn unique_current_violation(error: &sqlx::Error) -> bool {
+    error
+        .as_database_error()
+        .is_some_and(|db| db.is_unique_violation() && db.message().contains("review_decisions"))
 }
 
 #[cfg(test)]
