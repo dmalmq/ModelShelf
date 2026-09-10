@@ -213,13 +213,13 @@ export default function DesignA() {
               </SelectContent>
             </Select>
             <div className="ml-auto flex items-center gap-1">
-              <Button variant="ghost" size="icon-sm">
+              <Button variant="ghost" size="icon-sm" aria-label="ビューをリセット">
                 <RotateCcw />
               </Button>
-              <Button variant="ghost" size="icon-sm">
+              <Button variant="ghost" size="icon-sm" aria-label="表示を切り替え">
                 <Eye />
               </Button>
-              <Button variant="ghost" size="icon-sm">
+              <Button variant="ghost" size="icon-sm" aria-label="全画面表示">
                 <Maximize2 />
               </Button>
             </div>
@@ -232,7 +232,7 @@ export default function DesignA() {
                 {[300, 240, 180].map((y, i) => (
                   <g key={y}>
                     <polygon points={`120,${y} 460,${y - 40} 560,${y} 220,${y + 40}`} fill={i === 0 ? "#f1f5f9" : "#e8edf3"} />
-                    <text x="580" y={y + 4} fill="#64748b" fontSize="12">{3 - i}F</text>
+                    <text x="580" y={y + 4} fill="#64748b" fontSize="12">{i + 1}F</text>
                   </g>
                 ))}
               </g>
@@ -243,7 +243,7 @@ export default function DesignA() {
                 <rect x="410" y="176" width="20" height="12" rx="1" />
                 <rect x="270" y="256" width="14" height="26" rx="1" />
               </g>
-              <text x="24" y="396" fill="#64748b" fontSize="11">
+              <text x="24" y="396" fill="#64748b" fontSize="12">
                 ハイライト: 建具に防火性能が設定されていない(78オブジェクト)
               </text>
             </svg>

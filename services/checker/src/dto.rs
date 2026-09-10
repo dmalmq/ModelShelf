@@ -590,7 +590,7 @@ impl InputProvenance {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct RunInputProvenance {
     pub status: String,

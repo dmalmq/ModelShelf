@@ -1,0 +1,10 @@
+{
+  "id": "ee9c9960-d43f-48b4-852f-83945cf2fa3e",
+  "packId": "demo-pack",
+  "packName": "Demo Check Pack",
+  "version": 1,
+  "idsSha256": "585786c0c602f2b0091a838b9619d26f92440320551f30f6a86ad73b30f2fe00",
+  "notes": "ticket 11 v1: advisory wall volume",
+  "specCount": 4,
+  "createdAt": "2026-09-09T06:56:15.602Z"
+}

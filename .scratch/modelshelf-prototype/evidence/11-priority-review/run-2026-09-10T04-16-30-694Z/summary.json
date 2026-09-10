@@ -1,0 +1,10 @@
+{
+  "deliveryId": "b0b6eabc-a7d1-4e95-a77c-b37df5e98db0",
+  "run1": "4f4ec16f-5ddd-484d-9087-8534b2bb339a",
+  "run2": "f1d0af60-8981-4595-a7dd-fb6ff388baf5",
+  "bandOrder": [
+    "critical",
+    "high"
+  ],
+  "failures": 0
+}

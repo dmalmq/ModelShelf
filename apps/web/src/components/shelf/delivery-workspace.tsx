@@ -3,11 +3,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Lock, RotateCcw, Upload } from "lucide-react";
+import { ArrowLeft, Lock, Presentation, RotateCcw, Upload } from "lucide-react";
+import { LocaleSwitcher } from "@/components/domain/locale-switcher";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -17,7 +26,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CombinedDeliveryViewer } from "@/components/viewer/combined-delivery-viewer";
 import { ReviewScreen } from "@/components/review/review-screen";
 import {
   DISCIPLINES,
@@ -44,6 +52,8 @@ import type {
   RunSummary,
   SourceModel,
 } from "@/lib/types";
+import { DELIVERY_COPY, WORKSPACE_COPY, type Locale } from "@/lib/i18n";
+import { useLocale } from "@/components/locale-provider";
 
 type UploadAttempt =
   | { kind: "sending"; filename: string }
@@ -69,16 +79,18 @@ function attemptStatus(attempt: UploadAttempt | undefined): string | null {
   return "failed";
 }
 
-function attemptMessage(attempt: UploadAttempt): string {
-  if (attempt.kind === "sending") return `Sending ${attempt.filename}…`;
-  if (attempt.kind === "processing") {
-    return `${attempt.job.status === "queued" ? "Queued" : "Processing"} ${attempt.job.filename}…`;
-  }
-  if (attempt.kind === "completed") return `Ready: ${attempt.job.filename}`;
-  return `Failed: ${attempt.message}`;
+function attemptMessage(attempt: UploadAttempt, locale: Locale): string {
+  const copy = WORKSPACE_COPY[locale];
+  if (attempt.kind === "sending") return `${copy.sending} ${attempt.filename}`;
+  if (attempt.kind === "processing") return `${attempt.job.status} ${attempt.job.filename}…`;
+  if (attempt.kind === "completed") return `${copy.attached}: ${attempt.job.filename}`;
+  return `${attempt.job?.status ?? "failed"}: ${attempt.message}`;
 }
 
 export function DeliveryWorkspace({ deliveryId }: { readonly deliveryId: string }): React.JSX.Element {
+  const { locale } = useLocale();
+  const deliveryCopy = DELIVERY_COPY[locale];
+  const copy = WORKSPACE_COPY[locale];
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -87,6 +99,7 @@ export function DeliveryWorkspace({ deliveryId }: { readonly deliveryId: string 
   const discipline: DisciplineFilter = isDiscipline(rawDiscipline) ? rawDiscipline : "all";
   const sourceParam = searchParams.get("source");
   const runParam = searchParams.get("run");
+  const meetingView = searchParams.get("view") === "meeting";
 
   const [detail, setDetail] = useState<Remote<DeliveryDetail>>({ kind: "loading" });
   const [sources, setSources] = useState<Remote<readonly SourceModel[]>>({ kind: "loading" });
@@ -95,6 +108,7 @@ export function DeliveryWorkspace({ deliveryId }: { readonly deliveryId: string 
   const [attachBusy, setAttachBusy] = useState<string | null>(null);
   const [attachError, setAttachError] = useState<string | null>(null);
   const [finalizeBusy, setFinalizeBusy] = useState(false);
+  const [finalizeConfirmOpen, setFinalizeConfirmOpen] = useState(false);
   const [finalizeError, setFinalizeError] = useState<string | null>(null);
   const fileRefs = useRef(new Map<string, HTMLInputElement | null>());
   const pollControllers = useRef(new Map<string, AbortController>());
@@ -358,11 +372,11 @@ export function DeliveryWorkspace({ deliveryId }: { readonly deliveryId: string 
 
   if (detail.kind === "loading") {
     return (
-      <div className="mx-auto w-full max-w-6xl space-y-4 p-6" aria-label="Delivery workspace">
+      <div className="mx-auto w-full max-w-6xl space-y-4 p-6" aria-label={copy.workspace}>
         <Skeleton className="h-8 w-72" />
         <Skeleton className="h-48 w-full" />
         <p className="text-sm text-muted-foreground" role="status">
-          Loading delivery / デリバリーを読み込み中
+          {copy.loadingDelivery}
         </p>
       </div>
     );
@@ -372,11 +386,11 @@ export function DeliveryWorkspace({ deliveryId }: { readonly deliveryId: string 
     return (
       <div className="mx-auto grid w-full max-w-6xl place-items-center p-6">
         <Alert variant="destructive" className="max-w-lg">
-          <AlertTitle>Delivery unavailable / デリバリーを開けません</AlertTitle>
+          <AlertTitle>{copy.unavailable}</AlertTitle>
           <AlertDescription>{errorMessage(detail.error)}</AlertDescription>
           <Button className="mt-4" variant="outline" size="sm" onClick={() => window.location.reload()}>
             <RotateCcw />
-            Retry / 再試行
+            {copy.retry}
           </Button>
         </Alert>
       </div>
@@ -391,66 +405,126 @@ export function DeliveryWorkspace({ deliveryId }: { readonly deliveryId: string 
   const backQuery = backParams.toString();
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 p-6" data-delivery-id={deliveryId} aria-label="Delivery workspace">
+    <div
+      className={`mx-auto w-full space-y-6 p-3 sm:p-6 ${meetingView ? "max-w-[1800px]" : "max-w-6xl"}`}
+      data-delivery-id={deliveryId}
+      data-view-mode={meetingView ? "meeting" : "desk"}
+      aria-label={copy.workspace}
+    >
       <header className="flex flex-wrap items-center gap-x-4 gap-y-2">
         <Button variant="ghost" size="sm" asChild>
           <Link href={backQuery.length > 0 ? `/?${backQuery}` : "/"} aria-label="Back to project shelf">
             <ArrowLeft />
-            Shelf
           </Link>
         </Button>
         <span aria-hidden className="h-5 w-px bg-border" />
         <div className="min-w-0">
           <h1 className="truncate text-lg font-semibold">{readyDetail.delivery.label}</h1>
           <p className="tnum truncate text-xs text-muted-foreground">
-            {readyDetail.delivery.id} · {readyDetail.models.length} members
+            {readyDetail.delivery.id} · {copy.members(readyDetail.models.length)}
           </p>
         </div>
-        <div className="ml-auto flex items-center gap-2">
-          {lock.kind === "draft" ? <Badge variant="secondary">Draft / 下書き</Badge> : null}
+        <div className="flex w-full flex-wrap items-center gap-2 sm:ml-auto sm:w-auto">
+          {lock.kind === "draft" ? <Badge variant="secondary">{copy.draft}</Badge> : null}
           {lock.kind === "finalized" ? (
-            <Badge variant="secondary">Finalized / 確定 · {lock.finalizedAt}</Badge>
+            <Badge data-delivery-finalized variant="secondary">{copy.finalized} · {lock.finalizedAt}</Badge>
           ) : null}
           {lock.kind === "runLocked" ? (
-            <Badge variant="secondary">
+            <Badge variant="secondary" data-run-locked>
               <Lock />
-              Locked by completed run / 実行によりロック
+              {copy.runLocked}
             </Badge>
           ) : null}
           {lock.kind === "draft" ? (
-            <Button size="sm" onClick={finalize} disabled={finalizeBusy}>
+            <Button data-finalize-trigger size="sm" onClick={() => setFinalizeConfirmOpen(true)} disabled={finalizeBusy}>
               <Lock />
-              {finalizeBusy ? "Finalizing…" : "Finalize delivery"}
+              {deliveryCopy.finalizeConfirm}
             </Button>
           ) : null}
+          <div className="flex items-center" role="group" aria-label={deliveryCopy.viewMode}>
+            <Button
+              type="button"
+              variant={meetingView ? "outline" : "secondary"}
+              size="sm"
+              className="min-h-11 sm:min-h-8"
+              aria-pressed={!meetingView}
+              data-view-mode-toggle="desk"
+              onClick={() => setParam({ view: null })}
+            >
+              {deliveryCopy.deskView}
+            </Button>
+            <Button
+              type="button"
+              variant={meetingView ? "secondary" : "outline"}
+              size="sm"
+              className="min-h-11 sm:min-h-8"
+              aria-pressed={meetingView}
+              data-view-mode-toggle="meeting"
+              onClick={() => setParam({ view: "meeting" })}
+            >
+              <Presentation />
+              {deliveryCopy.meetingView}
+            </Button>
+          </div>
+          <LocaleSwitcher />
         </div>
       </header>
+      <Dialog open={finalizeConfirmOpen} onOpenChange={setFinalizeConfirmOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{deliveryCopy.finalizeTitle}</DialogTitle>
+            <DialogDescription>{deliveryCopy.finalizeDescription}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setFinalizeConfirmOpen(false)}>
+              {deliveryCopy.finalizeCancel}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              data-finalize-confirm
+              onClick={() => {
+                setFinalizeConfirmOpen(false);
+                void finalize();
+              }}
+            >
+              {deliveryCopy.finalizeConfirm}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       {finalizeError ? (
         <Alert variant="destructive">
-          <AlertTitle>Delivery was not finalized</AlertTitle>
+          <AlertTitle>{copy.finalizeFailed}</AlertTitle>
           <AlertDescription>{finalizeError}</AlertDescription>
         </Alert>
       ) : null}
 
-      <section aria-label="Source assembly">
+      {meetingView ? (
+        <section aria-label={deliveryCopy.meetingReview} data-meeting-review>
+          <div className="overflow-hidden border border-border">
+            <ReviewScreen deliveryId={deliveryId} presentation="meeting" />
+          </div>
+        </section>
+      ) : (
+        <>
+      <section aria-label={copy.assembly}>
         <div className="mb-2 flex flex-wrap items-center gap-3">
-          <h2 className="text-sm font-semibold">Assembly / 構成</h2>
-          <p className="text-xs text-muted-foreground">
-            Upload a revision, then explicitly attach it. Uploads never attach themselves.
-          </p>
+          <h2 className="text-sm font-semibold">{copy.assembly}</h2>
+          <p className="text-xs text-muted-foreground">{copy.assemblyHint}</p>
           <div className="ml-auto flex items-center gap-2">
             <Label htmlFor="workspace-discipline" className="text-xs text-muted-foreground">
-              Discipline
+              {copy.discipline}
             </Label>
             <Select
               value={discipline}
               onValueChange={(value) => setParam({ discipline: value === "all" ? null : value })}
             >
-              <SelectTrigger id="workspace-discipline" className="w-32" aria-label="Filter sources by discipline">
+              <SelectTrigger id="workspace-discipline" className="w-32" aria-label={copy.filterDiscipline}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="all">{copy.all}</SelectItem>
                 {DISCIPLINES.map((option) => (
                   <SelectItem key={option} value={option}>
                     {option}
@@ -462,27 +536,25 @@ export function DeliveryWorkspace({ deliveryId }: { readonly deliveryId: string 
         </div>
         {sources.kind === "loading" ? (
           <p className="text-sm text-muted-foreground" role="status">
-            Loading sources / ソースを読み込み中
+            {copy.loadingSources}
           </p>
         ) : null}
         {sources.kind === "failed" ? (
           <Alert variant="destructive">
-            <AlertTitle>Sources unavailable</AlertTitle>
+            <AlertTitle>{copy.sourcesUnavailable}</AlertTitle>
             <AlertDescription>{errorMessage(sources.error)}</AlertDescription>
           </Alert>
         ) : null}
         {sources.kind === "ready" && visibleSources.length === 0 ? (
           <Card>
             <CardContent className="pt-4">
-              <p className="text-sm text-muted-foreground">
-                No sources match this filter. Clear the discipline filter or create a source on the shelf.
-              </p>
+              <p className="text-sm text-muted-foreground">{copy.noMatchingSources}</p>
             </CardContent>
           </Card>
         ) : null}
         {attachError ? (
           <Alert variant="destructive">
-            <AlertTitle>Revision was not attached</AlertTitle>
+            <AlertTitle>{copy.attachFailed}</AlertTitle>
             <AlertDescription>{attachError}</AlertDescription>
           </Alert>
         ) : null}
@@ -514,14 +586,12 @@ export function DeliveryWorkspace({ deliveryId }: { readonly deliveryId: string 
         </div>
       </section>
 
-      <section aria-label="Run history">
-        <h2 className="mb-2 text-sm font-semibold">Run history / 実行履歴</h2>
+      <section aria-label={copy.runHistory}>
+        <h2 className="mb-2 text-sm font-semibold">{copy.runHistory}</h2>
         {orderedRuns.length === 0 ? (
           <Card>
             <CardContent className="pt-4">
-              <p className="text-sm text-muted-foreground">
-                No runs yet. A run can be created against this delivery once it holds revisions.
-              </p>
+              <p className="text-sm text-muted-foreground">{copy.noRuns}</p>
             </CardContent>
           </Card>
         ) : (
@@ -539,18 +609,18 @@ export function DeliveryWorkspace({ deliveryId }: { readonly deliveryId: string 
                         {run.packName} v{run.packVersion}
                       </span>
                       <span className="tnum block truncate text-xs text-muted-foreground">
-                        {run.status} · pass {run.passCount} · fail {run.failCount} · incomplete{" "}
-                        {run.incompleteCount}
+                        {copy.runSummary(run.status, run.passCount, run.failCount, run.incompleteCount)}
                       </span>
                     </span>
                     <Button
                       variant={runParam === run.id ? "secondary" : "outline"}
                       size="sm"
                       aria-pressed={runParam === run.id}
-                      aria-label={`View run ${run.packName} version ${run.packVersion}`}
+                      data-view-run={run.id}
+                      aria-label={`${copy.viewRun} ${run.packName} version ${run.packVersion}`}
                       onClick={() => setParam({ run: runParam === run.id ? null : run.id })}
                     >
-                      {runParam === run.id ? "Hide run" : "View run"}
+                      {runParam === run.id ? copy.hideRun : copy.viewRun}
                     </Button>
                   </li>
                 ))}
@@ -567,34 +637,31 @@ export function DeliveryWorkspace({ deliveryId }: { readonly deliveryId: string 
         )}
       </section>
 
-      <section aria-label="Combined view">
-        <h2 className="mb-2 text-sm font-semibold">Combined view / 結合ビュー</h2>
+      <section
+        aria-label={copy.findingsReview}
+        data-combined-section
+        data-findings-review-section
+        data-model-count={readyDetail.models.length}
+      >
+        <h2 className="mb-2 text-sm font-semibold">{copy.findingsReview}</h2>
         {readyDetail.models.length === 0 ? (
-          <Card>
+          <Card data-combined-empty>
             <CardContent className="pt-4">
-              <p className="text-sm font-medium">This delivery holds no revisions yet.</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Upload a file on one of the source rows above, wait for processing to complete, then
-                attach the revision. The combined viewer appears once the first revision is attached.
-              </p>
+              <p className="text-sm font-medium">{copy.noRevisions}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{copy.noRevisionsHint}</p>
             </CardContent>
           </Card>
         ) : (
           <div className="overflow-hidden rounded-xl border border-border">
-            <CombinedDeliveryViewer
+            <ReviewScreen
               key={`${deliveryId}:${runParam ?? "live"}:${viewerMembershipKey}`}
               deliveryId={deliveryId}
             />
           </div>
         )}
       </section>
-
-      <section aria-label="Findings review">
-        <h2 className="mb-2 text-sm font-semibold">Findings review / 指摘レビュー</h2>
-        <div className="overflow-hidden rounded-xl border border-border">
-          <ReviewScreen deliveryId={deliveryId} />
-        </div>
-      </section>
+        </>
+      )}
     </div>
   );
 }
@@ -624,6 +691,8 @@ function SourceRow({
   readonly onRetry: (jobId: string) => void;
   readonly onAttach: (revision: ModelRevisionSummary) => void;
 }): React.JSX.Element {
+  const { locale } = useLocale();
+  const copy = WORKSPACE_COPY[locale];
   const status = attemptStatus(attempt);
   const uploading = attempt?.kind === "sending" || attempt?.kind === "processing";
   return (
@@ -634,13 +703,13 @@ function SourceRow({
             type="button"
             onClick={onSelect}
             aria-pressed={selected}
-            aria-label={`Select source ${source.name}`}
-            className="min-w-0 flex-1 text-left focus-visible:outline-2 focus-visible:outline-ring"
+            aria-label={copy.selectSource(source.name)}
+            className="min-h-11 min-w-0 flex-1 text-left focus-visible:outline-2 focus-visible:outline-ring"
           >
             <CardTitle className="truncate text-sm">{source.name}</CardTitle>
             <span className="tnum block truncate text-xs font-normal text-muted-foreground">
-              {source.revisions.length} revisions
-              {member ? ` · attached ${member.filename} · ${shortHash(member.contentSha256)}` : " · not attached"}
+              {copy.revisions(source.revisions.length)}
+              {member ? ` · ${copy.attached} ${member.filename} · ${shortHash(member.contentSha256)}` : ` · ${copy.notAttached}`}
             </span>
           </button>
           <Badge variant="outline">{source.discipline}</Badge>
@@ -651,36 +720,34 @@ function SourceRow({
           <dl
             className="tnum grid gap-x-6 gap-y-1 text-xs sm:grid-cols-2"
             data-revision-id={member.id}
-            aria-label={`Attached revision of ${source.name}`}
+            aria-label={copy.attachedRevision(source.name)}
           >
             <div className="flex justify-between gap-3">
-              <dt className="text-muted-foreground">File</dt>
+              <dt className="text-muted-foreground">{copy.file}</dt>
               <dd className="truncate font-medium">{member.filename}</dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt className="text-muted-foreground">Hash</dt>
-              <dd className="truncate font-mono text-[11px]">{member.contentSha256}</dd>
+              <dt className="text-muted-foreground">{copy.hash}</dt>
+              <dd className="truncate font-mono text-xs">{member.contentSha256}</dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt className="text-muted-foreground">Schema</dt>
+              <dt className="text-muted-foreground">{copy.schema}</dt>
               <dd>{member.schemaLabel}</dd>
             </div>
             <div className="flex justify-between gap-3">
-              <dt className="text-muted-foreground">Entities / products</dt>
+              <dt className="text-muted-foreground">{copy.entitiesProducts}</dt>
               <dd>
                 {member.entityCount} / {member.productCount}
               </dd>
             </div>
           </dl>
         ) : (
-          <p className="text-xs text-muted-foreground">
-            No revision attached. Attach one below to include this source in the delivery.
-          </p>
+          <p className="text-xs text-muted-foreground">{copy.noAttached}</p>
         )}
 
         <div className="flex flex-wrap items-center gap-2">
           <Label htmlFor={`file-${source.id}`} className="sr-only">
-            Choose IFC file for {source.name}
+            {copy.chooseFile(source.name)}
           </Label>
           <input
             ref={onFileRef}
@@ -690,9 +757,17 @@ function SourceRow({
             disabled={uploading}
             className="max-w-64 text-xs text-muted-foreground file:mr-2 file:border file:border-border file:bg-secondary file:px-2 file:py-1 file:text-xs file:font-medium file:text-secondary-foreground hover:file:bg-muted focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-50"
           />
-          <Button size="sm" variant="outline" onClick={onUpload} disabled={uploading} aria-label={`Upload revision for ${source.name}`}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="min-h-11 sm:min-h-8"
+            onClick={onUpload}
+            disabled={uploading}
+            aria-label={copy.uploadFor(source.name)}
+            data-upload-revision
+          >
             <Upload />
-            {attempt?.kind === "sending" ? "Sending…" : "Upload revision"}
+            {attempt?.kind === "sending" ? copy.sending : copy.uploadRevision}
           </Button>
           {attempt && status ? (
             <span
@@ -701,18 +776,20 @@ function SourceRow({
               data-job-attempts={"job" in attempt && attempt.job ? attempt.job.attemptCount : undefined}
               role="status"
             >
-              {attemptMessage(attempt)}
+              {attemptMessage(attempt, locale)}
             </span>
           ) : null}
           {attempt?.kind === "failed" && attempt.job ? (
             <Button
               size="sm"
               variant="outline"
+              className="min-h-11 sm:min-h-8"
               onClick={() => onRetry(attempt.job?.id ?? "")}
-              aria-label={`Retry upload ${attempt.job.filename} for ${source.name}`}
+              aria-label={copy.retryUpload(attempt.job.filename, source.name)}
+              data-retry-upload
             >
               <RotateCcw />
-              Retry
+              {copy.retry}
             </Button>
           ) : null}
         </div>
@@ -729,25 +806,27 @@ function SourceRow({
                 >
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-xs font-medium">{revision.filename}</span>
-                    <span className="tnum block truncate text-[11px] text-muted-foreground">
+                    <span className="tnum block truncate text-xs text-muted-foreground">
                       {shortHash(revision.contentSha256)} · {revision.schemaLabel} ·{" "}
-                      {revision.entityCount} entities
-                      {revision.provenance === "incomplete" ? " · incomplete provenance" : ""}
+                      {revision.entityCount} {copy.entities}
+                      {revision.provenance === "incomplete" ? ` · ${copy.incompleteProvenance}` : ""}
                     </span>
                   </span>
                   {attached ? (
-                    <Badge variant="secondary" aria-label={`${revision.filename} is attached`}>
-                      Attached
+                    <Badge variant="secondary" aria-label={copy.isAttached(revision.filename)}>
+                      {copy.attached}
                     </Badge>
                   ) : (
                     <Button
                       size="sm"
                       variant="outline"
+                      className="min-h-11 sm:min-h-8"
                       disabled={membershipLocked || attachBusy !== null}
                       onClick={() => onAttach(revision)}
-                      aria-label={`${member ? "Replace with" : "Attach"} ${revision.filename} for ${source.name}`}
+                      aria-label={member ? copy.replaceWith(revision.filename, source.name) : copy.attachFor(revision.filename, source.name)}
+                      data-attach-revision
                     >
-                      {attachBusy === revision.id ? "Attaching…" : member ? "Replace" : "Attach"}
+                      {attachBusy === revision.id ? copy.attaching : member ? copy.replace : copy.attach}
                     </Button>
                   )}
                 </li>
@@ -755,7 +834,7 @@ function SourceRow({
             })}
           </ol>
         ) : (
-          <p className="text-xs text-muted-foreground">No revisions uploaded for this source yet.</p>
+          <p className="text-xs text-muted-foreground">{copy.noUploads}</p>
         )}
       </CardContent>
     </Card>
@@ -771,17 +850,19 @@ function RunPanel({
   readonly selectedRun: Remote<RunDetail> | null;
   readonly onClear: () => void;
 }): React.JSX.Element {
+  const { locale } = useLocale();
+  const copy = WORKSPACE_COPY[locale];
   if (!selectedRun || selectedRun.kind === "loading") {
     return (
       <p className="mt-3 text-sm text-muted-foreground" role="status">
-        Loading run / 実行を読み込み中
+        {copy.loadingRun}
       </p>
     );
   }
   if (selectedRun.kind === "failed") {
     return (
       <Alert variant="destructive" className="mt-3">
-        <AlertTitle>Run unavailable</AlertTitle>
+        <AlertTitle>{copy.runUnavailable}</AlertTitle>
         <AlertDescription>{errorMessage(selectedRun.error)}</AlertDescription>
       </Alert>
     );
@@ -789,20 +870,20 @@ function RunPanel({
   const detail = selectedRun.value;
   const provenance = detail.inputProvenance?.status === "complete" ? "complete" : "incomplete";
   return (
-    <div className="mt-3 space-y-3 border-t border-border-soft pt-3" aria-label={`Run ${runId} detail`}>
+    <div className="mt-3 space-y-3 border-t border-border-soft pt-3" data-run-detail={runId} aria-label={copy.runDetail(runId)}>
       <div className="flex flex-wrap items-center gap-2">
         <span
           className="text-xs font-medium"
           data-provenance={provenance}
-          aria-label={`Input provenance ${provenance}`}
+          aria-label={`${copy.provenance} ${provenance}`}
         >
-          Provenance: {provenance}
+          {copy.provenance}: {provenance === "complete" ? copy.complete : copy.incomplete}
           {provenance === "incomplete" && detail.inputProvenance?.reason
             ? ` — ${detail.inputProvenance.reason}`
             : ""}
         </span>
-        <Button variant="ghost" size="sm" className="ml-auto" onClick={onClear} aria-label="Clear selected run">
-          Clear
+        <Button variant="ghost" size="sm" className="ml-auto min-h-11 sm:min-h-8" onClick={onClear} aria-label={copy.clearRun}>
+          {copy.clear}
         </Button>
       </div>
       <ol className="space-y-2">
@@ -811,11 +892,11 @@ function RunPanel({
             <span className="block truncate font-medium">
               {model.sourceModelName} · {model.filename}
             </span>
-            <span className="block truncate font-mono text-[11px] text-muted-foreground">
+            <span className="block truncate font-mono text-xs text-muted-foreground">
               {model.contentSha256}
             </span>
-            <span className="block text-[11px] text-muted-foreground">
-              {model.schemaLabel} · {model.entityCount} entities · {model.productCount} products
+            <span className="block text-xs text-muted-foreground">
+              {model.schemaLabel} · {copy.modelCounts(model.entityCount, model.productCount)}
             </span>
           </li>
         ))}
@@ -826,26 +907,28 @@ function RunPanel({
 }
 
 function RunFacts({ run }: { readonly run: RunSummary }): React.JSX.Element {
+  const { locale } = useLocale();
+  const copy = WORKSPACE_COPY[locale];
   return (
-    <dl className="tnum grid gap-x-6 gap-y-1 text-xs sm:grid-cols-2" aria-label="Run result facts">
+    <dl className="tnum grid gap-x-6 gap-y-1 text-xs sm:grid-cols-2" aria-label={copy.runFacts}>
       <div className="flex justify-between gap-3">
-        <dt className="text-muted-foreground">Pack</dt>
+        <dt className="text-muted-foreground">{copy.pack}</dt>
         <dd>
           {run.packName} v{run.packVersion}
         </dd>
       </div>
       <div className="flex justify-between gap-3">
-        <dt className="text-muted-foreground">Status</dt>
+        <dt className="text-muted-foreground">{copy.status}</dt>
         <dd>{run.status}</dd>
       </div>
       <div className="flex justify-between gap-3">
-        <dt className="text-muted-foreground">Pass / fail</dt>
+        <dt className="text-muted-foreground">{copy.passFail}</dt>
         <dd>
           {run.passCount} / {run.failCount}
         </dd>
       </div>
       <div className="flex justify-between gap-3">
-        <dt className="text-muted-foreground">Not applicable / incomplete</dt>
+        <dt className="text-muted-foreground">{copy.notApplicableIncomplete}</dt>
         <dd>
           {run.notApplicableCount} / {run.incompleteCount}
         </dd>

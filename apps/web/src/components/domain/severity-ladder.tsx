@@ -45,7 +45,7 @@ export function SeverityLadder({
   incompleteCount,
   locale = DEFAULT_LOCALE,
 }: {
-  bands: LadderBand[];
+  bands: readonly LadderBand[];
   incompleteCount?: number;
   locale?: Locale;
 }) {

@@ -59,8 +59,9 @@ const FIXTURES_IDS = join(REPO_ROOT, "packs", "demo", "fixtures.ids");
 function requireScenario() {
   const flagIndex = process.argv.indexOf("--scenario");
   const scenario = flagIndex >= 0 ? process.argv[flagIndex + 1] : undefined;
-  if (scenario !== "revisions" && scenario !== "worker-failure" && scenario !== "checks" && scenario !== "first-loop" && scenario !== "comparisons" && scenario !== "finding-comparisons") {
-    console.error(`usage: node scripts/verify-api.mjs --scenario revisions|worker-failure|checks|first-loop|comparisons|finding-comparisons (got ${scenario ?? "<none>"})`);
+  const supported = ["revisions", "worker-failure", "checks", "decisions", "first-loop", "comparisons", "finding-comparisons"];
+  if (!supported.includes(scenario)) {
+    console.error(`usage: node scripts/verify-api.mjs --scenario ${supported.join("|")} (got ${scenario ?? "<none>"})`);
     process.exit(2);
   }
   return scenario;
@@ -1259,6 +1260,67 @@ async function runChecksScenario(runDir, check, log) {
         JSON.stringify(after.models.map((m) => m.contentSha256)) === JSON.stringify(beforeRestart.hashes),
       JSON.stringify({ before: beforeRestart, after: after.models?.map((m) => ({ id: m.id, hash: m.contentSha256 })) }),
     );
+    const missingConditionalEvidence = await api(server.base, "POST", `/api/runs/${beforeRestart.runId}/decisions`, {
+      outcome: "conditional_accept",
+      rationale: "The condition must cite the finding it binds.",
+      citedFindingIds: [],
+    });
+    check(
+      "conditional acceptance requires a cited finding",
+      missingConditionalEvidence.status === 400 && missingConditionalEvidence.json?.error?.code === "bad_request",
+      JSON.stringify(missingConditionalEvidence),
+    );
+
+    const firstDecision = await api(server.base, "POST", `/api/runs/${beforeRestart.runId}/decisions`, {
+      outcome: "conditional_accept",
+      rationale: "Accept subject to resolving the cited requirement.",
+      citedFindingIds: [finding.id],
+    });
+    check(
+      "conditional decision persists its rationale and cited evidence",
+      firstDecision.status === 200 &&
+        firstDecision.json?.outcome === "conditional_accept" &&
+        firstDecision.json?.citedFindingIds?.[0] === finding.id &&
+        firstDecision.json?.evidence?.packVersion === run.json.run.packVersion,
+      JSON.stringify(firstDecision),
+    );
+
+    const rejectedWithoutSupersession = await api(server.base, "POST", `/api/runs/${beforeRestart.runId}/decisions`, {
+      outcome: "accept",
+      rationale: "A second decision must name the decision it supersedes.",
+      citedFindingIds: [finding.id],
+    });
+    check(
+      "a second current decision requires explicit supersession",
+      rejectedWithoutSupersession.status === 409 && rejectedWithoutSupersession.json?.error?.code === "decision_conflict",
+      JSON.stringify(rejectedWithoutSupersession),
+    );
+
+    const secondDecision = await api(server.base, "POST", `/api/runs/${beforeRestart.runId}/decisions`, {
+      outcome: "accept",
+      rationale: "The cited requirement was reviewed again and is now accepted.",
+      citedFindingIds: [finding.id],
+      supersedesDecisionId: firstDecision.json?.id,
+    });
+    check(
+      "a changed decision appends a successor instead of replacing history",
+      secondDecision.status === 200 &&
+        secondDecision.json?.outcome === "accept" &&
+        secondDecision.json?.supersedesDecisionId === firstDecision.json?.id,
+      JSON.stringify(secondDecision),
+    );
+
+    const decisionHistory = await api(server.base, "GET", `/api/runs/${beforeRestart.runId}/decisions`);
+    const oldDecision = decisionHistory.json?.history?.find((candidate) => candidate.id === firstDecision.json?.id);
+    check(
+      "decision history exposes one current record and the superseded predecessor",
+      decisionHistory.status === 200 &&
+        decisionHistory.json?.current?.id === secondDecision.json?.id &&
+        decisionHistory.json?.history?.length === 2 &&
+        oldDecision?.supersededBy === secondDecision.json?.id,
+      JSON.stringify(decisionHistory),
+    );
+
   } finally {
     if (server) {
       log("checks-serve.log", server.getLog());
@@ -1446,7 +1508,7 @@ async function main() {
     ".omo",
     "evidence",
     "modelshelf-prototype",
-    scenario === "checks" ? "task-6" : scenario === "first-loop" ? "task-9" : scenario === "comparisons" ? "ticket-13" : scenario === "finding-comparisons" ? "ticket-14" : "task-2",
+    scenario === "checks" ? "task-6" : scenario === "decisions" ? "review-decisions" : scenario === "first-loop" ? "task-9" : scenario === "comparisons" ? "ticket-13" : scenario === "finding-comparisons" ? "ticket-14" : "task-2",
   );
   mkdirSync(evidenceRoot, { recursive: true });
   const runDir = join(evidenceRoot, `run-${new Date().toISOString().replace(/[:.]/g, "-")}`);
@@ -1466,6 +1528,8 @@ async function main() {
     await runComparisonsScenario(runDir, check, log);
   } else if (scenario === "finding-comparisons") {
     await runFindingComparisonsScenario(runDir, check, log);
+  } else if (scenario === "decisions") {
+    await runChecksScenario(runDir, check, log);
   } else {
     await runChecksScenario(runDir, check, log);
   }

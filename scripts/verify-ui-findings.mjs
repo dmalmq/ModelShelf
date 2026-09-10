@@ -403,7 +403,8 @@ print("total", db.execute("SELECT COUNT(*) FROM finding_objects WHERE finding_id
     check("Chromium: critical band renders first", domBands[0] === "critical", JSON.stringify(domBands));
     const totalsText = (await page.textContent("[data-totals-header]")) ?? "";
     check("Chromium: totals render with no success percentage", !totalsText.includes("%"), totalsText.slice(0, 200));
-    check("Chromium: incomplete section always visible", (await page.locator("[data-incomplete-section]").count()) === 1, "missing");
+    const expectedIncompleteSection = (run2.reviewIncomplete?.length ?? 0) > 0 ? 1 : 0;
+    check("Chromium: incomplete section appears only when review is incomplete", (await page.locator("[data-incomplete-section]").count()) === expectedIncompleteSection, JSON.stringify({ expected: expectedIncompleteSection }));
     const optionCount = await page.locator("[data-run-selector] option").count().catch(() => 0);
     check("Chromium: run selector preserves both runs after the pack switch", optionCount >= 2, `options=${optionCount}`);
     await page.screenshot({ path: join(runDir, "review-overview.png") });
@@ -425,6 +426,26 @@ print("total", db.execute("SELECT COUNT(*) FROM finding_objects WHERE finding_id
     check("Chromium: evidence shows requirement + honest absence + scope + pack identity", /FireRating|EvacuationWidth/.test(evidenceText) && /記載なし|Not stated/.test(evidenceText) && new RegExp(`v${v1.version}`).test(evidenceText), evidenceText.slice(0, 300));
     await page.locator("[data-evidence-panel]").scrollIntoViewIfNeeded();
     await page.screenshot({ path: join(runDir, "evidence-open.png") });
+
+    await page.waitForSelector("[data-decision-panel]", { timeout: 60_000 });
+    check("Chromium: Japanese is the default document language", await page.getAttribute("html", "lang") === "ja", await page.getAttribute("html", "lang"));
+    await page.click(`[data-decision-finding="${findingA.id}"]`);
+    await page.click('[data-decision-outcome="conditional_accept"]');
+    await page.fill("#decision-rationale", "The cited requirement is accepted subject to the documented correction.");
+    await page.click("[data-decision-submit]");
+    await page.waitForSelector("[data-current-decision]", { timeout: 60_000 });
+    const decisionText = (await page.textContent("[data-current-decision]")) ?? "";
+    check("Chromium: reviewer can record a conditional decision with cited evidence", decisionText.includes("条件付き受入") && decisionText.includes("チェックパック"), decisionText.slice(0, 300));
+    check("Chromium: locale switcher exposes an English control", await page.locator('[data-locale="en"]').count() === 1, "missing English locale control");
+    await page.click('[data-locale="en"]');
+    await page.waitForTimeout(500);
+    const switchedLang = await page.getAttribute("html", "lang");
+    const switchedText = (await page.textContent("[data-decision-panel]")) ?? "";
+    check("Chromium: locale switch updates html lang and decision chrome", switchedLang === "en" && switchedText.includes("Record decision"), JSON.stringify({ switchedLang, switchedText: switchedText.slice(0, 200) }));
+    await page.click('[data-locale="ja"]');
+    await page.waitForTimeout(500);
+    check("Chromium: locale switch returns to Japanese", await page.getAttribute("html", "lang") === "ja", await page.getAttribute("html", "lang"));
+    await page.screenshot({ path: join(runDir, "decision-record.png") });
 
     // Advisory finding: pager past the 25-sample, malformed banner, dedupe header.
     await page.click(`[data-finding-id="${findingA.id}"]`);
@@ -461,7 +482,8 @@ print("total", db.execute("SELECT COUNT(*) FROM finding_objects WHERE finding_id
     await page.goto(`${appOrigin}/deliveries/${emptyDelivery.id}`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector("[data-totals-header]", { timeout: 120_000 });
     check("Chromium: empty run shows the no-findings state, not a crash", (await page.locator("[data-scorecard-empty]").count()) === 1, "missing");
-    check("Chromium: incomplete section visible when all evaluated pass", (await page.locator("[data-incomplete-section]").count()) === 1, "missing");
+    const expectedEmptyIncompleteSection = (emptyRun.reviewIncomplete?.length ?? 0) > 0 ? 1 : 0;
+    check("Chromium: empty run does not claim an absent incomplete review", (await page.locator("[data-incomplete-section]").count()) === expectedEmptyIncompleteSection, JSON.stringify({ expected: expectedEmptyIncompleteSection }));
     const emptySpecRows = await page.locator("[data-spec-row]").count();
     check("Chromium: spec table keeps not_applicable rows", emptySpecRows >= 1, `rows=${emptySpecRows}`);
     await page.screenshot({ path: join(runDir, "empty-run.png") });

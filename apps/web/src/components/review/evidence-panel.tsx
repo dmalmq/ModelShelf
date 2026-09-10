@@ -10,11 +10,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../ui/button";
 import { SEVERITY_COLOR } from "@/lib/palette";
-import type { Finding, FindingObject, ModelInfo, RunSummary, SpecResultRow } from "@/lib/types";
-import { fetchAllFindingObjects } from "../viewer/findings-api";
+import { EVIDENCE_COPY, UI, type Locale } from "@/lib/i18n";
+import type { Finding, FindingObject, ModelInfo, ObjectDetail, RunSummary, SpecResultRow } from "@/lib/types";
+import { fetchAllFindingObjects, fetchObjectDetail } from "../viewer/findings-api";
 import type { DeliveryViewerController } from "../viewer/types";
 import { ObjectFilters, type FilterOptions } from "./object-filters";
-import { copy, REVIEW_COPY, type ReviewLang } from "./review-i18n";
 import type { LoadedMembers, ObjectFilterSet } from "./review-state";
 import {
   applyFindingToViewer,
@@ -43,7 +43,7 @@ interface EvidencePanelProps {
   readonly onMembersReady: (findingId: string, objects: FindingObject[], total: number) => void;
   readonly onMembersFailed: () => void;
   readonly viewer: DeliveryViewerController | null;
-  readonly lang?: ReviewLang;
+  readonly lang?: Locale;
 }
 
 interface MemberIssue {
@@ -83,11 +83,75 @@ export function EvidencePanel({
   viewer,
   lang = "ja",
 }: EvidencePanelProps): React.JSX.Element {
+  const copy = EVIDENCE_COPY[lang];
   const [matched, setMatched] = useState<number | null>(null);
   const [selectedHidden, setSelectedHidden] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [loadFailed, setLoadFailed] = useState(false);
   /** Keys (`revisionId\0objectId`) with no drawable geometry in this delivery. */
+  const [sectionInput, setSectionInput] = useState("");
+  const [sectionActive, setSectionActive] = useState(false);
+  const [property, setProperty] = useState<ObjectDetail | null>(null);
+  const [propertyError, setPropertyError] = useState<string | null>(null);
+  /** True after "Reset view": the finding stays coloured, nothing stays hidden. */
+  const [isolationOff, setIsolationOff] = useState(false);
+
+  // A new finding is a new question: it isolates again.
+  useEffect(() => {
+    setIsolationOff(false);
+  }, [finding.id]);
+
+  function applySection(): void {
+    if (!viewer) return;
+    const trimmed = sectionInput.trim();
+    if (trimmed === "") {
+      viewer.setSectionZ(null);
+      setSectionActive(false);
+      return;
+    }
+    const z = Number(trimmed);
+    if (!Number.isFinite(z)) return;
+    viewer.setSectionZ(z);
+    setSectionActive(true);
+  }
+
+  function resetView(): void {
+    if (!viewer) return;
+    viewer.setSectionZ(null);
+    setSectionInput("");
+    setSectionActive(false);
+    setIsolationOff(true);
+    onFiltersChange({ source: "all", discipline: "all", storey: "all", ifcType: "all" });
+  }
+
+  /** Any deliberate narrowing re-isolates; reset is a one-shot, not a mode. */
+  function changeFilters(next: ObjectFilterSet): void {
+    setIsolationOff(false);
+    onFiltersChange(next);
+  }
+
+  async function inspectSelection(): Promise<void> {
+    if (!viewer) return;
+    setProperty(null);
+    setPropertyError(null);
+    const selected = viewer.diagnostics().snapshot.selected;
+    if (!selected) return;
+    const match = membersForFinding.find(
+      (object) =>
+        object.ref.revisionId === selected.ref.revisionId && object.ref.objectId === selected.ref.objectId,
+    );
+    if (!match) return;
+    if (!match.objectId) {
+      setPropertyError(copy.noOccurrence);
+      return;
+    }
+    try {
+      setProperty(await fetchObjectDetail(match.objectId));
+    } catch (reason: unknown) {
+      setPropertyError(reason instanceof Error ? reason.message : copy.propertyFailed);
+    }
+  }
+
   const [notDrawn, setNotDrawn] = useState<Record<string, true>>({});
 
   const knownModels = useMemo(() => new Set(models.map((model) => model.id)), [models]);
@@ -144,7 +208,27 @@ export function EvidencePanel({
     return { valid: validMembers, issues: memberIssues };
   }, [membersForFinding, knownModels]);
 
+  /** Distinct engine-supplied reasons behind an undecided requirement. */
+  const reasonsGiven = useMemo(
+    () => [
+      ...new Set(
+        membersForFinding
+          .map((object) => object.incompleteReason)
+          .filter((reason): reason is string => Boolean(reason)),
+      ),
+    ],
+    [membersForFinding],
+  );
+
   const filtered = useMemo(() => filterMembers(valid, filters), [valid, filters]);
+
+  // The viewer owns selection truth; mirror its hidden flag so the notice
+  // appears the moment the selection leaves the isolated set.
+  useEffect(() => {
+    if (!viewer) return;
+    return viewer.subscribe(() => setSelectedHidden(viewer.diagnostics().selectedHidden));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewer]);
 
   const { refs, undrawable: nullRefs } = useMemo(() => findingToHighlights(filtered), [filtered]);
 
@@ -198,9 +282,12 @@ export function EvidencePanel({
       return;
     }
     try {
+      // "Reset view" keeps the finding highlighted but stops hiding the rest of
+      // the delivery: colour without isolation, full opacity, camera untouched.
       const readback = applyFindingToViewer(
         viewer,
         { refs, color: SEVERITY_COLOR[finding.severity], label: finding.title },
+        isolationOff ? { isolate: false, dimOpacity: 1, frame: false } : undefined,
       );
       setMatched(readback.matched);
       setSelectedHidden(readback.selectedHidden);
@@ -226,7 +313,7 @@ export function EvidencePanel({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewer, finding.id, finding.objectCount, refs.length === 0 ? "empty" : refs.map((r) => `${r.revisionId}${r.objectId}`).join(",")]);
+  }, [viewer, finding.id, finding.objectCount, isolationOff, refs.length === 0 ? "empty" : refs.map((r) => `${r.revisionId}${r.objectId}`).join(",")]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount - 1);
@@ -236,8 +323,16 @@ export function EvidencePanel({
 
   return (
     <div className="space-y-3" data-evidence-panel={finding.id}>
+      {finding.incomplete && (
+        <p
+          className="border border-border bg-muted px-2 py-1.5 text-xs font-medium"
+          data-incomplete-evidence
+        >
+          {copy.undecided} {copy.reasons(reasonsGiven)}
+        </p>
+      )}
       <div>
-        <p className="text-[11px] text-muted-foreground">要件 / Requirement</p>
+        <p className="text-xs text-muted-foreground">{copy.requirement}</p>
         <p className="mt-0.5 break-all font-mono text-xs" data-evidence-requirement>
           {finding.requirement}
         </p>
@@ -245,22 +340,22 @@ export function EvidencePanel({
 
       <div className="grid grid-cols-2 gap-2 text-xs">
         <div>
-          <p className="text-[11px] text-muted-foreground">期待値 / Expected</p>
+          <p className="text-xs text-muted-foreground">{copy.expected}</p>
           {finding.expected ? (
             <p data-evidence-expected>{finding.expected}</p>
           ) : (
             <p className="text-muted-foreground" data-evidence-expected-absent>
-              {copy(REVIEW_COPY.expectedAbsent, lang)}
+              {UI[lang].expectedAbsent}
             </p>
           )}
         </div>
         <div>
-          <p className="text-[11px] text-muted-foreground">指示 / Instructions</p>
+          <p className="text-xs text-muted-foreground">{copy.instructions}</p>
           {finding.instructions ? (
             <p data-evidence-instructions>{finding.instructions}</p>
           ) : (
             <p className="text-muted-foreground" data-evidence-instructions-absent>
-              {copy(REVIEW_COPY.instructionsAbsent, lang)}
+              {UI[lang].instructionsAbsent}
             </p>
           )}
         </div>
@@ -268,26 +363,26 @@ export function EvidencePanel({
 
       {first && (
         <div className="border border-border p-2 text-xs" data-first-member-summary>
-          <p className="text-[11px] text-muted-foreground">代表メンバー / First member</p>
+          <p className="text-xs text-muted-foreground">{copy.firstMember}</p>
           <p className="mt-0.5 truncate font-medium">
-            {first.name ?? "Unnamed"} · {first.ifcType} #{first.expressId}
+            {first.name ?? copy.unnamed} · {first.ifcType} #{first.expressId}
           </p>
-          <p className="tnum mt-0.5 text-[11px] text-muted-foreground">
-            実測値 / actual: {first.actual ?? "—"}
+          <p className="tnum mt-0.5 text-xs text-muted-foreground">
+            {copy.actual}: {first.actual ?? "—"}
             {first.storey ? ` · ${first.storey}` : ""} · {modelNameOf(first.modelId)}
           </p>
         </div>
       )}
 
       <div data-evidence-scope>
-        <p className="text-[11px] text-muted-foreground">{copy(REVIEW_COPY.scopeHeading, lang)}</p>
+        <p className="text-xs text-muted-foreground">{UI[lang].scopeHeading}</p>
         {finding.objectCount === 0 ? (
           <p className="mt-0.5 text-xs" data-scope-no-match>
-            {copy(REVIEW_COPY.noMatchScope, lang)}
+            {UI[lang].noMatchScope}
             {specRow ? (
               <span className="tnum text-muted-foreground">
                 {" "}
-                · {specRow.specName}: 適用{specRow.applicableCount} / 合格{specRow.passCount}
+                · {copy.scopeSummary(specRow.specName, specRow.applicableCount, specRow.passCount)}
               </span>
             ) : (
               ""
@@ -296,11 +391,16 @@ export function EvidencePanel({
         ) : specRow ? (
           <div className="mt-0.5 text-xs">
             <p className="tnum" data-scope-counts>
-              {specRow.specName}: 適用{specRow.applicableCount} / 合格{specRow.passCount} / 不合格
-              {specRow.failCount} / 未判定{specRow.incompleteCount}
+              {copy.scopeCounts(
+                specRow.specName,
+                specRow.applicableCount,
+                specRow.passCount,
+                specRow.failCount,
+                specRow.incompleteCount,
+              )}
             </p>
             {specRow.notes.length > 0 && (
-              <ul className="mt-1 space-y-0.5 text-[11px] text-muted-foreground" data-scope-notes>
+              <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground" data-scope-notes>
                 {specRow.notes.map((note, index) => (
                   <li key={index}>{note}</li>
                 ))}
@@ -308,63 +408,127 @@ export function EvidencePanel({
             )}
           </div>
         ) : (
-          <p className="mt-0.5 text-xs text-muted-foreground">適用範囲の詳細は仕様表を参照 / See the spec table.</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{copy.seeSpecTable}</p>
         )}
       </div>
 
-      <p className="tnum text-[11px] text-muted-foreground" data-pack-identity>
+      <p className="tnum text-xs text-muted-foreground" data-pack-identity>
         {run.packName} v{run.packVersion} · engine {run.engineVersion} · parser {run.parserVersion} ·{" "}
         {finding.facet} · {finding.categoryLabel}
       </p>
 
       {issues.length > 0 && (
-        <p className="border border-destructive/40 bg-destructive/5 px-2 py-1.5 text-[11px]" data-malformed-banner>
-          {copy(REVIEW_COPY.malformedMembers, lang)} ({issues.length}件: {issues[0].reason} @#{issues[0].index})
+        <p className="border border-destructive/40 bg-destructive/5 px-2 py-1.5 text-xs" data-malformed-banner>
+          {UI[lang].malformedMembers} ({copy.issueCount(issues.length)}: {issues[0].reason} @#{issues[0].index})
         </p>
       )}
 
-      <ObjectFilters filters={filters} options={filterOptions} onChange={onFiltersChange} />
+      <ObjectFilters filters={filters} options={filterOptions} onChange={changeFilters} />
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Button
+          variant="outline"
+          size="sm"
+          className="min-h-11 sm:min-h-8"
+          data-reset-view
+          onClick={resetView}
+        >
+          {copy.resetView}
+        </Button>
+        <label className="flex items-center gap-1.5 text-xs">
+          <span className="text-muted-foreground">{copy.section}</span>
+          <input
+            data-section-z
+            aria-label={copy.sectionLabel}
+            className="min-h-11 w-20 border border-border bg-card px-1.5 py-1 font-mono text-xs sm:min-h-8"
+            value={sectionInput}
+            inputMode="decimal"
+            onChange={(event) => setSectionInput(event.target.value)}
+            onBlur={applySection}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") applySection();
+            }}
+          />
+          {sectionActive && <span className="text-muted-foreground">{copy.sectionActive}</span>}
+        </label>
+        <Button
+          variant="outline"
+          size="sm"
+          className="min-h-11 sm:min-h-8"
+          data-inspect-selection
+          onClick={() => void inspectSelection()}
+        >
+          {copy.inspect}
+        </Button>
+      </div>
+      {propertyError && <p className="text-xs text-destructive">{propertyError}</p>}
+      {property && (
+        <dl className="space-y-1.5 border border-border p-2 text-xs" data-property-panel>
+          <div className="flex justify-between gap-2">
+            <dt className="text-muted-foreground">{copy.type}</dt>
+            <dd className="font-mono">{property.ifcType}</dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-muted-foreground">{copy.name}</dt>
+            <dd className="truncate">{property.name ?? copy.unnamed}</dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-muted-foreground">{copy.storey}</dt>
+            <dd>{property.storey ?? "—"}</dd>
+          </div>
+          {property.properties.slice(0, 12).map((group) => (
+            <div key={`${group.pset}.${group.name}`}>
+              <dt className="text-muted-foreground">
+                {group.pset}.{group.name}
+                {group.origin === "type" ? " (type)" : ""}
+              </dt>
+              <dd className="font-mono">
+                {group.values
+                  .map((entry) =>
+                    entry.siValue === null || entry.siValue === undefined
+                      ? String(entry.value)
+                      : `${String(entry.value)} → ${entry.siValue}`,
+                  )
+                  .join("; ")}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
 
-      <p className="tnum text-[11px] text-muted-foreground" data-member-counts>
-        {filtered.length} / {valid.length}件表示
-        {valid.length !== uniqueKeys ? ` · 一意 ${uniqueKeys}件 (revisionId+objectIdで重複除去)` : ""}
-        {matched !== null ? ` · ビューア一致 ${matched}件` : ""} · 描画不可 {withoutGeometry.length}件
+      <p className="tnum text-xs text-muted-foreground" data-member-counts>
+        {copy.memberCounts(filtered.length, valid.length, uniqueKeys, matched, withoutGeometry.length)}
       </p>
 
       {loadFailed && !membersLoading && (
         <div
-          className="border border-destructive/40 bg-destructive/5 px-2 py-1.5 text-[11px]"
+          className="border border-destructive/40 bg-destructive/5 px-2 py-1.5 text-xs"
           data-members-failed
         >
-          <p>
-            全件の読み込みに失敗しました。{membersForFinding.length}
-            件のサンプルを表示中 / Could not load all members — showing the{" "}
-            {membersForFinding.length}-object sample.
-          </p>
+          <p>{copy.loadFailed(membersForFinding.length)}</p>
           <Button
             variant="outline"
             size="sm"
-            className="mt-1.5"
+            className="mt-1.5 min-h-11 sm:min-h-8"
             onClick={() => setRetryCount((count) => count + 1)}
           >
-            再取得 / Retry
+            {copy.refetch}
           </Button>
         </div>
       )}
 
       {membersLoading ? (
         <p className="text-xs text-muted-foreground" role="status" data-members-loading>
-          Loading affected objects… {membersForFinding.length}
+          {copy.loadingMembers(membersForFinding.length)}
         </p>
       ) : (
         <div>
           <table className="w-full text-xs" data-object-table={windowed ? "windowed" : "full"}>
             <thead>
               <tr className="text-left text-muted-foreground">
-                <th scope="col" className="py-1 pr-2 font-medium">名称 / Name</th>
-                <th scope="col" className="py-1 pr-2 font-medium">階</th>
-                <th scope="col" className="py-1 pr-2 font-medium">モデル</th>
-                <th scope="col" className="py-1 font-medium">実測値 / Actual</th>
+                <th scope="col" className="py-1 pr-2 font-medium">{copy.name}</th>
+                <th scope="col" className="py-1 pr-2 font-medium">{copy.storey}</th>
+                <th scope="col" className="py-1 pr-2 font-medium">{copy.model}</th>
+                <th scope="col" className="py-1 font-medium">{copy.actual}</th>
               </tr>
             </thead>
             <tbody>
@@ -375,8 +539,8 @@ export function EvidencePanel({
                   data-object-row={`${object.ref.revisionId}:${object.ref.objectId}`}
                 >
                   <td className="max-w-36 py-1 pr-2">
-                    <span className="block truncate">{object.name ?? "Unnamed"}</span>
-                    <span className="tnum block font-mono text-[11px] text-muted-foreground">
+                    <span className="block truncate">{object.name ?? copy.unnamed}</span>
+                    <span className="tnum block font-mono text-xs text-muted-foreground">
                       #{object.expressId} · {object.ifcType}
                     </span>
                   </td>
@@ -394,7 +558,7 @@ export function EvidencePanel({
                 size="sm"
                 disabled={safePage === 0}
                 onClick={() => onPageChange(safePage - 1)}
-                aria-label="Previous objects page"
+                aria-label={copy.previousPage}
               >
                 ←
               </Button>
@@ -406,7 +570,7 @@ export function EvidencePanel({
                 size="sm"
                 disabled={safePage >= pageCount - 1}
                 onClick={() => onPageChange(safePage + 1)}
-                aria-label="Next objects page"
+                aria-label={copy.nextPage}
               >
                 →
               </Button>
@@ -416,17 +580,17 @@ export function EvidencePanel({
       )}
 
       {withoutGeometry.length > 0 && (
-        <div className="border border-border p-2 text-[11px]" data-no-geometry-block>
+        <div className="border border-border p-2 text-xs" data-no-geometry-block>
           <p className="font-medium">
-            {copy(REVIEW_COPY.membersWithoutGeometry, lang)} ({withoutGeometry.length})
+            {UI[lang].membersWithoutGeometry} ({withoutGeometry.length})
           </p>
           <p className="mt-0.5 text-muted-foreground">
-            テキスト証拠のみのメンバーです。描画対象から除外し、一覧に保持しています。
+            {copy.textEvidenceOnly}
           </p>
           <ul className="mt-1 space-y-0.5 font-mono">
             {withoutGeometry.slice(0, 5).map((object, index) => (
               <li key={`${object.modelId}-${index}`}>
-                {object.ifcType} · {object.globalId ?? "no GlobalId"}
+                {object.ifcType} · {object.globalId ?? copy.noGlobalId}
                 {object.actual ? ` · actual: ${object.actual}` : ""}
                 {object.incompleteReason ? ` · ${object.incompleteReason}` : ""}
               </li>
@@ -435,18 +599,18 @@ export function EvidencePanel({
           <Button
             variant="outline"
             size="sm"
-            className="mt-1.5"
+            className="mt-1.5 min-h-11 sm:min-h-8"
             onClick={() => setRetryCount((count) => count + 1)}
             data-geometry-retry
           >
-            再取得 / Retry ({copy(REVIEW_COPY.retry, lang)})
+            {copy.refetch}
           </Button>
         </div>
       )}
 
       {selectedHidden && (
-        <p className="border border-border bg-muted px-2 py-1.5 text-[11px]" data-hidden-notice>
-          選択中のオブジェクトは現在の絞り込みで非表示です。選択は保持されます。
+        <p className="border border-border bg-muted px-2 py-1.5 text-xs" data-hidden-notice>
+          {copy.selectedHidden}
         </p>
       )}
     </div>

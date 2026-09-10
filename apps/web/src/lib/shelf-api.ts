@@ -1,7 +1,12 @@
 import type {
   AddDeliveryMemberBody,
+  CreateDecisionBody,
   CreateDeliveryBody,
   CreateSourceModelBody,
+  DecisionEvidence,
+  DecisionFindingEvidence,
+  DecisionHistory,
+  DecisionOutcome,
   Delivery,
   DeliveryDetail,
   DeliverySummary,
@@ -14,10 +19,12 @@ import type {
   PackVersion,
   Project,
   ProjectDetail,
+  ReviewDecision,
   RunStatus,
   RunDetail,
   RunInputProvenance,
   RunSummary,
+  Severity,
   SourceModel,
 } from "@/lib/types";
 import { fetchDelivery, parseDeliveryDetail } from "@/components/viewer/delivery-api";
@@ -31,6 +38,7 @@ export type ApiErrorCode =
   | "not_found"
   | "bad_request"
   | "delivery_locked"
+  | "decision_conflict"
   | "pack_version_mismatch"
   | "duplicate_discipline"
   | "parse_failed"
@@ -44,6 +52,7 @@ function apiErrorCode(value: unknown): ApiErrorCode | null {
     case "not_found":
     case "bad_request":
     case "delivery_locked":
+    case "decision_conflict":
     case "pack_version_mismatch":
     case "duplicate_discipline":
     case "parse_failed":
@@ -172,6 +181,23 @@ export async function fetchRunDetail(runId: string, signal?: AbortSignal): Promi
       error instanceof Error ? error.message : "The server returned an unexpected run",
     );
   }
+}
+
+export function fetchDecisionHistory(runId: string, signal?: AbortSignal): Promise<DecisionHistory> {
+  return get(`/api/runs/${encodeURIComponent(nonEmpty(runId, "runId"))}/decisions`, signal, parseDecisionHistory);
+}
+
+export function createReviewDecision(
+  runId: string,
+  body: CreateDecisionBody,
+  signal?: AbortSignal,
+): Promise<ReviewDecision> {
+  return postJson(
+    `/api/runs/${encodeURIComponent(nonEmpty(runId, "runId"))}/decisions`,
+    body,
+    parseReviewDecision,
+    signal,
+  );
 }
 
 export async function listSourceModels(
@@ -489,6 +515,78 @@ export function parsePackVersion(value: unknown): PackVersion {
     specCount: integerValue(record.specCount, "packVersion.specCount"),
     createdAt: stringValue(record.createdAt, "packVersion.createdAt"),
   };
+}
+
+export function parseDecisionHistory(value: unknown): DecisionHistory {
+  const record = requireRecord(value, "Decision history payload");
+  if (record.current !== null && !isRecord(record.current)) {
+    throw new Error("decisionHistory.current must be an object or null");
+  }
+  if (!Array.isArray(record.history)) throw new Error("decisionHistory.history must be an array");
+  return {
+    current: record.current === null ? null : parseReviewDecision(record.current),
+    history: record.history.map(parseReviewDecision),
+  };
+}
+
+export function parseReviewDecision(value: unknown): ReviewDecision {
+  const record = requireRecord(value, "Review decision payload");
+  return {
+    id: stringValue(record.id, "decision.id"),
+    runId: stringValue(record.runId, "decision.runId"),
+    outcome: decisionOutcomeValue(record.outcome),
+    rationale: stringValue(record.rationale, "decision.rationale"),
+    citedFindingIds: stringArrayValue(record.citedFindingIds, "decision.citedFindingIds"),
+    createdAt: stringValue(record.createdAt, "decision.createdAt"),
+    supersedesDecisionId: nullableString(record.supersedesDecisionId, "decision.supersedesDecisionId"),
+    supersededBy: nullableString(record.supersededBy, "decision.supersededBy"),
+    evidence: parseDecisionEvidence(record.evidence),
+  };
+}
+
+function parseDecisionEvidence(value: unknown): DecisionEvidence {
+  const record = requireRecord(value, "decision.evidence");
+  if (!Array.isArray(record.citedFindings)) throw new Error("decision.evidence.citedFindings must be an array");
+  return {
+    runId: stringValue(record.runId, "decision.evidence.runId"),
+    deliveryLabel: stringValue(record.deliveryLabel, "decision.evidence.deliveryLabel"),
+    packVersionId: stringValue(record.packVersionId, "decision.evidence.packVersionId"),
+    packName: stringValue(record.packName, "decision.evidence.packName"),
+    packVersion: integerValue(record.packVersion, "decision.evidence.packVersion"),
+    engineVersion: stringValue(record.engineVersion, "decision.evidence.engineVersion"),
+    parserVersion: stringValue(record.parserVersion, "decision.evidence.parserVersion"),
+    inputProvenance: parseRunInputProvenance(record.inputProvenance),
+    incompleteCount: integerValue(record.incompleteCount, "decision.evidence.incompleteCount"),
+    citedFindings: record.citedFindings.map(parseDecisionFindingEvidence),
+  };
+}
+
+function parseDecisionFindingEvidence(value: unknown): DecisionFindingEvidence {
+  const record = requireRecord(value, "decision finding evidence");
+  return {
+    id: stringValue(record.id, "decision.finding.id"),
+    title: stringValue(record.title, "decision.finding.title"),
+    severity: severityValue(record.severity),
+    categoryLabel: stringValue(record.categoryLabel, "decision.finding.categoryLabel"),
+    objectCount: integerValue(record.objectCount, "decision.finding.objectCount"),
+  };
+}
+
+function decisionOutcomeValue(value: unknown): DecisionOutcome {
+  if (value === "accept" || value === "reject" || value === "conditional_accept") return value;
+  throw new Error("decision.outcome is invalid");
+}
+
+function severityValue(value: unknown): Severity {
+  if (value === "critical" || value === "high" || value === "medium" || value === "advisory") return value;
+  throw new Error("decision.finding.severity is invalid");
+}
+
+function stringArrayValue(value: unknown, field: string): string[] {
+  if (!Array.isArray(value) || !value.every((entry) => typeof entry === "string" && entry.length > 0)) {
+    throw new Error(`${field} must be an array of non-empty strings`);
+  }
+  return value;
 }
 
 function parseRunInputProvenance(value: unknown): RunInputProvenance {

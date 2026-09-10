@@ -1,20 +1,54 @@
+next build exited 0
    ▲ Next.js 15.5.25
-   - Local:        http://localhost:33927
-   - Network:      http://10.255.255.254:33927
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 1765ms
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/11) ...
+   Generating static pages (2/11) 
+   Generating static pages (5/11) 
+   Generating static pages (8/11) 
+ ✓ Generating static pages (11/11)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+┌ ○ /                                    7.93 kB         167 kB
+├ ○ /_not-found                            998 B         104 kB
+├ ƒ /deliveries/[deliveryId]             23.7 kB         341 kB
+├ ○ /deliveries/compare                  13.2 kB         295 kB
+├ ○ /design                                816 B         107 kB
+├ ○ /design/a                            3.91 kB         195 kB
+├ ○ /design/b                            1.76 kB         193 kB
+├ ○ /design/c                            3.52 kB         195 kB
+├ ○ /design/d                            9.38 kB         201 kB
+└ ○ /kitchen-sink                          290 B         182 kB
++ First Load JS shared by all             103 kB
+  ├ chunks/255-37e0f0325134c4d7.js       46.4 kB
+  ├ chunks/4bd1b696-c023c6e3521b1417.js  54.2 kB
+  └ other shared chunks (total)          1.98 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+
+
+   ▲ Next.js 15.5.25
+   - Local:        http://localhost:40327
+   - Network:      http://10.255.255.254:40327
 
  ✓ Starting...
- ✓ Ready in 1119ms
- ○ Compiling /deliveries/[deliveryId] ...
- ✓ Compiled /deliveries/[deliveryId] in 1441ms (840 modules)
- GET /deliveries/combined 200 in 2048ms
- GET /deliveries/combined 200 in 41ms
-browser info: %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
- ⚠ Cross origin request detected from 127.0.0.1 to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
-Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
-browser warning: [.WebGL-0x2d4400193e00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-browser warning: [.WebGL-0x2d4400193e00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-browser warning: [.WebGL-0x2d4400193e00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
-browser warning: [.WebGL-0x2d4400193e00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)
+ ✓ Ready in 220ms
+browser error: Failed to load resource: the server responded with a status of 404 (Not Found)
+browser warning: [.WebGL-0x37cc00194a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+browser warning: [.WebGL-0x37cc00194a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+browser warning: [.WebGL-0x37cc00194a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels
+browser error: Failed to load resource: the server responded with a status of 404 (Not Found)
+browser warning: [.WebGL-0x37cc00194a00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)
+browser error: Failed to load resource: the server responded with a status of 404 (Not Found)
+browser error: Failed to load resource: the server responded with a status of 404 (Not Found)
 browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 343644
 browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 345785
 browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 346732
@@ -150,10 +184,9 @@ browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 419710
 browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 419780
 browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 419813
 browser log: [WEB-IFC][error][TriangulateBounds()] bad bound 420832
- GET /deliveries/duplicate 200 in 44ms
-browser info: %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
- GET /deliveries/duplicate 200 in 50ms
-browser info: %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
- GET /deliveries/empty 200 in 38ms
-browser info: %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
-[?25h
+browser error: Failed to load resource: the server responded with a status of 404 (Not Found)
+browser error: Failed to load resource: the server responded with a status of 404 (Not Found)
+browser error: Failed to load resource: the server responded with a status of 404 (Not Found)
+browser error: Failed to load resource: the server responded with a status of 404 (Not Found)
+browser error: Failed to load resource: the server responded with a status of 404 (Not Found)
+browser error: Failed to load resource: the server responded with a status of 404 (Not Found)

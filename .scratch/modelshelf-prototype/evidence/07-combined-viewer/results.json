@@ -1,15 +1,17 @@
 {
   "passed": true,
   "checks": [
-    "two successful real models remain ready when MEP fails",
+    "the delivery route mounts one authoritative viewer and requests each revision once",
+    "two successful real models remain ready when a sibling fails",
     "the failed source has its own model state",
     "successful model roots remain visible after a sibling failure",
     "successful models establish the shared origin before retry",
+    "retry keeps the established common origin frozen",
     "the combined delivery contains three model revisions",
     "download and parse progress identifies every source revision",
     "three batched model resources are active",
     "IFC parsing uses one dedicated browser Worker",
-    "the browser loaded the IFC Worker bundle",
+    "the browser loaded a dedicated Worker bundle (http://127.0.0.1:40327/_next/static/chunks/773.0dee63dc96d8424a.js)",
     "one renderer owns the combined scene",
     "one render loop drives the combined scene",
     "model revisions share one material",
@@ -19,7 +21,7 @@
     "Three.js observes compiled shader programs",
     "Three.js observes rendered frames",
     "thousands of selectable objects remain behind revision-level BatchedMesh resources",
-    "retry keeps the established common origin frozen",
+    "combined delivery establishes a shared origin",
     "the delivery resolves one common origin",
     "every model root receives the same common-origin offset",
     "ARCH exposes drawable bounds",
@@ -37,13 +39,21 @@
     "left drag orbits the camera",
     "right drag pans the camera",
     "wheel input zooms the camera",
+    "the model canvas is keyboard focusable",
+    "the model canvas references keyboard instructions",
+    "keyboard instructions describe pan, zoom, and fit-all controls",
+    "arrow-key input pans the camera target",
+    "plus-key input zooms the camera",
+    "Home-key input fits the complete delivery",
     "canvas raycasting selects a revision-qualified ObjectRef",
-    "combined first unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":186,\"triangles\":0}",
+    "390px viewer has no horizontal overflow (390px): []",
+    "visible mobile viewer buttons meet the 44px target floor: []",
+    "combined first unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":231,\"triangles\":0}",
     "combined first unload releases uploaded GPU geometry and shader programs",
     "combined first unload releases every BatchedMesh GPU texture",
     "combined first unload closes the observed browser Worker",
     "combined first unload stops the observed render loop",
-    "combined repeated unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":186,\"triangles\":0}",
+    "combined repeated unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":231,\"triangles\":0}",
     "combined repeated unload releases uploaded GPU geometry and shader programs",
     "combined repeated unload releases every BatchedMesh GPU texture",
     "combined repeated unload closes the observed browser Worker",
@@ -55,20 +65,20 @@
     "one ObjectRef can address several placed geometry instances",
     "the first duplicate GlobalId revision selects independently",
     "the second duplicate GlobalId revision selects independently",
-    "duplicate unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":45,\"triangles\":0}",
+    "duplicate unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":37,\"triangles\":0}",
     "duplicate unload releases uploaded GPU geometry and shader programs",
     "duplicate unload releases every BatchedMesh GPU texture",
     "duplicate unload closes the observed browser Worker",
     "duplicate unload stops the observed render loop",
     "remount reacquires one Worker and batched GPU resources",
-    "duplicate remount unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":31,\"triangles\":0}",
+    "duplicate remount unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":22,\"triangles\":0}",
     "duplicate remount unload releases uploaded GPU geometry and shader programs",
     "duplicate remount unload releases every BatchedMesh GPU texture",
     "duplicate remount unload closes the observed browser Worker",
     "duplicate remount unload stops the observed render loop",
     "a valid revision with no drawable geometry reaches ready",
     "an empty drawable revision exposes no selectable objects",
-    "empty revision unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":23,\"triangles\":0}",
+    "empty revision unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":13,\"triangles\":0}",
     "empty revision unload releases uploaded GPU geometry and shader programs",
     "empty revision unload releases every BatchedMesh GPU texture",
     "empty revision unload closes the observed browser Worker",
@@ -76,49 +86,74 @@
   ],
   "samples": {
     "ARCH": {
-      "path": "/home/daniel/orca/workspaces/ModelShelf/timingila/samples/ifc/blcj-s1000-architecture.ifc",
+      "path": "/home/daniel/orca/workspaces/ModelShelf/design-review/samples/ifc/blcj-s1000-architecture.ifc",
       "sha256": "0f674223f596c483c5abea0b58fe6c05ef3c68692409c977782040ffa501cca4",
       "size": 36232021
     },
     "STRUCT": {
-      "path": "/home/daniel/orca/workspaces/ModelShelf/timingila/samples/ifc/blcj-s1000-structure.ifc",
+      "path": "/home/daniel/orca/workspaces/ModelShelf/design-review/samples/ifc/blcj-s1000-structure.ifc",
       "sha256": "64084908b3eda8f2a34cb0e5d51532b98882d62aa42839b9fa9b27e1ca1e75d5",
       "size": 836678
     },
     "MEP": {
-      "path": "/home/daniel/orca/workspaces/ModelShelf/timingila/samples/ifc/blcj-s1000-mep.ifc",
+      "path": "/home/daniel/orca/workspaces/ModelShelf/design-review/samples/ifc/blcj-s1000-mep.ifc",
       "sha256": "46eae66e578211012ee8c6d3d03eb3876670852cc62d452f40bc98c5215c08c2",
       "size": 48736361
     }
   },
   "fixtureRequests": [
+    "/api/deliveries/failure-probe",
+    "/api/deliveries/failure-probe",
+    "/api/projects/viewer-verifier/source-models",
+    "/api/deliveries/failure-probe",
+    "/api/packs",
+    "/api/models/probe-arch/file",
+    "/api/models/probe-struct/file",
+    "/api/models/probe-failure/file",
+    "/api/models/probe-failure/file",
     "/api/deliveries/combined",
+    "/api/deliveries/combined",
+    "/api/projects/viewer-verifier/source-models",
+    "/api/deliveries/combined",
+    "/api/packs",
     "/api/models/combined-arch/file",
     "/api/models/combined-struct/file",
     "/api/models/combined-mep/file",
-    "/api/models/combined-mep/file",
     "/api/deliveries/duplicate",
+    "/api/deliveries/duplicate",
+    "/api/projects/viewer-verifier/source-models",
+    "/api/deliveries/duplicate",
+    "/api/packs",
     "/api/models/duplicate-a/file",
     "/api/models/duplicate-b/file",
     "/api/deliveries/duplicate",
+    "/api/deliveries/duplicate",
+    "/api/projects/viewer-verifier/source-models",
+    "/api/deliveries/duplicate",
+    "/api/packs",
     "/api/models/duplicate-a/file",
     "/api/models/duplicate-b/file",
     "/api/deliveries/empty",
+    "/api/deliveries/empty",
+    "/api/projects/viewer-verifier/source-models",
+    "/api/deliveries/empty",
+    "/api/packs",
     "/api/models/empty-model/file"
   ],
   "workerUrls": [
-    "http://127.0.0.1:33927/_next/static/chunks/_app-pages-browser_src_components_viewer_ifc-loader_worker_ts.js",
-    "http://127.0.0.1:33927/_next/static/chunks/_app-pages-browser_src_components_viewer_ifc-loader_worker_ts.js",
-    "http://127.0.0.1:33927/_next/static/chunks/_app-pages-browser_src_components_viewer_ifc-loader_worker_ts.js",
-    "http://127.0.0.1:33927/_next/static/chunks/_app-pages-browser_src_components_viewer_ifc-loader_worker_ts.js"
+    "http://127.0.0.1:40327/_next/static/chunks/773.0dee63dc96d8424a.js",
+    "http://127.0.0.1:40327/_next/static/chunks/773.0dee63dc96d8424a.js",
+    "http://127.0.0.1:40327/_next/static/chunks/773.0dee63dc96d8424a.js",
+    "http://127.0.0.1:40327/_next/static/chunks/773.0dee63dc96d8424a.js",
+    "http://127.0.0.1:40327/_next/static/chunks/773.0dee63dc96d8424a.js"
   ],
   "partial": {
     "snapshot": {
       "delivery": {
         "delivery": {
-          "id": "combined",
+          "id": "failure-probe",
           "projectId": "viewer-verifier",
-          "label": "BLCJ S1000 combined delivery",
+          "label": "Partial failure recovery proof",
           "deliveryDate": "2026-09-07",
           "createdAt": "2026-09-07T00:00:00Z",
           "finalizedAt": "2026-09-07T00:00:00Z",
@@ -127,28 +162,11 @@
         },
         "models": [
           {
-            "id": "combined-arch",
-            "deliveryId": "combined",
+            "id": "probe-arch",
+            "deliveryId": "failure-probe",
             "discipline": "ARCH",
-            "sourceModelId": "combined-arch-source",
-            "sourceModelName": "Architecture",
-            "filename": "blcj-s1000-architecture.ifc",
-            "contentSha256": "0f674223f596c483c5abea0b58fe6c05ef3c68692409c977782040ffa501cca4",
-            "byteSize": 36232021,
-            "schemaLabel": "IFC2X3",
-            "entityCount": 0,
-            "productCount": 0,
-            "lengthToMetre": 0.001,
-            "parseMs": null,
-            "uploadedAt": "2026-09-07T00:00:00Z",
-            "originatingSystem": "viewer verifier"
-          },
-          {
-            "id": "combined-struct",
-            "deliveryId": "combined",
-            "discipline": "STRUCT",
-            "sourceModelId": "combined-struct-source",
-            "sourceModelName": "Structure",
+            "sourceModelId": "probe-arch-source",
+            "sourceModelName": "Probe architecture",
             "filename": "blcj-s1000-structure.ifc",
             "contentSha256": "64084908b3eda8f2a34cb0e5d51532b98882d62aa42839b9fa9b27e1ca1e75d5",
             "byteSize": 836678,
@@ -161,15 +179,32 @@
             "originatingSystem": "viewer verifier"
           },
           {
-            "id": "combined-mep",
-            "deliveryId": "combined",
-            "discipline": "MEP",
-            "sourceModelId": "combined-mep-source",
-            "sourceModelName": "MEP",
-            "filename": "blcj-s1000-mep.ifc",
-            "contentSha256": "46eae66e578211012ee8c6d3d03eb3876670852cc62d452f40bc98c5215c08c2",
-            "byteSize": 48736361,
+            "id": "probe-struct",
+            "deliveryId": "failure-probe",
+            "discipline": "STRUCT",
+            "sourceModelId": "probe-struct-source",
+            "sourceModelName": "Probe structure",
+            "filename": "blcj-s1000-structure.ifc",
+            "contentSha256": "64084908b3eda8f2a34cb0e5d51532b98882d62aa42839b9fa9b27e1ca1e75d5",
+            "byteSize": 836678,
             "schemaLabel": "IFC2X3",
+            "entityCount": 0,
+            "productCount": 0,
+            "lengthToMetre": 0.001,
+            "parseMs": null,
+            "uploadedAt": "2026-09-07T00:00:00Z",
+            "originatingSystem": "viewer verifier"
+          },
+          {
+            "id": "probe-failure",
+            "deliveryId": "failure-probe",
+            "discipline": "MEP",
+            "sourceModelId": "probe-failure-source",
+            "sourceModelName": "Probe failure",
+            "filename": "inline:empty.ifc",
+            "contentSha256": "df963e2b4946a966d6ded7954b6399c757d32096827788cf5626bfc62782fdf7",
+            "byteSize": 705,
+            "schemaLabel": "IFC4",
             "entityCount": 0,
             "productCount": 0,
             "lengthToMetre": 0.001,
@@ -185,46 +220,11 @@
         {
           "status": "ready",
           "model": {
-            "id": "combined-arch",
-            "deliveryId": "combined",
+            "id": "probe-arch",
+            "deliveryId": "failure-probe",
             "discipline": "ARCH",
-            "sourceModelId": "combined-arch-source",
-            "sourceModelName": "Architecture",
-            "filename": "blcj-s1000-architecture.ifc",
-            "contentSha256": "0f674223f596c483c5abea0b58fe6c05ef3c68692409c977782040ffa501cca4",
-            "byteSize": 36232021,
-            "schemaLabel": "IFC2X3",
-            "entityCount": 0,
-            "productCount": 0,
-            "lengthToMetre": 0.001,
-            "parseMs": null,
-            "uploadedAt": "2026-09-07T00:00:00Z",
-            "originatingSystem": "viewer verifier",
-            "revisionId": "combined-arch",
-            "fileUrl": "/api/models/combined-arch/file"
-          },
-          "objectCount": 1968,
-          "bounds": {
-            "min": [
-              -2.3536347673649995,
-              -2.55,
-              -21.200929258404997
-            ],
-            "max": [
-              28.979123654299997,
-              25.82,
-              12.78088434445
-            ]
-          }
-        },
-        {
-          "status": "ready",
-          "model": {
-            "id": "combined-struct",
-            "deliveryId": "combined",
-            "discipline": "STRUCT",
-            "sourceModelId": "combined-struct-source",
-            "sourceModelName": "Structure",
+            "sourceModelId": "probe-arch-source",
+            "sourceModelName": "Probe architecture",
             "filename": "blcj-s1000-structure.ifc",
             "contentSha256": "64084908b3eda8f2a34cb0e5d51532b98882d62aa42839b9fa9b27e1ca1e75d5",
             "byteSize": 836678,
@@ -235,8 +235,43 @@
             "parseMs": null,
             "uploadedAt": "2026-09-07T00:00:00Z",
             "originatingSystem": "viewer verifier",
-            "revisionId": "combined-struct",
-            "fileUrl": "/api/models/combined-struct/file"
+            "revisionId": "probe-arch",
+            "fileUrl": "/api/models/probe-arch/file"
+          },
+          "objectCount": 308,
+          "bounds": {
+            "min": [
+              -0.4500000000000558,
+              -2.0600000000000027,
+              -19.65000000000009
+            ],
+            "max": [
+              13.45,
+              16.5,
+              0.4500000000000055
+            ]
+          }
+        },
+        {
+          "status": "ready",
+          "model": {
+            "id": "probe-struct",
+            "deliveryId": "failure-probe",
+            "discipline": "STRUCT",
+            "sourceModelId": "probe-struct-source",
+            "sourceModelName": "Probe structure",
+            "filename": "blcj-s1000-structure.ifc",
+            "contentSha256": "64084908b3eda8f2a34cb0e5d51532b98882d62aa42839b9fa9b27e1ca1e75d5",
+            "byteSize": 836678,
+            "schemaLabel": "IFC2X3",
+            "entityCount": 0,
+            "productCount": 0,
+            "lengthToMetre": 0.001,
+            "parseMs": null,
+            "uploadedAt": "2026-09-07T00:00:00Z",
+            "originatingSystem": "viewer verifier",
+            "revisionId": "probe-struct",
+            "fileUrl": "/api/models/probe-struct/file"
           },
           "objectCount": 308,
           "bounds": {
@@ -255,23 +290,23 @@
         {
           "status": "failed",
           "model": {
-            "id": "combined-mep",
-            "deliveryId": "combined",
+            "id": "probe-failure",
+            "deliveryId": "failure-probe",
             "discipline": "MEP",
-            "sourceModelId": "combined-mep-source",
-            "sourceModelName": "MEP",
-            "filename": "blcj-s1000-mep.ifc",
-            "contentSha256": "46eae66e578211012ee8c6d3d03eb3876670852cc62d452f40bc98c5215c08c2",
-            "byteSize": 48736361,
-            "schemaLabel": "IFC2X3",
+            "sourceModelId": "probe-failure-source",
+            "sourceModelName": "Probe failure",
+            "filename": "inline:empty.ifc",
+            "contentSha256": "df963e2b4946a966d6ded7954b6399c757d32096827788cf5626bfc62782fdf7",
+            "byteSize": 705,
+            "schemaLabel": "IFC4",
             "entityCount": 0,
             "productCount": 0,
             "lengthToMetre": 0.001,
             "parseMs": null,
             "uploadedAt": "2026-09-07T00:00:00Z",
             "originatingSystem": "viewer verifier",
-            "revisionId": "combined-mep",
-            "fileUrl": "/api/models/combined-mep/file"
+            "revisionId": "probe-failure",
+            "fileUrl": "/api/models/probe-failure/file"
           },
           "stage": "download",
           "message": "IFC download failed with HTTP 503",
@@ -280,9 +315,9 @@
       ],
       "selected": null,
       "origin": [
-        13,
-        12,
-        -4
+        6,
+        7,
+        -10
       ],
       "initialReady": true,
       "disposed": false
@@ -292,41 +327,41 @@
       "renderLoops": 1,
       "renderers": 1,
       "batches": 2,
-      "geometries": 5256,
+      "geometries": 902,
       "materials": 1,
       "gpuGeometries": 2,
       "gpuTextures": 7,
       "shaderPrograms": 1,
-      "renderFrame": 78,
-      "triangles": 354452
+      "renderFrame": 32,
+      "triangles": 39776
     },
     "renderer": {
       "cameraPosition": [
-        30.141625438848394,
-        22.00666021471131,
-        29.61885865436142
+        17.377865100024103,
+        12.878398943500937,
+        17.277864870185336
       ],
       "cameraTarget": [
-        0.3127446256833082,
-        -0.3650003951624967,
-        -0.21002215880366748
+        0.499999966705218,
+        0.2200000935117714,
+        0.3999997368664481
       ],
       "roots": [
         {
-          "revisionId": "combined-arch",
+          "revisionId": "probe-arch",
           "offset": [
-            -13,
-            -12,
-            4
+            -6,
+            -7,
+            10
           ],
           "visible": true
         },
         {
-          "revisionId": "combined-struct",
+          "revisionId": "probe-struct",
           "offset": [
-            -13,
-            -12,
-            4
+            -6,
+            -7,
+            10
           ],
           "visible": true
         }
@@ -340,7 +375,7 @@
   "combined": {
     "origin": [
       13,
-      12,
+      11,
       -4
     ],
     "activeWorkers": 1,
@@ -354,7 +389,7 @@
       "gpuGeometries": 3,
       "gpuTextures": 10,
       "shaderPrograms": 1,
-      "renderFrame": 106,
+      "renderFrame": 124,
       "triangles": 692230
     },
     "modelBounds": [
@@ -412,21 +447,21 @@
     ],
     "cameraAfterInput": {
       "cameraPosition": [
-        -6.85570246075382,
-        26.943641858170032,
-        24.158842378321236
+        3.6895795101600894,
+        28.056111911746143,
+        25.23173394556244
       ],
       "cameraTarget": [
-        -2.025336124411037,
-        0.6662180167631531,
-        -1.3616206856230475
+        -1.9986179219048632,
+        1.1332710134675343,
+        -0.7647695201302207
       ],
       "roots": [
         {
           "revisionId": "combined-arch",
           "offset": [
             -13,
-            -12,
+            -11,
             4
           ],
           "visible": true
@@ -435,7 +470,7 @@
           "revisionId": "combined-struct",
           "offset": [
             -13,
-            -12,
+            -11,
             4
           ],
           "visible": true
@@ -444,7 +479,7 @@
           "revisionId": "combined-mep",
           "offset": [
             -13,
-            -12,
+            -11,
             4
           ],
           "visible": true
@@ -516,7 +551,7 @@
       "gpuGeometries": 1,
       "gpuTextures": 2,
       "shaderPrograms": 1,
-      "renderFrame": 23,
+      "renderFrame": 13,
       "triangles": 0
     }
   },
@@ -531,7 +566,7 @@
       "gpuGeometries": 0,
       "gpuTextures": 1,
       "shaderPrograms": 0,
-      "renderFrame": 186,
+      "renderFrame": 231,
       "triangles": 0
     },
     {
@@ -544,7 +579,7 @@
       "gpuGeometries": 0,
       "gpuTextures": 1,
       "shaderPrograms": 0,
-      "renderFrame": 186,
+      "renderFrame": 231,
       "triangles": 0
     },
     {
@@ -557,7 +592,7 @@
       "gpuGeometries": 0,
       "gpuTextures": 1,
       "shaderPrograms": 0,
-      "renderFrame": 45,
+      "renderFrame": 37,
       "triangles": 0
     },
     {
@@ -570,7 +605,7 @@
       "gpuGeometries": 0,
       "gpuTextures": 1,
       "shaderPrograms": 0,
-      "renderFrame": 31,
+      "renderFrame": 22,
       "triangles": 0
     },
     {
@@ -583,8 +618,14 @@
       "gpuGeometries": 0,
       "gpuTextures": 1,
       "shaderPrograms": 0,
-      "renderFrame": 23,
+      "renderFrame": 13,
       "triangles": 0
     }
-  ]
+  ],
+  "mobileLayout": {
+    "viewportWidth": 390,
+    "scrollWidth": 390,
+    "undersizedButtons": [],
+    "overflowingElements": []
+  }
 }

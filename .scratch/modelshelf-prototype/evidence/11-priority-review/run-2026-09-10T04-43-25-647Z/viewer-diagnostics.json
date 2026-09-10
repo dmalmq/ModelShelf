@@ -1,0 +1,295 @@
+{
+  "snapshot": {
+    "delivery": {
+      "delivery": {
+        "id": "40f0296c-9db4-432f-8cd8-9c494565a96a",
+        "projectId": "demo-project",
+        "label": "Findings review",
+        "deliveryDate": null,
+        "createdAt": "2026-09-10T04:43:29.100Z",
+        "finalizedAt": "2026-09-10T04:43:29.126Z",
+        "modelCount": 3,
+        "productCount": 284
+      },
+      "models": [
+        {
+          "id": "0460698b-0592-4661-982d-2bb60634e8b7",
+          "deliveryId": "40f0296c-9db4-432f-8cd8-9c494565a96a",
+          "discipline": "ARCH",
+          "sourceModelId": "377a6236-c5c9-4c75-92d5-9a8aa7c21238",
+          "sourceModelName": "Box",
+          "filename": "box.ifc",
+          "contentSha256": "fa8d85bdef263dc210ca08fbd9395140dd420a71e9631fe5bfbd1f764329aa30",
+          "byteSize": 1371,
+          "schemaLabel": "IFC4",
+          "entityCount": 2,
+          "productCount": 2,
+          "lengthToMetre": 0.001,
+          "parseMs": null,
+          "uploadedAt": "2026-09-10T04:43:29.037Z",
+          "originatingSystem": null
+        },
+        {
+          "id": "3234079a-27d4-47ee-9bf7-b8d75fbd811f",
+          "deliveryId": "40f0296c-9db4-432f-8cd8-9c494565a96a",
+          "discipline": "ARCH",
+          "sourceModelId": "836aaad8-3104-4e50-9a19-6277161b407b",
+          "sourceModelName": "East",
+          "filename": "east.ifc",
+          "contentSha256": "2e0b230a4f7fe25c4f603f27c824e1c831777e548c21f24cbfcf047e61a74562",
+          "byteSize": 77504,
+          "schemaLabel": "IFC4",
+          "entityCount": 141,
+          "productCount": 141,
+          "lengthToMetre": 1,
+          "parseMs": null,
+          "uploadedAt": "2026-09-10T04:43:27.183Z",
+          "originatingSystem": null
+        },
+        {
+          "id": "1e13c0bc-7d4b-459d-9fc3-1428fec054a3",
+          "deliveryId": "40f0296c-9db4-432f-8cd8-9c494565a96a",
+          "discipline": "ARCH",
+          "sourceModelId": "98911ce0-12a3-451f-ad55-b20910faa7b5",
+          "sourceModelName": "West",
+          "filename": "west.ifc",
+          "contentSha256": "2e0b230a4f7fe25c4f603f27c824e1c831777e548c21f24cbfcf047e61a74562",
+          "byteSize": 77504,
+          "schemaLabel": "IFC4",
+          "entityCount": 141,
+          "productCount": 141,
+          "lengthToMetre": 1,
+          "parseMs": null,
+          "uploadedAt": "2026-09-10T04:43:28.190Z",
+          "originatingSystem": null
+        }
+      ],
+      "runs": [
+        {
+          "id": "9a50e981-8d5e-4dd8-9d05-666dbfcb9371",
+          "projectId": "demo-project",
+          "deliveryId": "40f0296c-9db4-432f-8cd8-9c494565a96a",
+          "deliveryLabel": "Findings review",
+          "packVersionId": "2547b6b2-1be6-4565-8364-342bc3d06998",
+          "packName": "Demo Check Pack",
+          "packVersion": 2,
+          "engineVersion": "ifctester/0.8.5",
+          "parserVersion": "ifcopenshell/0.8.5",
+          "status": "completed",
+          "error": null,
+          "startedAt": "2026-09-10T04:43:31.571Z",
+          "finishedAt": "2026-09-10T04:43:33.495Z",
+          "durationMs": 1922,
+          "passCount": 0,
+          "failCount": 9,
+          "notApplicableCount": 3,
+          "incompleteCount": 0,
+          "score": 0,
+          "findingCount": 3,
+          "failingObjectCount": 280
+        },
+        {
+          "id": "f56162f3-cc6d-463d-9ddb-e8c71ae04340",
+          "projectId": "demo-project",
+          "deliveryId": "40f0296c-9db4-432f-8cd8-9c494565a96a",
+          "deliveryLabel": "Findings review",
+          "packVersionId": "2a928e62-2fb1-4fde-87ed-520e81e182d3",
+          "packName": "Demo Check Pack",
+          "packVersion": 1,
+          "engineVersion": "ifctester/0.8.5",
+          "parserVersion": "ifcopenshell/0.8.5",
+          "status": "completed",
+          "error": null,
+          "startedAt": "2026-09-10T04:43:29.132Z",
+          "finishedAt": "2026-09-10T04:43:31.034Z",
+          "durationMs": 1898,
+          "passCount": 0,
+          "failCount": 9,
+          "notApplicableCount": 3,
+          "incompleteCount": 0,
+          "score": 0,
+          "findingCount": 3,
+          "failingObjectCount": 281
+        }
+      ],
+      "locked": true
+    },
+    "models": [
+      {
+        "status": "ready",
+        "model": {
+          "id": "0460698b-0592-4661-982d-2bb60634e8b7",
+          "deliveryId": "40f0296c-9db4-432f-8cd8-9c494565a96a",
+          "discipline": "ARCH",
+          "sourceModelId": "377a6236-c5c9-4c75-92d5-9a8aa7c21238",
+          "sourceModelName": "Box",
+          "filename": "box.ifc",
+          "contentSha256": "fa8d85bdef263dc210ca08fbd9395140dd420a71e9631fe5bfbd1f764329aa30",
+          "byteSize": 1371,
+          "schemaLabel": "IFC4",
+          "entityCount": 2,
+          "productCount": 2,
+          "lengthToMetre": 0.001,
+          "parseMs": null,
+          "uploadedAt": "2026-09-10T04:43:29.037Z",
+          "originatingSystem": null,
+          "revisionId": "0460698b-0592-4661-982d-2bb60634e8b7",
+          "fileUrl": "/api/models/0460698b-0592-4661-982d-2bb60634e8b7/file"
+        },
+        "objectCount": 1,
+        "bounds": {
+          "min": [
+            0.5,
+            0,
+            -0.5
+          ],
+          "max": [
+            1.5,
+            1,
+            0.5
+          ]
+        }
+      },
+      {
+        "status": "ready",
+        "model": {
+          "id": "3234079a-27d4-47ee-9bf7-b8d75fbd811f",
+          "deliveryId": "40f0296c-9db4-432f-8cd8-9c494565a96a",
+          "discipline": "ARCH",
+          "sourceModelId": "836aaad8-3104-4e50-9a19-6277161b407b",
+          "sourceModelName": "East",
+          "filename": "east.ifc",
+          "contentSha256": "2e0b230a4f7fe25c4f603f27c824e1c831777e548c21f24cbfcf047e61a74562",
+          "byteSize": 77504,
+          "schemaLabel": "IFC4",
+          "entityCount": 141,
+          "productCount": 141,
+          "lengthToMetre": 1,
+          "parseMs": null,
+          "uploadedAt": "2026-09-10T04:43:27.183Z",
+          "originatingSystem": null,
+          "revisionId": "3234079a-27d4-47ee-9bf7-b8d75fbd811f",
+          "fileUrl": "/api/models/3234079a-27d4-47ee-9bf7-b8d75fbd811f/file"
+        },
+        "objectCount": 0,
+        "bounds": null
+      },
+      {
+        "status": "ready",
+        "model": {
+          "id": "1e13c0bc-7d4b-459d-9fc3-1428fec054a3",
+          "deliveryId": "40f0296c-9db4-432f-8cd8-9c494565a96a",
+          "discipline": "ARCH",
+          "sourceModelId": "98911ce0-12a3-451f-ad55-b20910faa7b5",
+          "sourceModelName": "West",
+          "filename": "west.ifc",
+          "contentSha256": "2e0b230a4f7fe25c4f603f27c824e1c831777e548c21f24cbfcf047e61a74562",
+          "byteSize": 77504,
+          "schemaLabel": "IFC4",
+          "entityCount": 141,
+          "productCount": 141,
+          "lengthToMetre": 1,
+          "parseMs": null,
+          "uploadedAt": "2026-09-10T04:43:28.190Z",
+          "originatingSystem": null,
+          "revisionId": "1e13c0bc-7d4b-459d-9fc3-1428fec054a3",
+          "fileUrl": "/api/models/1e13c0bc-7d4b-459d-9fc3-1428fec054a3/file"
+        },
+        "objectCount": 0,
+        "bounds": null
+      }
+    ],
+    "selected": null,
+    "origin": [
+      1,
+      1,
+      0
+    ],
+    "initialReady": true,
+    "disposed": false
+  },
+  "resources": {
+    "workers": 1,
+    "renderLoops": 1,
+    "renderers": 1,
+    "batches": 3,
+    "geometries": 1,
+    "materials": 1,
+    "gpuGeometries": 3,
+    "gpuTextures": 6,
+    "shaderPrograms": 1,
+    "renderFrame": 141,
+    "triangles": 12
+  },
+  "renderer": {
+    "cameraPosition": [
+      1,
+      0.2500000000000001,
+      1.0000000000000002
+    ],
+    "cameraTarget": [
+      0,
+      -0.5,
+      0
+    ],
+    "roots": [
+      {
+        "revisionId": "0460698b-0592-4661-982d-2bb60634e8b7",
+        "offset": [
+          -1,
+          -1,
+          0
+        ],
+        "visible": true
+      },
+      {
+        "revisionId": "3234079a-27d4-47ee-9bf7-b8d75fbd811f",
+        "offset": [
+          -1,
+          -1,
+          0
+        ],
+        "visible": true
+      },
+      {
+        "revisionId": "1e13c0bc-7d4b-459d-9fc3-1428fec054a3",
+        "offset": [
+          -1,
+          -1,
+          0
+        ],
+        "visible": true
+      }
+    ],
+    "highlightGroups": [
+      {
+        "label": "Wall declares a fire rating",
+        "color": "#0284c7",
+        "requested": 272,
+        "matched": 2
+      }
+    ],
+    "isolatedMatched": 1,
+    "selectedHidden": false,
+    "clipping": false
+  },
+  "progressRevisionIds": [
+    "0460698b-0592-4661-982d-2bb60634e8b7",
+    "3234079a-27d4-47ee-9bf7-b8d75fbd811f",
+    "1e13c0bc-7d4b-459d-9fc3-1428fec054a3"
+  ],
+  "objects": [
+    {
+      "ref": {
+        "revisionId": "0460698b-0592-4661-982d-2bb60634e8b7",
+        "objectId": "occ_5831f207b70d06b4"
+      },
+      "expressId": 12,
+      "globalId": "0m_wSCTlX3luDcoNMKMhAA",
+      "targetCount": 1
+    }
+  ],
+  "isolatedRequested": 272,
+  "sectionZ": null,
+  "selectedHidden": false
+}
