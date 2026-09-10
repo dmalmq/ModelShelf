@@ -445,18 +445,9 @@ try {
     pickedRef: picked.ref,
   };
 
-  const combinedDisposals = await disposeAllViewers(page);
-  check(
-    combinedDisposals.length === EXPECTED_INTEGRATED_VIEWERS,
-    "the integrated route exposes both viewer instances for disposal",
-  );
-  results.disposalRuns.push(...combinedDisposals);
-  await verifyDisposed(
-    page,
-    combinedDisposals.at(-1),
-    combined.resources,
-    "combined first unload",
-  );
+  const combinedDisposal = await disposeViewer(page);
+  results.disposalRuns.push(combinedDisposal);
+  await verifyDisposed(page, combinedDisposal, combined.resources, "combined first unload");
   const repeatedDispose = await page.evaluate(() => window.__modelshelfViewer?.dispose());
   results.disposalRuns.push(repeatedDispose);
   await verifyDisposed(page, repeatedDispose, combined.resources, "combined repeated unload");
@@ -496,9 +487,9 @@ try {
     refs: matching.map(({ ref, expressId, targetCount }) => ({ ref, expressId, targetCount })),
   };
 
-  const duplicateDisposals = await disposeAllViewers(page);
-  results.disposalRuns.push(...duplicateDisposals);
-  await verifyDisposed(page, duplicateDisposals.at(-1), duplicate.resources, "duplicate unload");
+  const duplicateDisposal = await disposeViewer(page);
+  results.disposalRuns.push(duplicateDisposal);
+  await verifyDisposed(page, duplicateDisposal, duplicate.resources, "duplicate unload");
 
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForFunction(
@@ -508,15 +499,15 @@ try {
   );
   const remounted = await inspect(page);
   check(
-    activeWorkerCount === EXPECTED_INTEGRATED_VIEWERS &&
+    activeWorkerCount === 1 &&
       remounted.resources.workers === 1 &&
       remounted.resources.batches === 2 &&
       remounted.resources.gpuGeometries > 0,
-    "remount reacquires one Worker per integrated viewer and batched GPU resources",
+    "remount reacquires one Worker and batched GPU resources",
   );
-  const remountDisposals = await disposeAllViewers(page);
-  results.disposalRuns.push(...remountDisposals);
-  await verifyDisposed(page, remountDisposals.at(-1), remounted.resources, "duplicate remount unload");
+  const remountDisposal = await disposeViewer(page);
+  results.disposalRuns.push(remountDisposal);
+  await verifyDisposed(page, remountDisposal, remounted.resources, "duplicate remount unload");
 
   await page.goto(`${appOrigin}/deliveries/empty`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(
@@ -538,9 +529,9 @@ try {
     model: emptyModel,
     resources: empty.resources,
   };
-  const emptyDisposals = await disposeAllViewers(page);
-  results.disposalRuns.push(...emptyDisposals);
-  await verifyDisposed(page, emptyDisposals.at(-1), empty.resources, "empty revision unload", 0);
+  const emptyDisposal = await disposeViewer(page);
+  results.disposalRuns.push(emptyDisposal);
+  await verifyDisposed(page, emptyDisposal, empty.resources, "empty revision unload", 0);
 
   results.passed = true;
   console.log("viewer verification passed");
@@ -629,14 +620,9 @@ async function inspect(page) {
   if (!diagnostics) throw new Error("Viewer diagnostics are unavailable");
   return diagnostics;
 }
-async function disposeAllViewers(page) {
-  const stats = await page.evaluate(() => {
-    const handles =
-      window.__modelshelfViewers ??
-      (window.__modelshelfViewer ? [window.__modelshelfViewer] : []);
-    return handles.map((handle) => handle.dispose());
-  });
-  if (stats.length === 0) throw new Error("No viewer handles were available for disposal");
+async function disposeViewer(page) {
+  const stats = await page.evaluate(() => window.__modelshelfViewer?.dispose());
+  if (!stats) throw new Error("No viewer handle was available for disposal");
   return stats;
 }
 
