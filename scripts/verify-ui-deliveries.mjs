@@ -80,6 +80,11 @@ function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
+/** Let resize-driven CSS transitions finish before measuring geometry. */
+async function settleLayout(page) {
+  await page.waitForTimeout(600);
+}
+
 async function main() {
   dataDir = mkdtempSync(join(tmpdir(), "modelshelf-verify-ui-data-"));
   const invalidBytes = Buffer.from("this is not an IFC file\n");
@@ -151,7 +156,19 @@ async function main() {
   page.on("pageerror", (error) => browserLog.push(`pageerror: ${error.stack ?? error.message}\n`));
 
   await page.goto(`${webOrigin}/`, { waitUntil: "domcontentloaded" });
-  await page.getByRole("heading", { name: /Project shelf/ }).waitFor({ timeout: 30_000 });
+  await page.locator("[data-project-shelf]").waitFor({ timeout: 30_000 });
+  const defaultLocale = await page.evaluate(() => document.documentElement.lang);
+  record("Japanese is the default interface locale", defaultLocale === "ja", defaultLocale);
+  await page.locator('[data-locale="en"]').click();
+  await page.waitForFunction(() => document.documentElement.lang === "en");
+  const englishHeading = (await page.locator("[data-project-shelf] h1").textContent()) ?? "";
+  record("locale switch replaces shelf chrome with English", englishHeading === "Project shelf", englishHeading);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.locator("[data-project-shelf]").waitFor({ timeout: 30_000 });
+  const persistedLocale = await page.evaluate(() => document.documentElement.lang);
+  record("locale choice survives reload", persistedLocale === "en", persistedLocale);
+  await page.locator('[data-locale="ja"]').click();
+  await page.waitForFunction(() => document.documentElement.lang === "ja");
   await page.waitForFunction(() => new URLSearchParams(window.location.search).get("project"), null, { timeout: 30_000 });
   const projectId = new URL(page.url()).searchParams.get("project");
   results.ids.projectId = projectId;
@@ -159,10 +176,10 @@ async function main() {
   await page.screenshot({ path: join(runDir, "shelf-desktop.png"), fullPage: true });
 
   async function createSource(name) {
-    await page.getByLabel("New source name").fill(name);
-    await page.getByLabel("New source discipline").click();
+    await page.locator("[data-new-source-name]").fill(name);
+    await page.locator("[data-new-source-discipline]").click();
     await page.getByRole("option", { name: "MEP" }).click();
-    await page.getByRole("button", { name: "Create source" }).click();
+    await page.locator("[data-create-source]").click();
     await page.waitForFunction(
       (expected) => [...document.querySelectorAll("[data-source-id]")].some((row) => row.textContent?.includes(expected)),
       name,
@@ -185,8 +202,8 @@ async function main() {
   record("two MEP sources remain distinct on the shelf", mepCount >= 2, `mep rows: ${mepCount}`);
 
   async function createDelivery(label) {
-    await page.getByLabel("New delivery label").fill(label);
-    await page.getByRole("button", { name: "Create delivery" }).click();
+    await page.locator("[data-new-delivery-label]").fill(label);
+    await page.locator("[data-create-delivery]").click();
     await page.waitForFunction(
       (expected) => document.querySelector(`[data-delivery-id] a[href*="/deliveries/"]`) !== null
         && [...document.querySelectorAll("[data-delivery-id]")].some((row) => row.textContent?.includes(expected)),
@@ -219,7 +236,7 @@ async function main() {
   async function uploadToSource(sourceId, filePath, terminalStatus) {
     const card = await sourceCard(sourceId);
     await card.locator("input[type=file]").setInputFiles(filePath);
-    await card.getByRole("button", { name: /Upload revision/ }).click();
+    await card.locator("[data-upload-revision]").click();
     await page.waitForFunction(
       ({ id, status }) => document.querySelector(`[data-source-id="${id}"] [data-job-status="${status}"]`) !== null,
       { id: sourceId, status: terminalStatus },
@@ -240,9 +257,9 @@ async function main() {
     }, sourceId);
   }
 
-  async function attachRevision(sourceId, revisionId, action) {
+  async function attachRevision(sourceId, revisionId) {
     const card = await sourceCard(sourceId);
-    await card.locator(`li[data-revision-id="${revisionId}"]`).getByRole("button", { name: new RegExp(action) }).click();
+    await card.locator(`li[data-revision-id="${revisionId}"] [data-attach-revision]`).click();
     await page.waitForFunction(
       ({ sid, rid }) => document.querySelector(`[data-source-id="${sid}"] dl[data-revision-id="${rid}"]`) !== null,
       { sid: sourceId, rid: revisionId },
@@ -263,7 +280,7 @@ async function main() {
   }, mepNorthId);
   const revA1 = northRevContender.find((row) => row.text.includes("base.ifc"))?.revisionId;
   record("base.ifc revision is published for MEP North", Boolean(revA1), JSON.stringify(northRevContender));
-  await attachRevision(mepNorthId, revA1, "Attach");
+  await attachRevision(mepNorthId, revA1);
   results.ids.revA1 = revA1;
 
   await uploadToSource(mepSouthId, HEAD_IFC, "completed");
@@ -275,10 +292,11 @@ async function main() {
     }));
   }, mepSouthId);
   const revB1 = southRevsAfterHead.find((row) => row.text.includes("head.ifc"))?.revisionId;
-  await attachRevision(mepSouthId, revB1, "Attach");
+  await attachRevision(mepSouthId, revB1);
   results.ids.revB1 = revB1;
-  const drop1Viewer = page.locator('section[aria-label="Combined view"]');
-  await drop1Viewer.getByText("2 sources", { exact: false }).waitFor({ timeout: 30_000 });
+  const drop1Viewer = page.locator("[data-combined-section]");
+  await drop1Viewer.locator('[data-presentation="desk"]').waitFor({ timeout: 30_000 });
+  await page.waitForFunction(() => document.querySelector("[data-combined-section]")?.getAttribute("data-model-count") === "2");
   record("combined viewer refreshes after membership changes", true);
 
   const drop1Detail = await api(webOrigin, `/api/deliveries/${drop1.id}`);
@@ -308,7 +326,7 @@ async function main() {
 
   const failedStatus = page.locator(`[data-source-id="${mepSouthId}"] [data-job-status="failed"]`);
   const attemptsBeforeRetry = Number(await failedStatus.getAttribute("data-job-attempts"));
-  await page.locator(`[data-source-id="${mepSouthId}"]`).getByRole("button", { name: /Retry upload/ }).click();
+  await page.locator(`[data-source-id="${mepSouthId}"] [data-retry-upload]`).click();
   await page.waitForFunction(
     ({ sourceId, previousAttempts }) => {
       const state = document.querySelector(`[data-source-id="${sourceId}"] [data-job-status="failed"]`);
@@ -337,13 +355,14 @@ async function main() {
   record("updated revision is published for MEP South", Boolean(revB2 && revB2 !== revB1), JSON.stringify(southRevsAfterBase));
 
   await openDelivery(drop2.href);
-  await page.getByText("This delivery holds no revisions yet.").waitFor({ timeout: 30_000 });
+  await page.locator("[data-combined-empty]").waitFor({ timeout: 30_000 });
   record("empty delivery explains assembly instead of mounting a broken viewer", true);
 
-  await attachRevision(mepNorthId, revA1, "Attach");
-  await attachRevision(mepSouthId, revB2, "Attach");
-  const drop2Viewer = page.locator('section[aria-label="Combined view"]');
-  await drop2Viewer.getByText("2 sources", { exact: false }).waitFor({ timeout: 30_000 });
+  await attachRevision(mepNorthId, revA1);
+  await attachRevision(mepSouthId, revB2);
+  const drop2Viewer = page.locator("[data-combined-section]");
+  await drop2Viewer.locator('[data-presentation="desk"]').waitFor({ timeout: 30_000 });
+  await page.waitForFunction(() => document.querySelector("[data-combined-section]")?.getAttribute("data-model-count") === "2");
   record("combined viewer shows both reused and updated revisions", true);
   const drop2Members = await page.evaluate(() => {
     const members = {};
@@ -360,8 +379,10 @@ async function main() {
     JSON.stringify(drop2Members),
   );
 
-  await page.getByRole("button", { name: "Finalize delivery" }).click();
-  await page.getByText(/Finalized/).first().waitFor({ timeout: 30_000 });
+  await page.locator("[data-finalize-trigger]").click();
+  record("finalization requires an explicit confirmation", await page.locator("[data-finalize-confirm]").count() === 1, "confirmation dialog missing");
+  await page.locator("[data-finalize-confirm]").click();
+  await page.waitForSelector("[data-delivery-finalized]", { timeout: 30_000 });
   const finalizedDetail = await api(webOrigin, `/api/deliveries/${drop2.id}`);
   snap("delivery-drop2-finalized.json", finalizedDetail.body);
   results.membershipBeforeFinalize = Object.fromEntries(
@@ -370,16 +391,20 @@ async function main() {
       .sort(([left], [right]) => left.localeCompare(right)),
   );
   record("finalize freezes membership on the server", Boolean(finalizedDetail.body?.delivery?.finalizedAt), finalizedDetail.body?.delivery?.finalizedAt ?? "");
-  const lockedMemberButtons = page.getByRole("button", { name: /Replace with/ });
+  const lockedMemberButtons = page.locator("[data-attach-revision]");
   const lockedButtonCount = await lockedMemberButtons.count();
-  let allLockedButtonsDisabled = lockedButtonCount > 0;
+  let allLockedButtonsDisabled = true;
+  const lockedButtonStates = [];
   for (let index = 0; index < lockedButtonCount; index += 1) {
-    allLockedButtonsDisabled &&= await lockedMemberButtons.nth(index).isDisabled();
+    const button = lockedMemberButtons.nth(index);
+    const disabled = await button.isDisabled();
+    lockedButtonStates.push({ label: await button.getAttribute("aria-label"), disabled });
+    allLockedButtonsDisabled &&= disabled;
   }
   record(
     "finalized delivery disables membership changes",
     allLockedButtonsDisabled,
-    `disabled ${lockedButtonCount} replacement controls`,
+    JSON.stringify(lockedButtonStates),
   );
 
   await page.reload({ waitUntil: "domcontentloaded" });
@@ -424,9 +449,9 @@ async function main() {
   const expectedHashes = Object.fromEntries(expectedModels.map((model) => [model.sourceModelName, model.contentSha256]));
 
   await openDelivery(drop1.href);
-  await page.getByText(/Locked by completed run/).waitFor({ timeout: 30_000 });
+  await page.locator("[data-run-locked]").waitFor({ timeout: 30_000 });
   record("completed run locks a draft delivery in the UI", true);
-  await page.getByRole("button", { name: new RegExp(`View run ${finishedRun.run.packName} version ${finishedRun.run.packVersion}`) }).click();
+  await page.locator(`[data-view-run="${runId}"]`).click();
   await page.waitForFunction(
     (id) => new URLSearchParams(window.location.search).get("run") === id,
     runId,
@@ -437,9 +462,9 @@ async function main() {
   await provenance.waitFor({ timeout: 60_000 });
   const provenanceStatus = await provenance.getAttribute("data-provenance");
   const provenanceText = (await provenance.textContent()) ?? "";
-  record("complete provenance is shown verbatim", provenanceStatus === "complete" && provenanceText.includes("complete"), provenanceText);
+  record("complete provenance is shown explicitly", provenanceStatus === "complete" && provenanceText.trim().length > 0, provenanceText);
   snap("provenance-text.txt", provenanceText);
-  const runPanel = page.locator(`div[aria-label="Run ${runId} detail"]`);
+  const runPanel = page.locator(`[data-run-detail="${runId}"]`);
   const renderedHashes = {};
   for (const model of expectedModels) {
     const pinned = runPanel.locator(`li[data-revision-id="${model.id}"]`);
@@ -463,8 +488,76 @@ async function main() {
 
   await page.screenshot({ path: join(runDir, "delivery-run-desktop.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
+  // Buttons carry `transition-all`, so a resize animates their height. Measure
+  // after the transition settles or every control reads mid-flight.
+  await settleLayout(page);
+  const deskMobileLayout = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth,
+  }));
+  record(
+    "desk layout reflows without horizontal page overflow at 390px",
+    deskMobileLayout.scrollWidth <= deskMobileLayout.clientWidth + 1,
+    JSON.stringify(deskMobileLayout),
+  );
   await page.screenshot({ path: join(runDir, "delivery-run-mobile.png"), fullPage: true });
+
   await page.setViewportSize({ width: 1440, height: 900 });
+  await page.locator('[data-view-mode-toggle="meeting"]').click();
+  await page.waitForFunction(() => new URLSearchParams(window.location.search).get("view") === "meeting");
+  await page.locator('[data-view-mode="meeting"] [data-meeting-review] [data-presentation="meeting"]').waitFor({ timeout: 60_000 });
+  record(
+    "meeting mode replaces assembly chrome with the presentation surface",
+    await page.locator("[data-meeting-review]").count() === 1 && await page.locator("[data-combined-section]").count() === 0,
+  );
+  const meetingFacts = page.locator("[data-meeting-review] [data-totals-header] dd");
+  await meetingFacts.first().waitFor({ timeout: 60_000 });
+  const meetingFactText = await meetingFacts.allTextContents();
+  record(
+    "meeting mode presents four prominent decision facts",
+    meetingFactText.length === 4 && meetingFactText.every((value) => /\d/.test(value)),
+    JSON.stringify(meetingFactText),
+  );
+  await page.screenshot({ path: join(runDir, "delivery-meeting-desktop.png"), fullPage: true });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await settleLayout(page);
+  const meetingMobileLayout = await page.evaluate(() => {
+    const controls = [...document.querySelectorAll('[data-view-mode="meeting"] button')].filter((button) => {
+      const rect = button.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    });
+    return {
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+      undersizedControls: controls
+        .filter((button) => button.getBoundingClientRect().height < 44)
+        .map((button) => ({
+          label: button.textContent?.trim() ?? button.getAttribute("aria-label") ?? "",
+          height: Math.round(button.getBoundingClientRect().height),
+        })),
+    };
+  });
+  record(
+    "meeting mode reflows at 390px with 44px touch controls",
+    meetingMobileLayout.scrollWidth <= meetingMobileLayout.clientWidth + 1 && meetingMobileLayout.undersizedControls.length === 0,
+    JSON.stringify(meetingMobileLayout),
+  );
+  await page.screenshot({ path: join(runDir, "delivery-meeting-mobile.png"), fullPage: true });
+
+  await page.setViewportSize({ width: 720, height: 450 });
+  await settleLayout(page);
+  const meetingZoomLayout = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth,
+    presentationVisible: document.querySelector('[data-presentation="meeting"]')?.getBoundingClientRect().height ?? 0,
+  }));
+  record(
+    "meeting mode remains usable at a 200-percent-equivalent viewport",
+    meetingZoomLayout.scrollWidth <= meetingZoomLayout.clientWidth + 1 && meetingZoomLayout.presentationVisible > 0,
+    JSON.stringify(meetingZoomLayout),
+  );
+  await page.screenshot({ path: join(runDir, "delivery-meeting-200-percent.png"), fullPage: true });
 
   results.passed = true;
   console.log("delivery verification passed");

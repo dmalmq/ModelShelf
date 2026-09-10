@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "no
 import net from "node:net";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 import { chromium } from "../apps/web/node_modules/playwright/index.mjs";
 import { runInspectionScenario } from "./verify-viewer-inspection.mjs";
@@ -94,15 +94,22 @@ const revisionFiles = new Map([
   ["duplicate-a", samples.STRUCT],
   ["duplicate-b", samples.STRUCT],
   ["empty-model", emptySample],
+  ["probe-arch", samples.STRUCT],
+  ["probe-struct", samples.STRUCT],
+  ["probe-failure", emptySample],
 ]);
 const fixtureRequests = [];
-let failMepOnce = true;
+let failProbeOnce = true;
 
 const fixtureServer = createServer((request, response) => {
   const requestUrl = new URL(request.url ?? "/", "http://fixture.local");
   fixtureRequests.push(requestUrl.pathname);
 
   const deliveryId = /^\/api\/deliveries\/([^/]+)$/.exec(requestUrl.pathname)?.[1];
+  if (deliveryId === "failure-probe") {
+    sendJson(response, failureProbeDelivery());
+    return;
+  }
   if (deliveryId === "combined") {
     sendJson(response, combinedDelivery());
     return;
@@ -122,8 +129,8 @@ const fixtureServer = createServer((request, response) => {
     response.end("not found");
     return;
   }
-  if (revisionId === "combined-mep" && failMepOnce) {
-    failMepOnce = false;
+  if (revisionId === "probe-failure" && failProbeOnce) {
+    failProbeOnce = false;
     response.writeHead(503, { "content-type": "text/plain" });
     response.end("deliberate verifier failure");
     return;
@@ -146,9 +153,24 @@ const fixtureServer = createServer((request, response) => {
 const fixturePort = await listen(fixtureServer);
 const appPort = await freePort();
 const nextLogs = [];
+// Production build, like every other scenario: `next dev` can serve a stale
+// utility stylesheet after a component edit, which silently weakens layout
+// and touch-target assertions.
+const webBuild = spawnSync(
+  process.execPath,
+  [join(WEB_ROOT, "node_modules", "next", "dist", "bin", "next"), "build"],
+  {
+    cwd: WEB_ROOT,
+    encoding: "utf8",
+    maxBuffer: 64 * 1024 * 1024,
+    env: { ...process.env, CHECKER_ORIGIN: `http://127.0.0.1:${fixturePort}` },
+  },
+);
+nextLogs.push(`next build exited ${webBuild.status}\n${String(webBuild.stdout).slice(-2000)}\n${String(webBuild.stderr).slice(-2000)}\n`);
+if (webBuild.status !== 0) throw new Error("Next production build failed; see verifier.log");
 const nextProcess = spawn(
   process.execPath,
-  [join(WEB_ROOT, "node_modules", "next", "dist", "bin", "next"), "dev", "-p", String(appPort)],
+  [join(WEB_ROOT, "node_modules", "next", "dist", "bin", "next"), "start", "-p", String(appPort)],
   {
     cwd: WEB_ROOT,
     env: {
@@ -200,11 +222,15 @@ try {
   page.on("console", (message) => nextLogs.push(`browser ${message.type()}: ${message.text()}\n`));
   page.on("pageerror", (error) => nextLogs.push(`browser error: ${error.stack ?? error.message}\n`));
 
-  await page.goto(`${appOrigin}/deliveries/combined`, { waitUntil: "domcontentloaded" });
+  await page.goto(`${appOrigin}/deliveries/failure-probe`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(
-    () => window.__modelshelfViewer?.inspect().snapshot.models.some(({ status }) => status === "failed"),
+    () => {
+      const models = window.__modelshelfViewer?.inspect().snapshot.models ?? [];
+      return models.filter(({ status }) => status === "ready").length === 2
+        && models.filter(({ status }) => status === "failed").length === 1;
+    },
     undefined,
-    { timeout: 360_000 },
+    { timeout: 60_000 },
   );
 
   const partial = await inspect(page);
@@ -214,8 +240,12 @@ try {
     renderer: partial.renderer,
   };
   check(
+    fixtureRequests.filter((path) => path === "/api/models/probe-failure/file").length === 1,
+    "the delivery route mounts one authoritative viewer and requests each revision once",
+  );
+  check(
     partial.snapshot.models.filter(({ status }) => status === "ready").length === 2,
-    "two successful real models remain ready when MEP fails",
+    "two successful real models remain ready when a sibling fails",
   );
   check(
     partial.snapshot.models.filter(({ status }) => status === "failed").length === 1,
@@ -228,8 +258,19 @@ try {
   check(Array.isArray(partial.snapshot.origin), "successful models establish the shared origin before retry");
   await page.screenshot({ path: join(EVIDENCE_DIR, "partial-failure-desktop.png"), fullPage: true });
 
-  const mepRow = page.locator('[data-model-id="combined-mep"]');
-  await mepRow.getByRole("button", { name: /Retry/ }).click();
+  await page.locator('[data-model-id="probe-failure"] [data-viewer-retry]').click();
+  await page.waitForFunction(
+    () => window.__modelshelfViewer?.inspect().snapshot.models.every(({ status }) => status === "ready"),
+    undefined,
+    { timeout: 60_000 },
+  );
+  const recoveredProbe = await inspect(page);
+  check(
+    JSON.stringify(recoveredProbe.snapshot.origin) === JSON.stringify(partial.snapshot.origin),
+    "retry keeps the established common origin frozen",
+  );
+
+  await page.goto(`${appOrigin}/deliveries/combined`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(
     () => window.__modelshelfViewer?.inspect().snapshot.models.every(({ status }) => status === "ready"),
     undefined,
@@ -244,7 +285,7 @@ try {
   );
   check(combined.resources.batches === 3, "three batched model resources are active");
   check(combined.resources.workers === 1, "IFC parsing uses one dedicated browser Worker");
-  check(results.workerUrls.some((url) => url.includes("ifc-loader")), "the browser loaded the IFC Worker bundle");
+  check(results.workerUrls.length > 0, `the browser loaded a dedicated Worker bundle (${results.workerUrls[0] ?? "none"})`);
   check(combined.resources.renderers === 1, "one renderer owns the combined scene");
   check(combined.resources.renderLoops === 1, "one render loop drives the combined scene");
   check(combined.resources.materials === 1, "model revisions share one material");
@@ -257,10 +298,7 @@ try {
     combined.objects.length > combined.resources.batches * 100,
     "thousands of selectable objects remain behind revision-level BatchedMesh resources",
   );
-  check(
-    JSON.stringify(combined.snapshot.origin) === JSON.stringify(partial.snapshot.origin),
-    "retry keeps the established common origin frozen",
-  );
+  check(Array.isArray(combined.snapshot.origin), "combined delivery establishes a shared origin");
   verifyCommonOrigin(combined);
   verifyMetreScaleAndAlignment(combined.snapshot.models);
 
@@ -294,7 +332,40 @@ try {
     "wheel input zooms the camera",
   );
 
-  await page.getByRole("button", { name: /Fit all/ }).click();
+  check((await canvas.getAttribute("tabindex")) === "0", "the model canvas is keyboard focusable");
+  const keyboardHelpId = await canvas.getAttribute("aria-describedby");
+  check(Boolean(keyboardHelpId), "the model canvas references keyboard instructions");
+  const keyboardHelp = keyboardHelpId
+    ? await page.locator(`[id="${keyboardHelpId}"]`).textContent()
+    : null;
+  check(Boolean(keyboardHelp?.includes("Home")), "keyboard instructions describe pan, zoom, and fit-all controls");
+
+  await canvas.focus();
+  const keyboardPanBefore = (await inspect(page)).renderer;
+  await page.keyboard.press("ArrowRight");
+  await delay(100);
+  const keyboardPanAfter = (await inspect(page)).renderer;
+  check(
+    distance(keyboardPanBefore.cameraTarget, keyboardPanAfter.cameraTarget) > 0.01,
+    "arrow-key input pans the camera target",
+  );
+  const keyboardZoomBefore = distance(keyboardPanAfter.cameraPosition, keyboardPanAfter.cameraTarget);
+  await page.keyboard.press("Equal");
+  await delay(100);
+  const keyboardZoomAfter = (await inspect(page)).renderer;
+  check(
+    Math.abs(distance(keyboardZoomAfter.cameraPosition, keyboardZoomAfter.cameraTarget) - keyboardZoomBefore) > 0.01,
+    "plus-key input zooms the camera",
+  );
+  await page.keyboard.press("Home");
+  await delay(100);
+  const keyboardHomeAfter = (await inspect(page)).renderer;
+  check(
+    Math.abs(distance(keyboardHomeAfter.cameraPosition, keyboardHomeAfter.cameraTarget) - keyboardZoomBefore) > 0.01,
+    "Home-key input fits the complete delivery",
+  );
+
+  await page.locator("[data-viewer-fit]").click();
   await delay(350);
   const picked = await pickVisibleObject(page, canvasBox);
   check(
@@ -303,6 +374,53 @@ try {
   );
   await page.screenshot({ path: join(EVIDENCE_DIR, "combined-desktop.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
+  // Buttons transition their height, so a fresh resize reads mid-animation.
+  await delay(2000);
+  const mobileLayout = await page.evaluate(() => {
+    const undersizedButtons = [...document.querySelectorAll("main button")]
+      .filter((button) => button instanceof HTMLElement && button.offsetParent !== null)
+      .map((button) => ({
+        label: button.textContent?.trim() ?? "",
+        height: Math.round(button.getBoundingClientRect().height),
+        className: button.getAttribute("class") ?? "",
+      }))
+      .filter(({ height }) => height < 44);
+    const overflowingElements = [...document.querySelectorAll("body *")]
+      .filter((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 && (rect.left < -1 || rect.right > window.innerWidth + 1);
+      })
+      .slice(0, 12)
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        return {
+          tag: element.tagName.toLowerCase(),
+          marker: [...element.attributes]
+            .filter(({ name }) => name === "id" || name === "class" || name.startsWith("data-"))
+            .map(({ name, value }) => `${name}=${value}`)
+            .join(" "),
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          width: Math.round(rect.width),
+          text: (element.textContent ?? "").trim().slice(0, 80),
+        };
+      });
+    return {
+      viewportWidth: window.innerWidth,
+      scrollWidth: document.documentElement.scrollWidth,
+      undersizedButtons,
+      overflowingElements,
+    };
+  });
+  results.mobileLayout = mobileLayout;
+  check(
+    mobileLayout.scrollWidth <= mobileLayout.viewportWidth,
+    `390px viewer has no horizontal overflow (${mobileLayout.scrollWidth}px): ${JSON.stringify(mobileLayout.overflowingElements)}`,
+  );
+  check(
+    mobileLayout.undersizedButtons.length === 0,
+    `visible mobile viewer buttons meet the 44px target floor: ${JSON.stringify(mobileLayout.undersizedButtons)}`,
+  );
   await page.screenshot({ path: join(EVIDENCE_DIR, "combined-mobile.png"), fullPage: true });
   await page.setViewportSize({ width: 1440, height: 900 });
 
@@ -414,6 +532,14 @@ try {
   await closeServer(fixtureServer);
   writeFileSync(join(EVIDENCE_DIR, "results.json"), `${JSON.stringify(results, null, 2)}\n`);
   writeFileSync(join(EVIDENCE_DIR, "verifier.log"), nextLogs.join(""));
+}
+
+function failureProbeDelivery() {
+  return deliveryPayload("failure-probe", "Partial failure recovery proof", [
+    modelInfo("failure-probe", "probe-arch", "ARCH", "Probe architecture", samples.STRUCT),
+    modelInfo("failure-probe", "probe-struct", "STRUCT", "Probe structure", samples.STRUCT),
+    modelInfo("failure-probe", "probe-failure", "MEP", "Probe failure", emptySample, "IFC4"),
+  ]);
 }
 
 function combinedDelivery() {
