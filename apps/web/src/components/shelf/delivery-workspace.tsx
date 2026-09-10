@@ -17,7 +17,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CombinedDeliveryViewer } from "@/components/viewer/combined-delivery-viewer";
+import { CombinedDeliveryViewer } from "model-viewer";
+import { viewerFileUrl } from "@/lib/viewer-adapter";
 import { ReviewScreen } from "@/components/review/review-screen";
 import {
   DISCIPLINES,
@@ -584,6 +585,8 @@ export function DeliveryWorkspace({ deliveryId }: { readonly deliveryId: string 
             <CombinedDeliveryViewer
               key={`${deliveryId}:${runParam ?? "live"}:${viewerMembershipKey}`}
               deliveryId={deliveryId}
+              loadDelivery={fetchDelivery}
+              resolveModelFileUrl={viewerFileUrl}
             />
           </div>
         )}

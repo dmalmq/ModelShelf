@@ -14,7 +14,12 @@
     "jsx": "preserve",
     "incremental": true,
     "plugins": [{ "name": "next" }],
-    "paths": { "@/*": ["./src/*"] }
+    "paths": {
+      "@/*": ["./src/*"],
+      "model-viewer": ["../../packages/model-viewer/src/index.ts"],
+      "model-viewer/core": ["../../packages/model-viewer/src/core/index.ts"],
+      "model-viewer/ifc": ["../../packages/model-viewer/src/ifc.ts"]
+    }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]

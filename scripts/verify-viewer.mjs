@@ -10,15 +10,20 @@ import { spawn } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 import { chromium } from "../apps/web/node_modules/playwright/index.mjs";
 import { runInspectionScenario } from "./verify-viewer-inspection.mjs";
+import { runStandaloneScenario } from "./verify-viewer-standalone.mjs";
 
 const scenarioFlag = process.argv.indexOf("--scenario");
 const scenario = scenarioFlag >= 0 ? process.argv[scenarioFlag + 1] : "combined";
-if (scenario !== "combined" && scenario !== "inspection") {
-  console.error(`usage: node scripts/verify-viewer.mjs [--scenario combined|inspection] [--assert-perf] (got ${scenario ?? "<none>"})`);
+if (scenario !== "combined" && scenario !== "inspection" && scenario !== "standalone") {
+  console.error(`usage: node scripts/verify-viewer.mjs [--scenario combined|inspection|standalone] [--assert-perf] (got ${scenario ?? "<none>"})`);
   process.exit(2);
 }
 if (scenario === "inspection") {
   await runInspectionScenario();
+  process.exit(0);
+}
+if (scenario === "standalone") {
+  await runStandaloneScenario();
   process.exit(0);
 }
 
@@ -96,7 +101,8 @@ const revisionFiles = new Map([
   ["empty-model", emptySample],
 ]);
 const fixtureRequests = [];
-let failMepOnce = true;
+const EXPECTED_INTEGRATED_VIEWERS = 2;
+let mepFailuresRemaining = EXPECTED_INTEGRATED_VIEWERS;
 
 const fixtureServer = createServer((request, response) => {
   const requestUrl = new URL(request.url ?? "/", "http://fixture.local");
@@ -122,12 +128,13 @@ const fixtureServer = createServer((request, response) => {
     response.end("not found");
     return;
   }
-  if (revisionId === "combined-mep" && failMepOnce) {
-    failMepOnce = false;
+  if (revisionId === "combined-mep" && mepFailuresRemaining > 0) {
+    mepFailuresRemaining -= 1;
     response.writeHead(503, { "content-type": "text/plain" });
     response.end("deliberate verifier failure");
     return;
   }
+
 
   const sample = revisionFiles.get(revisionId);
   if (!sample) {
@@ -228,7 +235,8 @@ try {
   check(Array.isArray(partial.snapshot.origin), "successful models establish the shared origin before retry");
   await page.screenshot({ path: join(EVIDENCE_DIR, "partial-failure-desktop.png"), fullPage: true });
 
-  const mepRow = page.locator('[data-model-id="combined-mep"]');
+  const mepRow = page.locator('[data-model-id="combined-mep"]').last();
+
   await mepRow.getByRole("button", { name: /Retry/ }).click();
   await page.waitForFunction(
     () => window.__modelshelfViewer?.inspect().snapshot.models.every(({ status }) => status === "ready"),
@@ -248,7 +256,8 @@ try {
   check(combined.resources.renderers === 1, "one renderer owns the combined scene");
   check(combined.resources.renderLoops === 1, "one render loop drives the combined scene");
   check(combined.resources.materials === 1, "model revisions share one material");
-  check(activeWorkerCount === 1, "one browser Worker remains active after StrictMode remount");
+  check(activeWorkerCount === 1, "the retried viewer keeps one browser Worker active");
+
   check(combined.resources.gpuGeometries > 0, "Three.js observes uploaded GPU geometry");
   check(combined.resources.gpuTextures > 0, "Three.js observes BatchedMesh GPU textures");
   check(combined.resources.shaderPrograms > 0, "Three.js observes compiled shader programs");
@@ -264,7 +273,8 @@ try {
   verifyCommonOrigin(combined);
   verifyMetreScaleAndAlignment(combined.snapshot.models);
 
-  const canvas = page.locator("canvas");
+  const canvas = page.locator("canvas").last();
+
   const canvasBox = await canvas.boundingBox();
   if (!canvasBox) throw new Error("Combined viewer canvas has no layout box");
 
@@ -294,7 +304,7 @@ try {
     "wheel input zooms the camera",
   );
 
-  await page.getByRole("button", { name: /Fit all/ }).click();
+  await page.getByRole("button", { name: /Fit all/ }).last().click();
   await delay(350);
   const picked = await pickVisibleObject(page, canvasBox);
   check(
@@ -319,11 +329,21 @@ try {
     pickedRef: picked.ref,
   };
 
-  const firstDispose = await page.evaluate(() => window.__modelshelfViewer?.dispose());
-  const secondDispose = await page.evaluate(() => window.__modelshelfViewer?.dispose());
-  results.disposalRuns.push(firstDispose, secondDispose);
-  await verifyDisposed(page, firstDispose, combined.resources, "combined first unload");
-  await verifyDisposed(page, secondDispose, combined.resources, "combined repeated unload");
+  const combinedDisposals = await disposeAllViewers(page);
+  check(
+    combinedDisposals.length === EXPECTED_INTEGRATED_VIEWERS,
+    "the integrated route exposes both viewer instances for disposal",
+  );
+  results.disposalRuns.push(...combinedDisposals);
+  await verifyDisposed(
+    page,
+    combinedDisposals.at(-1),
+    combined.resources,
+    "combined first unload",
+  );
+  const repeatedDispose = await page.evaluate(() => window.__modelshelfViewer?.dispose());
+  results.disposalRuns.push(repeatedDispose);
+  await verifyDisposed(page, repeatedDispose, combined.resources, "combined repeated unload");
 
   await page.goto(`${appOrigin}/deliveries/duplicate`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(
@@ -360,9 +380,9 @@ try {
     refs: matching.map(({ ref, expressId, targetCount }) => ({ ref, expressId, targetCount })),
   };
 
-  const duplicateDispose = await page.evaluate(() => window.__modelshelfViewer?.dispose());
-  results.disposalRuns.push(duplicateDispose);
-  await verifyDisposed(page, duplicateDispose, duplicate.resources, "duplicate unload");
+  const duplicateDisposals = await disposeAllViewers(page);
+  results.disposalRuns.push(...duplicateDisposals);
+  await verifyDisposed(page, duplicateDisposals.at(-1), duplicate.resources, "duplicate unload");
 
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForFunction(
@@ -372,15 +392,15 @@ try {
   );
   const remounted = await inspect(page);
   check(
-    activeWorkerCount === 1 &&
+    activeWorkerCount === EXPECTED_INTEGRATED_VIEWERS &&
       remounted.resources.workers === 1 &&
       remounted.resources.batches === 2 &&
       remounted.resources.gpuGeometries > 0,
-    "remount reacquires one Worker and batched GPU resources",
+    "remount reacquires one Worker per integrated viewer and batched GPU resources",
   );
-  const remountDispose = await page.evaluate(() => window.__modelshelfViewer?.dispose());
-  results.disposalRuns.push(remountDispose);
-  await verifyDisposed(page, remountDispose, remounted.resources, "duplicate remount unload");
+  const remountDisposals = await disposeAllViewers(page);
+  results.disposalRuns.push(...remountDisposals);
+  await verifyDisposed(page, remountDisposals.at(-1), remounted.resources, "duplicate remount unload");
 
   await page.goto(`${appOrigin}/deliveries/empty`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(
@@ -402,9 +422,9 @@ try {
     model: emptyModel,
     resources: empty.resources,
   };
-  const emptyDispose = await page.evaluate(() => window.__modelshelfViewer?.dispose());
-  results.disposalRuns.push(emptyDispose);
-  await verifyDisposed(page, emptyDispose, empty.resources, "empty revision unload", 0);
+  const emptyDisposals = await disposeAllViewers(page);
+  results.disposalRuns.push(...emptyDisposals);
+  await verifyDisposed(page, emptyDisposals.at(-1), empty.resources, "empty revision unload", 0);
 
   results.passed = true;
   console.log("viewer verification passed");
@@ -484,6 +504,16 @@ async function inspect(page) {
   const diagnostics = await page.evaluate(() => window.__modelshelfViewer?.inspect());
   if (!diagnostics) throw new Error("Viewer diagnostics are unavailable");
   return diagnostics;
+}
+async function disposeAllViewers(page) {
+  const stats = await page.evaluate(() => {
+    const handles =
+      window.__modelshelfViewers ??
+      (window.__modelshelfViewer ? [window.__modelshelfViewer] : []);
+    return handles.map((handle) => handle.dispose());
+  });
+  if (stats.length === 0) throw new Error("No viewer handles were available for disposal");
+  return stats;
 }
 
 function verifyCommonOrigin(diagnostics) {

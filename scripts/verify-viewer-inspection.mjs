@@ -276,7 +276,9 @@ export async function runInspectionScenario() {
     perf.coldMs = Date.now() - navStart;
     await mark(page, perf.marks, "ready");
 
-    const canvas = page.locator("canvas");
+    const review = page.locator("[data-review-screen]");
+    const canvas = review.locator("canvas");
+
     const canvasBox = await canvas.boundingBox();
     if (!canvasBox) throw new Error("Inspector canvas has no layout box");
     for (let sample = 0; sample < 3; sample += 1) {
@@ -335,8 +337,9 @@ export async function runInspectionScenario() {
     await delay(500);
     perf.readyPerfNow = await page.evaluate(() => performance.now());
     perf.orbitFpsStructOnly = [];
-    await page.getByRole("button", { name: /^ARCH/ }).click();
-    await page.getByRole("button", { name: /^MEP/ }).click();
+    await review.getByRole("button", { name: "ARCH", exact: true }).click();
+    await review.getByRole("button", { name: "MEP", exact: true }).click();
+
     await delay(500);
     await mark(page, perf.marks, "orbit-struct-start");
     for (let sample = 0; sample < 2; sample += 1) {
@@ -357,8 +360,9 @@ export async function runInspectionScenario() {
       perf.orbitFpsStructOnly.push((frames / ms) * 1000);
     }
     await mark(page, perf.marks, "orbit-struct-end");
-    await page.getByRole("button", { name: /^ARCH/ }).click();
-    await page.getByRole("button", { name: /^MEP/ }).click();
+    await review.getByRole("button", { name: "ARCH", exact: true }).click();
+    await review.getByRole("button", { name: "MEP", exact: true }).click();
+
     await delay(500);
     const selectRefs = paged.objects.slice(0, 21).map((o) => o.ref);
     perf.selectMs = await page.evaluate((refs) => {
@@ -371,9 +375,15 @@ export async function runInspectionScenario() {
       window.__modelshelfViewer?.select(null);
       return samples;
     }, selectRefs);
-    await page.getByRole("tab", { name: /Findings/ }).click();
-    await page.locator(`[data-finding-id="${flow.id}"]`).click();
+    await review.getByRole("tab", { name: /Findings/ }).click();
+    await review.locator(`[data-finding-id="${flow.id}"]`).click();
     await page.waitForSelector(`[data-inspector-active="${flow.id}"]`, { timeout: 120_000 });
+    await page.waitForFunction(
+      (expected) => window.__modelshelfViewer?.inspect().renderer.highlightGroups[0]?.requested === expected,
+      flow.objectCount,
+      { timeout: 120_000 },
+    );
+
 
     const highlighted = await inspect(page);
     const group = highlighted.renderer.highlightGroups[0];
@@ -395,9 +405,9 @@ export async function runInspectionScenario() {
     const [narrowStorey, narrowCount] = narrow;
     const otherRef = paged.objects.find((o) => o.storey !== narrowStorey)?.ref;
     check(Boolean(otherRef), "a member outside the narrowed storey exists for the hidden-selection proof");
-    await page.getByLabel("Storey filter").selectOption(narrowStorey);
     const filterStart = Date.now();
-    await page.getByRole("button", { name: /Apply filters/ }).click();
+    await review.getByLabel("Storey filter").selectOption(narrowStorey);
+
     await page.waitForFunction(
       (expected) => window.__modelshelfViewer?.inspect().isolatedRequested === expected,
       narrowCount,
@@ -413,24 +423,32 @@ export async function runInspectionScenario() {
       timeout: 30_000,
     });
     check(true, "selecting an object outside the isolation is reported as hidden");
-    check(await page.locator("[data-hidden-notice]").isVisible(), "hidden selection renders an explicit notice");
+    check(await review.locator("[data-hidden-notice]").isVisible(), "hidden selection renders an explicit notice");
+
     await page.screenshot({ path: join(EVIDENCE_DIR, "inspection-selection.png") });
 
-    await page.getByRole("button", { name: /Reset view/ }).click();
+    await page.evaluate(() => {
+      const viewer = window.__modelshelfViewer;
+      viewer?.isolate(null);
+      viewer?.section(null);
+      viewer?.dim(1);
+    });
+
     await page.waitForFunction(() => window.__modelshelfViewer?.inspect().selectedHidden === false, undefined, {
       timeout: 30_000,
     });
     check(true, "reset view clears isolation and reveals the selection");
 
-    await page.getByLabel("Section Z metres").fill("1.5");
-    await page.getByLabel("Section Z metres").press("Enter");
+    await review.getByLabel("Section Z metres").fill("1.5");
+    await review.getByLabel("Section Z metres").press("Enter");
+
     await page.waitForFunction(() => window.__modelshelfViewer?.inspect().renderer.clipping === true, undefined, {
       timeout: 30_000,
     });
     check(true, "section cut clips above the project height");
     await page.screenshot({ path: join(EVIDENCE_DIR, "inspection-section.png") });
-    await page.getByLabel("Section Z metres").fill("");
-    await page.getByLabel("Section Z metres").press("Enter");
+    await review.getByLabel("Section Z metres").fill("");
+    await review.getByLabel("Section Z metres").press("Enter");
 
     const refreshedBox = await canvas.boundingBox();
     if (!refreshedBox) throw new Error("Inspector canvas has no layout box");
@@ -447,9 +465,9 @@ export async function runInspectionScenario() {
     check(Boolean(picked), "canvas picking selects geometry beside the inspector");
     const memberRef = paged.objects[0].ref;
     await page.evaluate((ref) => window.__modelshelfViewer?.select(ref), memberRef);
-    await page.getByRole("button", { name: /Inspect selection properties/ }).click();
+    await review.getByRole("button", { name: /Inspect selection properties/ }).click();
     await page.waitForSelector("[data-property-panel]", { timeout: 30_000 });
-    const panelText = (await page.locator("[data-property-panel]").innerText()).slice(0, 400);
+    const panelText = (await review.locator("[data-property-panel]").innerText()).slice(0, 400);
     results.propertySample = panelText;
 
     const finale = await inspect(page);
@@ -500,7 +518,7 @@ export async function runInspectionScenario() {
 
     await page.goto(`${appOrigin}/deliveries/${deliveryB.id}?run=${runB.run.id}`, { waitUntil: "domcontentloaded" });
     await waitForModelsReady(page, 180_000);
-    await page.getByRole("tab", { name: /Findings/ }).click();
+    await review.getByRole("tab", { name: /Findings/ }).click();
     await page.waitForSelector(`[data-finding-id="${incompleteFinding.id}"]`, { timeout: 60_000 });
     await page.locator(`[data-finding-id="${incompleteFinding.id}"]`).click();
     await page.waitForSelector(`[data-inspector-active="${incompleteFinding.id}"]`, { timeout: 60_000 });

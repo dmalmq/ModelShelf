@@ -2,35 +2,44 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Eye, EyeOff, Focus, RotateCcw } from "lucide-react";
-import type { Discipline, DeliveryDetail } from "@/lib/types";
-import { Button } from "@/components/ui/button";
-import { fetchDelivery, modelForDelivery } from "./delivery-api";
-import { createDeliveryViewer } from "./delivery-controller";
-import { FindingInspector } from "./finding-inspector";
-import { parseObjectRef } from "./object-ref";
 import type {
   DeliverySnapshot,
   DeliveryViewerController,
+  ModelDiscipline,
   ModelLoadState,
   ObjectRef,
+  ViewerDelivery,
   ViewerDiagnostics,
   ViewerHighlight,
   ViewerResourceStats,
-} from "./types";
+} from "./core/viewer-types";
+import { createDeliveryViewer, type ModelFileUrlResolver } from "./core/delivery-controller";
+import { modelForDelivery } from "./core/delivery-model";
+import { parseObjectRef } from "./core/object-ref";
+import type { GeometryLoader } from "./core/geometry-loader";
+import { createIfcGeometryLoader } from "./core/ifc-loader";
 
-interface CombinedDeliveryViewerProps {
+export interface LoadDelivery {
+  (deliveryId: string, signal?: AbortSignal): Promise<ViewerDelivery>;
+}
+
+export interface CombinedDeliveryViewerProps {
   readonly deliveryId: string;
+  /** Host supplies the wire fetch that turns a delivery id into a
+   * `ViewerDelivery`. The core never knows how bytes reach the host. */
+  readonly loadDelivery: LoadDelivery;
+  /** Host controls how model descriptors resolve to loadable resources. */
+  readonly resolveModelFileUrl: ModelFileUrlResolver;
+  /** Optional geometry driver. Defaults to the real IFC path (`model-viewer/ifc`). */
+  readonly geometryLoader?: GeometryLoader;
   /**
    * Controller seam for the host review panel: the viewer publishes its
-   * controller here on start and null on dispose. The panel drives highlights
-   * through the generic controller only — no finding types cross this seam.
+   * controller here (or null on dispose) so the panel drives highlights
+   * through the generic controller only. No host types cross this seam.
    */
   readonly onController?: (controller: DeliveryViewerController | null) => void;
-  /**
-   * Host-provided inspector for the Findings tab. When present it replaces the
-   * first-loop flat finding list, so the review screen never renders two
-   * competing lists. Plain ReactNode: the viewer never learns finding types.
-   */
+  /** Host-provided inspector for the Findings tab. Plain ReactNode: the viewer
+   * never learns finding types. */
   readonly inspector?: React.ReactNode;
 }
 
@@ -49,11 +58,12 @@ declare global {
   interface Window {
     __modelshelfViewerVerify?: boolean;
     __modelshelfViewer?: ViewerVerificationHandle;
+    __modelshelfViewers?: ViewerVerificationHandle[];
   }
 }
 
-const DISCIPLINES: readonly Discipline[] = ["ARCH", "STRUCT", "MEP", "OTHER"];
-const DEFAULT_VISIBILITY: Readonly<Record<Discipline, boolean>> = {
+const DISCIPLINES: readonly ModelDiscipline[] = ["ARCH", "STRUCT", "MEP", "OTHER"];
+const DEFAULT_VISIBILITY: Readonly<Record<ModelDiscipline, boolean>> = {
   ARCH: true,
   STRUCT: true,
   MEP: true,
@@ -62,15 +72,18 @@ const DEFAULT_VISIBILITY: Readonly<Record<Discipline, boolean>> = {
 
 export function CombinedDeliveryViewer({
   deliveryId,
+  loadDelivery,
+  resolveModelFileUrl,
+  geometryLoader,
   onController,
   inspector,
 }: CombinedDeliveryViewerProps): React.JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const controllerRef = useRef<DeliveryViewerController | null>(null);
-  const [delivery, setDelivery] = useState<DeliveryDetail | null>(null);
+  const [delivery, setDelivery] = useState<ViewerDelivery | null>(null);
   const [latestSnapshot, setSnapshot] = useState<DeliverySnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [visible, setVisible] = useState<Record<Discipline, boolean>>({
+  const [visible, setVisible] = useState<Record<ModelDiscipline, boolean>>({
     ...DEFAULT_VISIBILITY,
   });
   const [panelTab, setPanelTab] = useState<"selection" | "findings">(
@@ -88,37 +101,44 @@ export function CombinedDeliveryViewer({
     setSnapshot(null);
     setError(null);
     setVisible({ ...DEFAULT_VISIBILITY });
-    void fetchDelivery(deliveryId, abortController.signal)
+    void loadDelivery(deliveryId, abortController.signal)
       .then(setDelivery)
       .catch((reason: unknown) => {
         if (abortController.signal.aborted) return;
         setError(reason instanceof Error ? reason.message : "Delivery could not be loaded");
       });
     return () => abortController.abort();
-  }, [deliveryId]);
+  }, [deliveryId, loadDelivery]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!delivery || !canvas) return;
 
-    const controller = createDeliveryViewer({ delivery, canvas });
+    const controller = createDeliveryViewer({
+      delivery,
+      canvas,
+      geometryLoader: geometryLoader ?? createIfcGeometryLoader(),
+      modelFileUrl: resolveModelFileUrl,
+    });
+    const verificationHandle: ViewerVerificationHandle = {
+      inspect: () => controller.diagnostics(),
+      select: (ref) => controller.select(ref === null ? null : parseObjectRef(ref)),
+      highlight: (groups) => controller.setHighlights(groups),
+      isolate: (refs) => controller.isolate(refs),
+      section: (z) => controller.setSectionZ(z),
+      dim: (opacity) => controller.setDimOpacity(opacity),
+      fitAll: () => controller.fitAll(),
+      dispose: () => {
+        controller.dispose();
+        return controller.resourceStats();
+      },
+    };
     controllerRef.current = controller;
     onController?.(controller);
     const unsubscribe = controller.subscribe(setSnapshot);
     if (window.__modelshelfViewerVerify) {
-      window.__modelshelfViewer = {
-        inspect: () => controller.diagnostics(),
-        select: (ref) => controller.select(ref === null ? null : parseObjectRef(ref)),
-        highlight: (groups) => controller.setHighlights(groups),
-        isolate: (refs) => controller.isolate(refs),
-        section: (z) => controller.setSectionZ(z),
-        dim: (opacity) => controller.setDimOpacity(opacity),
-        fitAll: () => controller.fitAll(),
-        dispose: () => {
-          controller.dispose();
-          return controller.resourceStats();
-        },
-      };
+      window.__modelshelfViewer = verificationHandle;
+      window.__modelshelfViewers = [...(window.__modelshelfViewers ?? []), verificationHandle];
     }
     controller.start();
 
@@ -128,10 +148,19 @@ export function CombinedDeliveryViewer({
       controllerRef.current = null;
       onController?.(null);
       if (window.__modelshelfViewerVerify) {
-        delete window.__modelshelfViewer;
+        const remaining = (window.__modelshelfViewers ?? []).filter(
+          (candidate) => candidate !== verificationHandle,
+        );
+        if (remaining.length > 0) {
+          window.__modelshelfViewers = remaining;
+          window.__modelshelfViewer = remaining[remaining.length - 1];
+        } else {
+          delete window.__modelshelfViewers;
+          delete window.__modelshelfViewer;
+        }
       }
     };
-  }, [delivery, onController]);
+  }, [delivery, geometryLoader, onController, resolveModelFileUrl]);
 
   if (error) {
     return (
@@ -139,10 +168,14 @@ export function CombinedDeliveryViewer({
         <div className="max-w-lg border border-border bg-card p-6">
           <h1 className="text-xl font-semibold">Delivery unavailable / デリバリーを開けません</h1>
           <p className="mt-2 text-sm text-destructive">{error}</p>
-          <Button className="mt-5" onClick={() => window.location.reload()}>
-            <RotateCcw />
+          <button
+            type="button"
+            className="group/button mt-5 inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-transparent bg-primary px-2.5 text-sm font-medium whitespace-nowrap text-primary-foreground transition-all outline-none select-none hover:bg-primary/80 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            onClick={() => window.location.reload()}
+          >
+            <RotateCcw className="size-4" />
             Retry / 再試行
-          </Button>
+          </button>
         </div>
       </main>
     );
@@ -160,7 +193,10 @@ export function CombinedDeliveryViewer({
 
   const snapshot: DeliverySnapshot = latestSnapshot ?? {
     delivery,
-    models: delivery.models.map((model) => ({ status: "queued", model: modelForDelivery(model) })),
+    models: delivery.models.map((model) => ({
+      status: "queued",
+      model: modelForDelivery(model, resolveModelFileUrl(model)),
+    })),
     selected: null,
     origin: null,
     initialReady: false,
@@ -184,10 +220,14 @@ export function CombinedDeliveryViewer({
               ? "Combined view / 結合ビュー"
               : "Preparing shared origin / 共通原点を準備中"}
           </span>
-          <Button variant="outline" size="sm" onClick={() => controllerRef.current?.fitAll()}>
-            <Focus />
+          <button
+            type="button"
+            className="inline-flex h-7 items-center gap-1 rounded-lg border border-border bg-background px-2.5 text-[0.8rem] font-medium whitespace-nowrap text-foreground transition-all outline-none select-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            onClick={() => controllerRef.current?.fitAll()}
+          >
+            <Focus className="size-3.5" />
             Fit all / 全体表示
-          </Button>
+          </button>
         </div>
       </header>
 
@@ -273,12 +313,9 @@ export function CombinedDeliveryViewer({
           {panelTab === "findings" ? (
             <div className="max-h-[calc(100vh-12rem)] space-y-4 overflow-y-auto p-4">
               {inspector ?? (
-                <FindingInspector
-                  delivery={delivery}
-                  getController={() => controllerRef.current}
-                  selected={selected}
-                  initialRunId={initialRunId}
-                />
+                <p className="text-xs text-muted-foreground">
+                  No finding inspector provided by the host.
+                </p>
               )}
             </div>
           ) : (
@@ -292,15 +329,14 @@ export function CombinedDeliveryViewer({
                 <Info label="IFC type" value={selected.ifcType} />
                 <Info label="Name" value={selected.name ?? "Unnamed"} />
                 <Info label="Placed geometry" value={`${selected.targets.length}`} />
-                <Button
-                  className="mt-2 w-full"
-                  variant="outline"
-                  size="sm"
+                <button
+                  type="button"
+                  className="mt-2 inline-flex h-7 w-full items-center justify-center gap-1 rounded-lg border border-border bg-background px-2.5 text-[0.78rem] font-medium whitespace-nowrap text-foreground transition-all outline-none select-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                   onClick={() => controllerRef.current?.frame([selected.ref])}
                 >
-                  <Focus />
+                  <Focus className="size-3.5" />
                   Frame selection / 選択を表示
-                </Button>
+                </button>
               </dl>
             ) : (
               <p className="text-sm text-muted-foreground">
@@ -356,10 +392,14 @@ function SourceRow({
         <div className="mt-3 border-t pt-3">
           <p className="text-xs text-destructive">{state.message}</p>
           {state.retryable ? (
-            <Button className="mt-2" variant="outline" size="sm" onClick={onRetry}>
-              <RotateCcw />
+            <button
+              type="button"
+              className="mt-2 inline-flex h-7 items-center justify-center gap-1 rounded-lg border border-border bg-background px-2.5 text-[0.78rem] font-medium whitespace-nowrap text-foreground transition-all outline-none select-none hover:bg-muted hover:text-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              onClick={onRetry}
+            >
+              <RotateCcw className="size-3.5" />
               Retry / 再試行
-            </Button>
+            </button>
           ) : null}
         </div>
       ) : null}

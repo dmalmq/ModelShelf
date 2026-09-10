@@ -1,4 +1,4 @@
-import { objectIdFrom, revisionIdFrom, type ObjectId, type ObjectRef, type RevisionId } from "./types";
+import { objectIdFrom, revisionIdFrom, type ObjectId, type ObjectRef, type RevisionId } from "./viewer-types";
 
 const objectIdPattern = /^occ_[0-9a-f]{16}$/;
 

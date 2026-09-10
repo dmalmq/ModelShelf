@@ -1,0 +1,24 @@
+ModelShelf ticket 16 launcher smoke
+Date: 2026-09-09
+Command: node scripts/demo-launch.mjs --data-dir /tmp/modelshelf-demo-final-16 --port 18488
+
+First launch, empty data directory:
+seeded tenant=demo-tenant project=demo-project pack=demo-pack (+3 pack version(s))
+API healthy at http://127.0.0.1:18488
+ModelShelf demo is running.
+GET / 200 in 4376ms
+curl --noproxy '*' http://127.0.0.1:18488/api/health:
+{"status":"ok","engineVersion":"ifctester/0.8.5","parserVersion":"ifcopenshell/0.8.5","schemaVersion":8}
+curl --noproxy '*' http://127.0.0.1:18488/api/projects:
+[{"id":"demo-project","tenantId":"demo-tenant","tenantName":"Demo Tenant","name":"Demo Project","createdAt":"2026-09-09T23:46:06.760Z","deliveryCount":0,"runCount":0}]
+curl --noproxy '*' http://127.0.0.1:3210/ -o /dev/null -w 'web %{http_code}\n'
+web 200
+Stopped with SIGINT; exit=0.
+
+Second launch, same data directory:
+seeding /tmp/modelshelf-demo-final-16...
+seeded tenant=demo-tenant project=demo-project pack=demo-pack (+0 pack version(s))
+API healthy at http://127.0.0.1:18488
+GET / 200 in 1633ms
+The same health response and project row were returned; web returned 200.
+Stopped with SIGINT; exit=0.

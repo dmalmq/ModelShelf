@@ -6,8 +6,8 @@
 // (Copied from review/viewer-bridge.ts applyFindingToViewer, not generalized.)
 import { CHANGE_COLOR, VIEWER_MAX_HIGHLIGHT_GROUPS } from "@/lib/palette";
 import type { ChangeKind, ObjectChange } from "@/lib/types";
-import { parseObjectRef } from "../viewer/object-ref";
-import type { DeliveryViewerController, ObjectRef, ViewerHighlight } from "../viewer/types";
+import { parseObjectRef } from "model-viewer/core";
+import type { DeliveryViewerController, ObjectRef, ViewerHighlight } from "model-viewer/core";
 import { compareRefKey, type CompareChangeEntry, type CompareSide } from "./compare-state";
 
 export interface PlainChangeRef {

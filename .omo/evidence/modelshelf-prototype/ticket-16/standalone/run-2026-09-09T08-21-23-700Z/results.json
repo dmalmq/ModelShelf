@@ -1,0 +1,20 @@
+{
+  "passed": true,
+  "checks": [
+    "the public core bundle contains no web-ifc",
+    "both fixture revisions reach ready",
+    "each revision exposes its authored object count",
+    "highlight paints every authored object",
+    "isolate shows only the isolated revision's objects",
+    "the section plane clips the scene",
+    "clicking an instance selects its revision-qualified ObjectRef",
+    "unload disposes the viewer",
+    "the example page reports no console or page errors"
+  ],
+  "log": [
+    "warning: [.WebGL-0xa6400192600]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+    "warning: [.WebGL-0xa6400192600]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+    "warning: [.WebGL-0xa6400192600]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+    "warning: [.WebGL-0xa6400192600]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels (this message will no longer repeat)"
+  ]
+}

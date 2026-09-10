@@ -322,7 +322,7 @@ function parseDeliveryShallow(value: unknown, field: string): Delivery {
 
 function parseRunShallow(value: unknown, field: string): RunSummary {
   // Shallow on purpose: these two rows are contract fill, not panel input. The
-  // run pickers read DeliveryDetail.runs, which delivery-api.ts validates.
+  // run pickers read DeliveryDetail.runs, which viewer-adapter.ts validates.
   const record = requireRecord(value, `Finding diff ${field}`);
   for (const required of ["id", "deliveryId", "packVersionId", "status"]) {
     if (typeof record[required] !== "string") throw new Error(`Finding diff ${field}.${required} must be a string`);
@@ -330,7 +330,7 @@ function parseRunShallow(value: unknown, field: string): RunSummary {
   return value as RunSummary;
 }
 
-// --- scalar guards (same vocabulary as delivery-api.ts) ---
+// --- scalar guards (same vocabulary as viewer-adapter.ts) ---
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;

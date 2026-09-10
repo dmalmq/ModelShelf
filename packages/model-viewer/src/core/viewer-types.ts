@@ -1,9 +1,6 @@
-import type {
-  Discipline,
-  DeliveryDetail,
-  ModelInfo,
-  ObjectRef as SharedObjectRef,
-} from "@/lib/types";
+// Framework-independent viewer core types. This file never imports host
+// application types: disciplines are plain strings, and the delivery is the
+// minimal structural shape the viewer needs (id, label, models, runs, locked).
 
 declare const revisionIdBrand: unique symbol;
 declare const objectIdBrand: unique symbol;
@@ -13,6 +10,9 @@ export type RevisionId = string & { readonly [revisionIdBrand]: "RevisionId" };
 export type ObjectId = string & { readonly [objectIdBrand]: "ObjectId" };
 export type ObjectRefKey = string & { readonly [objectRefKeyBrand]: "ObjectRefKey" };
 
+/** Host-side discipline label; the core treats it as an opaque string. */
+export type ModelDiscipline = string;
+
 export type LoadPhase = "download" | "parse" | "geometry";
 export type FailureStage = "download" | "parse" | "geometry" | "upload" | "worker";
 
@@ -21,12 +21,56 @@ export interface Bounds3 {
   readonly max: readonly [number, number, number];
 }
 
-export interface DeliveryModel extends ModelInfo {
+/** Structural mirror of the host's model metadata. The host adapter maps its own
+ * wire type onto this shape; the core never imports it. */
+export interface ViewerModel {
+  readonly id: string;
+  readonly deliveryId: string;
+  readonly discipline: ModelDiscipline;
+  readonly sourceModelId: string;
+  readonly sourceModelName: string;
+  readonly filename: string;
+  readonly contentSha256: string;
+  readonly byteSize: number;
+  readonly schemaLabel: string;
+  readonly entityCount: number;
+  readonly productCount: number;
+  readonly lengthToMetre: number;
+  readonly parseMs: number | null;
+  readonly uploadedAt: string;
+  readonly originatingSystem: string | null;
+}
+
+export interface ViewerDeliveryRecord {
+  readonly id: string;
+  readonly projectId: string;
+  readonly label: string;
+  readonly deliveryDate: string | null;
+  readonly createdAt: string;
+  readonly finalizedAt: string | null;
+  readonly modelCount: number;
+  readonly productCount: number;
+}
+
+export interface ViewerRunSummary {
+  readonly id: string;
+  readonly status: string;
+}
+
+/** Structural mirror of the host's delivery detail payload. */
+export interface ViewerDelivery {
+  readonly delivery: ViewerDeliveryRecord;
+  readonly models: readonly ViewerModel[];
+  readonly runs: readonly ViewerRunSummary[];
+  readonly locked: boolean;
+}
+
+export interface DeliveryModel extends ViewerModel {
   readonly revisionId: RevisionId;
   readonly fileUrl: string;
 }
 
-export interface ObjectRef extends SharedObjectRef {
+export interface ObjectRef {
   readonly revisionId: RevisionId;
   readonly objectId: ObjectId;
 }
@@ -45,7 +89,7 @@ export interface TransferInstance {
   readonly globalId: string | null;
   readonly ifcType: string;
   readonly name: string | null;
-  readonly discipline: Discipline;
+  readonly discipline: ModelDiscipline;
   readonly geometryExpressId: number;
   readonly matrix: readonly number[];
   readonly color: readonly [number, number, number, number];
@@ -111,12 +155,12 @@ export interface SelectionRecord {
   readonly globalId: string | null;
   readonly ifcType: string;
   readonly name: string | null;
-  readonly discipline: Discipline;
+  readonly discipline: ModelDiscipline;
   readonly targets: readonly DrawTarget[];
 }
 
 export interface DeliverySnapshot {
-  readonly delivery: DeliveryDetail;
+  readonly delivery: ViewerDelivery;
   readonly models: readonly ModelLoadState[];
   readonly selected: SelectionRecord | null;
   readonly origin: readonly [number, number, number] | null;
@@ -135,7 +179,6 @@ export interface ViewerResourceStats {
   readonly gpuTextures: number;
   readonly shaderPrograms: number;
   readonly renderFrame: number;
-  /** Drawable triangles across uploaded revisions, indexCount / 3 per unique geometry. */
   readonly triangles: number;
 }
 
@@ -181,7 +224,7 @@ export interface DeliveryViewerController {
   retry(revisionId: RevisionId): void;
   select(ref: ObjectRef | null): void;
   frame(refs: readonly ObjectRef[]): void;
-  setDisciplineVisibility(discipline: Discipline, visible: boolean): void;
+  setDisciplineVisibility(discipline: ModelDiscipline, visible: boolean): void;
   /** Paint revision-qualified paint groups; empty clears. Later groups win. */
   setHighlights(groups: readonly ViewerHighlight[]): void;
   /** Show only these objects; null clears. Composes with discipline visibility. */
@@ -210,7 +253,7 @@ export interface ViewerRenderer {
   selection(ref: ObjectRef): SelectionRecord | null;
   selectionRecords(): readonly SelectionRecord[];
   frame(refs: readonly ObjectRef[]): void;
-  setDisciplineVisibility(discipline: Discipline, visible: boolean): void;
+  setDisciplineVisibility(discipline: ModelDiscipline, visible: boolean): void;
   setHighlights(groups: readonly ViewerHighlight[]): void;
   isolate(refs: readonly ObjectRef[] | null): void;
   /** Clip above z in world coordinates; null removes the clip. */

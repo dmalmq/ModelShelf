@@ -11,10 +11,10 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { ProvenanceNotice } from "../domain/provenance-notice";
 import type { DeliveryDetail, Finding, RunDetail, Severity } from "@/lib/types";
-import { fetchDelivery } from "../viewer/delivery-api";
-import { fetchRunDetail } from "../viewer/findings-api";
-import type { DeliveryViewerController } from "../viewer/types";
-import { CombinedDeliveryViewer } from "../viewer/combined-delivery-viewer";
+import { fetchDelivery, viewerFileUrl } from "@/lib/viewer-adapter";
+import { fetchRunDetail } from "./findings-api";
+import type { DeliveryViewerController } from "model-viewer/core";
+import { CombinedDeliveryViewer } from "model-viewer";
 import { EvidencePanel } from "./evidence-panel";
 import { PackSelection } from "./pack-selection";
 import { initialReviewState, reviewReducer } from "./review-state";
@@ -88,7 +88,11 @@ export function ReviewScreen({ deliveryId }: { deliveryId: string }): React.JSX.
     if (initial) loadRun(initial);
   }, [delivery, state.lifecycle, loadRun]);
 
-  const findings = state.detail ? flattenFindings(state.detail) : [];
+  // Selectable findings span both lists: scored bands and the honest
+  // incomplete set — an incomplete finding must open its evidence too.
+  const findings = state.detail
+    ? [...flattenFindings(state.detail), ...state.detail.reviewIncomplete]
+    : [];
   const selectedFinding = findings.find((finding) => finding.id === state.selection.findingId) ?? null;
 
   function handleSelect(band: Severity | null, categoryId: string | null, findingId: string | null): void {
@@ -133,6 +137,8 @@ export function ReviewScreen({ deliveryId }: { deliveryId: string }): React.JSX.
     <div data-review-screen>
       <CombinedDeliveryViewer
         deliveryId={deliveryId}
+        loadDelivery={fetchDelivery}
+        resolveModelFileUrl={viewerFileUrl}
         onController={handleController}
         inspector={
           !delivery ? (
@@ -198,7 +204,11 @@ export function ReviewScreen({ deliveryId }: { deliveryId: string }): React.JSX.
                       viewer={viewer}
                     />
                   )}
-                  <IncompleteSection findings={state.detail.reviewIncomplete} />
+                  <IncompleteSection
+                    findings={state.detail.reviewIncomplete}
+                    selection={state.selection}
+                    onSelect={handleSelect}
+                  />
                   <SpecTable specs={state.detail.specs} />
                 </>
               ) : (

@@ -1,3 +1,8 @@
+// Host adapter: maps ModelShelf wire payloads onto the generic viewer shapes.
+// The viewer package never imports application types; this module is the only
+// seam that knows both sides. The parsed DeliveryDetail is structurally a
+// ViewerDelivery, so consumers can hand it straight to the wrapper's
+// loadDelivery prop.
 import type {
   Delivery,
   DeliveryDetail,
@@ -6,8 +11,9 @@ import type {
   RunStatus,
   RunSummary,
 } from "@/lib/types";
-import { parseRevisionId } from "./object-ref";
-import type { DeliveryModel } from "./types";
+export function viewerFileUrl(model: { readonly id: string }): string {
+  return `/api/models/${encodeURIComponent(model.id)}/file`;
+}
 
 export async function fetchDelivery(deliveryId: string, signal?: AbortSignal): Promise<DeliveryDetail> {
   if (deliveryId.trim().length === 0) throw new Error("deliveryId must not be empty");
@@ -15,15 +21,6 @@ export async function fetchDelivery(deliveryId: string, signal?: AbortSignal): P
   const response = await fetch(`/api/deliveries/${encodeURIComponent(deliveryId)}`, { signal });
   if (!response.ok) throw new Error(`Delivery request failed with HTTP ${response.status}`);
   return parseDeliveryDetail(await response.json());
-}
-
-export function modelForDelivery(model: ModelInfo): DeliveryModel {
-  const revisionId = parseRevisionId(model.id);
-  return {
-    ...model,
-    revisionId,
-    fileUrl: `/api/models/${encodeURIComponent(revisionId)}/file`,
-  };
 }
 
 export function parseDeliveryDetail(value: unknown): DeliveryDetail {
@@ -130,32 +127,29 @@ function runStatusValue(value: unknown): RunStatus {
 
 function requireRecord(value: unknown, field: string): Record<string, unknown> {
   if (typeof value !== "object" || value === null) throw new Error(`${field} must be an object`);
-  return Object.fromEntries(Object.entries(value));
+  return value as Record<string, unknown>;
 }
 
 function stringValue(value: unknown, field: string): string {
-  if (typeof value !== "string" || value.length === 0) {
-    throw new Error(`${field} must be a non-empty string`);
-  }
+  if (typeof value !== "string") throw new Error(`${field} must be a string`);
   return value;
 }
 
 function nullableString(value: unknown, field: string): string | null {
   if (value === null) return null;
-  if (typeof value === "string") return value;
-  throw new Error(`${field} must be a string or null`);
+  return stringValue(value, field);
 }
 
 function integerValue(value: unknown, field: string): number {
-  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
-    throw new Error(`${field} must be a non-negative integer`);
+  if (typeof value !== "number" || !Number.isInteger(value)) {
+    throw new Error(`${field} must be an integer`);
   }
   return value;
 }
 
 function numberValue(value: unknown, field: string): number {
   if (typeof value !== "number" || !Number.isFinite(value)) {
-    throw new Error(`${field} must be finite`);
+    throw new Error(`${field} must be a finite number`);
   }
   return value;
 }

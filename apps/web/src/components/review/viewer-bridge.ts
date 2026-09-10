@@ -3,8 +3,8 @@
 // filter strings, and drives the viewer port. Members whose ref cannot be
 // parsed yield null and are counted as undrawable — listed in the panel, never
 // highlighted, never crashing the viewer.
-import { parseObjectRef } from "../viewer/object-ref";
-import type { DeliveryViewerController, ObjectRef } from "../viewer/types";
+import { parseObjectRef } from "model-viewer/core";
+import type { DeliveryViewerController, ObjectRef } from "model-viewer/core";
 
 export interface PlainMemberRef {
   revisionId: string;

@@ -104,7 +104,15 @@ function BandSection({
   );
 }
 
-export function IncompleteSection({ findings }: { findings: readonly Finding[] }): React.JSX.Element {
+export function IncompleteSection({
+  findings,
+  selection,
+  onSelect,
+}: {
+  findings: readonly Finding[];
+  selection: FindingSelection;
+  onSelect: ScorecardTreeProps["onSelect"];
+}): React.JSX.Element {
   return (
     <section aria-label="Incomplete review / 未判定" data-incomplete-section>
       <h2 className="text-sm font-semibold">未判定のレビュー / Incomplete review</h2>
@@ -115,15 +123,25 @@ export function IncompleteSection({ findings }: { findings: readonly Finding[] }
       ) : (
         <ul className="mt-1.5 space-y-1.5">
           {findings.map((finding) => (
-            <li
-              key={finding.id}
-              data-incomplete-finding={finding.id}
-              className="border border-dashed border-border px-2 py-1.5 text-xs"
-            >
-              <p className="truncate font-medium">{finding.title}</p>
-              <p className="tnum mt-0.5 text-[11px] text-muted-foreground">
-                {finding.objectCount}オブジェクト · エンジンが判定できませんでした
-              </p>
+            <li key={finding.id}>
+              <button
+                type="button"
+                data-finding-id={finding.id}
+                data-finding-key={finding.findingKey}
+                data-incomplete-finding={finding.id}
+                aria-pressed={selection.findingId === finding.id}
+                onClick={() =>
+                  selection.findingId === finding.id
+                    ? onSelect(null, null, null)
+                    : onSelect(null, null, finding.id)
+                }
+                className="w-full border border-dashed border-border px-2 py-1.5 text-left text-xs transition-colors hover:bg-muted aria-pressed:border-primary aria-pressed:bg-accent"
+              >
+                <p className="truncate font-medium">{finding.title}</p>
+                <p className="tnum mt-0.5 text-[11px] text-muted-foreground">
+                  {finding.objectCount}オブジェクト · エンジンが判定できませんでした
+                </p>
+              </button>
             </li>
           ))}
         </ul>

@@ -7,19 +7,11 @@ import type {
   FindingObject,
   ObjectDetail,
   RunDetail,
-  Severity,
 } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import type { DeliveryViewerController, ObjectRef, SelectionRecord } from "./types";
+import { SEVERITY_COLOR } from "@/lib/palette";
+import type { DeliveryViewerController, ObjectRef, SelectionRecord } from "model-viewer/core";
 import { fetchAllFindingObjects, fetchObjectDetail, fetchRunDetail, toViewerRef } from "./findings-api";
-
-/** Host-provided finding styles. The rendering core only receives refs and colors. */
-const SEVERITY_COLOR: Record<Severity, string> = {
-  critical: "#e02424",
-  high: "#f97316",
-  medium: "#eab308",
-  advisory: "#3b82f6",
-};
 
 interface FindingInspectorProps {
   readonly delivery: DeliveryDetail;

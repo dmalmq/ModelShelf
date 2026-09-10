@@ -5,8 +5,9 @@
 // `--scenario revisions` proves the source-model/revision/delivery data model:
 // two same-discipline sources coexisting, revision reuse without re-uploading,
 // finalize freezing membership, and that a finalize racing a membership edit
-// never lands in a corrupted state. Uploads go through the real async job
-// queue and the real ifc-worker.
+// never lands in a corrupted state. Uploads use the committed self-authored
+// `packs/demo/fixtures/base.ifc`, the real async job queue, and the real
+// ifc-worker.
 //
 // `--scenario worker-failure` proves the job queue's contract (ticket 04):
 // every named failure mode (malformed/truncated stdout, duplicate terminal
@@ -37,10 +38,25 @@
 // version, IDS/metadata digests, scope text, source membership, engine
 // profile, provenance, completion, review-incomplete) plus a failed run and
 // uncertain GlobalId identity refuses or holds honestly with its own code.
+//
+// `--scenario restart` proves restart durability (ticket 16): a finalized
+// delivery built from real-worker revisions and a completed run are re-read
+// from a fresh serve process on the same data dir and port — same finalizedAt
+// and modelCount, identical revision-file bytes, same run id/status/scorecard
+// finding count, same object detail — and re-running seed changes nothing.
+//
+// `--scenario all` runs all seven scenarios sequentially (revisions,
+// worker-failure, checks, first-loop, comparisons, finding-comparisons,
+// restart), each keeping its own evidence/run-dir logic as a standalone run;
+// it appends every scenario's stdout/stderr to one aggregate all.log under
+// ticket-16, writes a per-scenario pass/fail + check-count summary.json, and
+// exits nonzero if any scenario failed.
 //        node scripts/verify-api.mjs --scenario worker-failure
 //        node scripts/verify-api.mjs --scenario checks
 //        node scripts/verify-api.mjs --scenario first-loop
 //        node scripts/verify-api.mjs --scenario comparisons
+//        node scripts/verify-api.mjs --scenario restart
+//        node scripts/verify-api.mjs --scenario all
 
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -51,16 +67,34 @@ import { join } from "node:path";
 
 import { BIN_PATH, REPO_ROOT, buildBinary, createChecker, freePort, runCli, stopProcess, waitForHealth } from "./lib/checker-harness.mjs";
 
-const SAMPLE_IFC = join(REPO_ROOT, "samples", "ifc", "AC20-FZK-Haus.ifc");
 const FAKE_WORKER = join(REPO_ROOT, "scripts", "fixtures", "fake-worker.mjs");
 const FIXTURES_IFC = join(REPO_ROOT, "packs", "demo", "fixtures", "base.ifc");
 const FIXTURES_IDS = join(REPO_ROOT, "packs", "demo", "fixtures.ids");
 
+/** The seven runnable scenarios, in the fixed order `--scenario all` runs them. */
+const SCENARIOS = ["revisions", "worker-failure", "checks", "first-loop", "comparisons", "finding-comparisons", "restart"];
+
+/** Evidence root key per scenario — identical to the pre-`all` behavior for the
+ * six historical scenarios; `restart` owns ticket-16. */
+function scenarioEvidenceDir(scenario) {
+  return scenario === "checks"
+    ? "task-6"
+    : scenario === "first-loop"
+      ? "task-9"
+      : scenario === "comparisons"
+        ? "ticket-13"
+        : scenario === "finding-comparisons"
+          ? "ticket-14"
+          : scenario === "restart"
+            ? "ticket-16"
+            : "task-2";
+}
+
 function requireScenario() {
   const flagIndex = process.argv.indexOf("--scenario");
   const scenario = flagIndex >= 0 ? process.argv[flagIndex + 1] : undefined;
-  if (scenario !== "revisions" && scenario !== "worker-failure" && scenario !== "checks" && scenario !== "first-loop" && scenario !== "comparisons" && scenario !== "finding-comparisons") {
-    console.error(`usage: node scripts/verify-api.mjs --scenario revisions|worker-failure|checks|first-loop|comparisons|finding-comparisons (got ${scenario ?? "<none>"})`);
+  if (scenario !== "all" && !SCENARIOS.includes(scenario)) {
+    console.error(`usage: node scripts/verify-api.mjs --scenario revisions|worker-failure|checks|first-loop|comparisons|finding-comparisons|restart|all (got ${scenario ?? "<none>"})`);
     process.exit(2);
   }
   return scenario;
@@ -82,9 +116,9 @@ async function api(base, method, path, body) {
   return { status: res.status, json };
 }
 
-/** POSTs the real sample IFC as `filename`; does not wait on the resulting job. */
+/** POSTs the self-authored demo IFC as `filename`; does not wait on the resulting job. */
 async function uploadRaw(base, sourceModelId, filename) {
-  const bytes = await readFileAsync(SAMPLE_IFC);
+  const bytes = await readFileAsync(FIXTURES_IFC);
   return uploadBytes(base, sourceModelId, filename, bytes);
 }
 
@@ -140,6 +174,34 @@ async function startServer(dataDir, workerCommand, extraEnv = {}) {
   return { child, port, base: `http://127.0.0.1:${port}`, getLog: () => logText };
 }
 
+/** Like `startServer` but binds an explicit port — the restart scenario needs
+ * the replacement process on the exact same port as the one it replaced. */
+async function startServerOnPort(dataDir, port) {
+  const child = spawn(BIN_PATH, ["serve", "--data-dir", dataDir, "--port", String(port)], {
+    cwd: REPO_ROOT,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  let logText = "";
+  child.stdout.on("data", (chunk) => (logText += chunk));
+  child.stderr.on("data", (chunk) => (logText += chunk));
+  await waitForHealth(port, { child });
+  return { child, port, base: `http://127.0.0.1:${port}`, getLog: () => logText };
+}
+
+/** Recursively sorts object keys so identical data serializes identically
+ * regardless of key order — the basis for the restart scenario's digest. */
+function canonicalize(value) {
+  if (Array.isArray(value)) return value.map(canonicalize);
+  if (value !== null && typeof value === "object") {
+    return Object.keys(value).sort().map((key) => [key, canonicalize(value[key])]);
+  }
+  return value;
+}
+
+function canonicalDigest(value) {
+  return createHash("sha256").update(JSON.stringify(canonicalize(value))).digest("hex");
+}
+
 // ---------------------------------------------------------------------------
 // scenario: revisions
 // ---------------------------------------------------------------------------
@@ -170,8 +232,8 @@ async function runRevisionsScenario(base, dataDir, check, log) {
   const rev1Objects = (await api(base, "GET", `/api/models/${rev1Id}/objects?limit=1`)).json;
   const rev2Objects = (await api(base, "GET", `/api/models/${rev2Id}/objects?limit=1`)).json;
   check(
-    "the real worker extracted the real sample's 127 objects for each revision",
-    rev1Objects.total === 127 && rev2Objects.total === 127,
+    "the real worker extracted the self-authored demo fixture's 141 objects for each revision",
+    rev1Objects.total === 141 && rev2Objects.total === 141,
     JSON.stringify({ rev1Total: rev1Objects.total, rev2Total: rev2Objects.total }),
   );
 
@@ -253,23 +315,27 @@ async function runRevisionsScenario(base, dataDir, check, log) {
   check("adding a revision under the wrong source model is rejected (400)", mismatchedPairing.status === 400, JSON.stringify(mismatchedPairing));
 
   // --- object payloads carry the shared occurrence ID, and the original IFC is retrievable ---
-  const objects = (await api(base, "GET", `/api/models/${rev1Id}/objects?limit=1`)).json;
+  const objects = (await api(base, "GET", `/api/models/${rev1Id}/objects?limit=500`)).json;
   const firstObject = objects.objects[0];
   check(
     "object payloads include the shared ref (revisionId/objectId), not just the raw expressId",
     Boolean(firstObject?.ref?.revisionId === rev1Id && firstObject?.ref?.objectId?.startsWith("occ_")),
     JSON.stringify(firstObject),
   );
-  const detail = (await api(base, "GET", `/api/objects/${firstObject.id}`)).json;
-  const sampleProp = detail.properties?.[0];
+  const propertyObject = objects.objects.find((item) => item.name?.startsWith("PropChange-"));
+  const detail = propertyObject
+    ? (await api(base, "GET", `/api/objects/${propertyObject.id}`)).json
+    : null;
+  const sampleProp = detail?.properties?.[0];
   check(
-    "object properties round-trip as the shared record (values, ordered, origin)",
-    Array.isArray(detail.properties)
+    "a fixture object with properties round-trips the shared record (values, ordered, origin)",
+    Boolean(propertyObject)
+      && Array.isArray(detail?.properties)
       && sampleProp
       && Array.isArray(sampleProp.values)
       && typeof sampleProp.ordered === "boolean"
       && (sampleProp.origin === "occurrence" || sampleProp.origin === "type"),
-    JSON.stringify(sampleProp),
+    JSON.stringify({ propertyObject, sampleProp }),
   );
   const fileRes = await fetch(`${base}/api/models/${rev1Id}/file`);
   check("the original uploaded IFC is retrievable byte-for-byte via /file", fileRes.status === 200 && Number(fileRes.headers.get("content-length")) > 0, `status=${fileRes.status}`);
@@ -1437,17 +1503,241 @@ async function runFirstLoopScenario(runDir, check, log) {
 }
 
 // ---------------------------------------------------------------------------
+// scenario: restart (ticket 16)
+// ---------------------------------------------------------------------------
+
+async function runRestartScenario(runDir, check, log) {
+  const dataDir = mkdtempSync(join(tmpdir(), "modelshelf-verify-api-restart-"));
+  let server;
+  try {
+    const seed = runCli(["seed", "--data-dir", dataDir, "--packs-dir", dataDir, "--samples-dir", dataDir]);
+    check("restart: seed succeeds", seed.status === 0, seed.stderr);
+
+    server = await startServerOnPort(dataDir, await freePort());
+    const base = server.base;
+
+    const packVersion = (
+      await api(base, "POST", "/api/packs/demo-pack/versions", {
+        idsXml: await readFileAsync(FIXTURES_IDS, "utf8"),
+        metadata: {
+          categories: [{ id: "regulatory", label: "Regulatory" }],
+          defaults: { severity: "high", categoryId: "regulatory" },
+          specs: {
+            "Wall declares a fire rating": { severity: "high", categoryId: "regulatory", disciplines: ["ARCH"] },
+          },
+        },
+      })
+    ).json;
+    check("restart: fixtures pack version is published", Boolean(packVersion?.id), JSON.stringify(packVersion));
+
+    const east = (await api(base, "POST", "/api/projects/demo-project/source-models", { name: "Restart East", discipline: "ARCH" })).json;
+    check("restart: source model created", Boolean(east.id), JSON.stringify(east));
+
+    // Real worker ingestion, exactly like the comparisons scenario.
+    const ingested = await uploadFileAndAwait(base, east.id, "east.ifc", FIXTURES_IFC);
+    check("restart: revision ingests via the real worker", ingested.job?.status === "completed", JSON.stringify(ingested.job?.status));
+    const revisionId = ingested.job.modelRevisionId;
+
+    const delivery = (await api(base, "POST", "/api/projects/demo-project/deliveries", { label: "Restart drop" })).json;
+    const member = await api(base, "POST", `/api/deliveries/${delivery.id}/members`, { sourceModelId: east.id, modelRevisionId: revisionId });
+    check("restart: delivery member attached", member.status === 200, JSON.stringify({ status: member.status, body: member.json }));
+    const finalized = (await api(base, "POST", `/api/deliveries/${delivery.id}/finalize`, {})).json;
+    check("restart: delivery finalizes with one pinned model", finalized?.delivery?.modelCount === 1, JSON.stringify(finalized?.delivery));
+
+    const runRes = await api(base, "POST", "/api/runs", { deliveryId: delivery.id, packVersionId: packVersion.id });
+    check(
+      "restart: run completes against the real worker",
+      runRes.status === 200 && runRes.json?.run?.status === "completed",
+      JSON.stringify({ status: runRes.status, run: runRes.json?.run?.status }),
+    );
+    const runId = runRes.json.run.id;
+
+    const objects = (await api(base, "GET", `/api/models/${revisionId}/objects?limit=1`)).json;
+    const object = objects.objects?.[0];
+    check("restart: the revision's objects are retrievable", Boolean(object?.id) && objects.total >= 1, JSON.stringify({ total: objects.total, first: object?.id }));
+    const objectId = object?.id;
+
+    async function snapshotState() {
+      const deliveryResponse = (await api(base, "GET", `/api/deliveries/${delivery.id}`)).json;
+      const fileRes = await fetch(`${base}/api/models/${revisionId}/file`);
+      const fileSha256 = createHash("sha256").update(new Uint8Array(await fileRes.arrayBuffer())).digest("hex");
+      const run = (await api(base, "GET", `/api/runs/${runId}`)).json;
+      const object = (await api(base, "GET", `/api/objects/${objectId}`)).json;
+      return { deliveryResponse, fileSha256, run, object };
+    }
+
+    const before = await snapshotState();
+    const sourceSha256 = createHash("sha256").update(await readFileAsync(FIXTURES_IFC)).digest("hex");
+    check(
+      "restart: the revision file is the exact uploaded fixture bytes",
+      before.fileSha256 === sourceSha256,
+      JSON.stringify({ fileSha256: before.fileSha256, sourceSha256 }),
+    );
+
+    // --- stop the server and bring up a fresh one on the same data dir and port ---
+    log("restart-serve-1.log", server.getLog());
+    await stopProcess(server.child);
+    server = null;
+    server = await startServerOnPort(dataDir, Number(base.slice(base.lastIndexOf(":") + 1)));
+
+    const after = await snapshotState();
+    log("restart-state.json", { before, after });
+    check(
+      "restart: delivery, revision file, run, and object re-verify byte-identically (canonical sha256)",
+      canonicalDigest(after) === canonicalDigest(before),
+      JSON.stringify({ before: canonicalDigest(before), after: canonicalDigest(after) }),
+    );
+    check(
+      "restart: the delivery keeps its finalizedAt and modelCount",
+      after.deliveryResponse?.delivery?.finalizedAt === before.deliveryResponse?.delivery?.finalizedAt
+        && after.deliveryResponse?.delivery?.modelCount === before.deliveryResponse?.delivery?.modelCount,
+      JSON.stringify({
+        before: { finalizedAt: before.deliveryResponse?.delivery?.finalizedAt, modelCount: before.deliveryResponse?.delivery?.modelCount },
+        after: { finalizedAt: after.deliveryResponse?.delivery?.finalizedAt, modelCount: after.deliveryResponse?.delivery?.modelCount },
+      }),
+    );
+    check(
+      "restart: the revision file bytes are identical",
+      after.fileSha256 === before.fileSha256,
+      JSON.stringify({ before: before.fileSha256, after: after.fileSha256 }),
+    );
+    const findingCount = (response) =>
+      (response?.scorecard ?? []).flatMap((band) => band.categories.flatMap((c) => c.findings)).length;
+    check(
+      "restart: the run keeps its id, completed status, and scorecard finding count",
+      after.run?.run?.id === before.run?.run?.id
+        && before.run?.run?.status === "completed" && after.run?.run?.status === "completed"
+        && findingCount(after.run) === findingCount(before.run) && findingCount(before.run) >= 1,
+      JSON.stringify({
+        before: { id: before.run?.run?.id, status: before.run?.run?.status, findings: findingCount(before.run) },
+        after: { id: after.run?.run?.id, status: after.run?.run?.status, findings: findingCount(after.run) },
+      }),
+    );
+    check(
+      "restart: the object detail survives restart",
+      after.object?.id === before.object?.id && Array.isArray(after.object?.properties),
+      JSON.stringify({ before: before.object?.id, after: after.object?.id }),
+    );
+
+    // --- seed against the live data dir is still idempotent ---
+    const reseed = runCli(["seed", "--data-dir", dataDir, "--packs-dir", dataDir, "--samples-dir", dataDir]);
+    check(
+      "restart: re-running seed is idempotent (exit 0, state unchanged)",
+      reseed.status === 0 && canonicalDigest(await snapshotState()) === canonicalDigest(before),
+      JSON.stringify({ exit: reseed.status, seedErr: (reseed.stderr ?? "").trim() }),
+    );
+
+    log("restart-serve-2.log", server.getLog());
+  } finally {
+    if (server) await stopProcess(server.child);
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+}
+
+// ---------------------------------------------------------------------------
+
+async function runScenarioByName(scenario, runDir, check, log) {
+  if (scenario === "revisions") return runRevisionsScenarioTop(runDir, check, log);
+  if (scenario === "worker-failure") return runWorkerFailureScenario(check, log);
+  if (scenario === "checks") return runChecksScenario(runDir, check, log);
+  if (scenario === "first-loop") return runFirstLoopScenario(runDir, check, log);
+  if (scenario === "comparisons") return runComparisonsScenario(runDir, check, log);
+  if (scenario === "finding-comparisons") return runFindingComparisonsScenario(runDir, check, log);
+  return runRestartScenario(runDir, check, log);
+}
+
+/** `--scenario all`: runs every SCENARIOS entry sequentially, each with its own
+ * checker and evidence/run-dir exactly as a standalone run (no shared state),
+ * tees every scenario's stdout/stderr into `<allRunDir>/all.log`, writes a
+ * per-scenario pass/fail + check-count summary.json under ticket-16, and exits
+ * nonzero if any scenario failed. */
+async function runAllScenarios() {
+  const aggregateRoot = join(REPO_ROOT, ".omo", "evidence", "modelshelf-prototype", "ticket-16");
+  mkdirSync(aggregateRoot, { recursive: true });
+  const allRunDir = join(aggregateRoot, `run-${new Date().toISOString().replace(/[:.]/g, "-")}`);
+  mkdirSync(allRunDir, { recursive: true });
+
+  // Tee console output into all.log while still forwarding to the terminal.
+  const realLog = console.log;
+  const realError = console.error;
+  const tee = { buffer: "", ok: 0, fail: 0 };
+  console.log = (...args) => {
+    const line = args.join(" ");
+    if (line.startsWith("ok - ")) tee.ok += 1;
+    else if (line.startsWith("FAIL - ")) tee.fail += 1;
+    tee.buffer += `${line}\n`;
+    realLog(...args);
+  };
+  console.error = (...args) => {
+    const line = args.join(" ");
+    if (line.startsWith("FAIL - ")) tee.fail += 1;
+    tee.buffer += `${line}\n`;
+    realError(...args);
+  };
+  const allLogPath = join(allRunDir, "all.log");
+  const flush = (name) => {
+    const chunk = tee.buffer;
+    tee.buffer = "";
+    tee.ok = 0;
+    tee.fail = 0;
+    if (chunk) writeFileSync(allLogPath, `===== ${name} =====\n${chunk}`, { flag: "a" });
+  };
+
+  const summary = { scenario: "all", runDir: allRunDir, scenarios: [] };
+  try {
+    flush("build");
+    buildBinary(allRunDir);
+    flush("build");
+    for (const name of SCENARIOS) {
+      const entry = { scenario: name };
+      try {
+        const { check } = createChecker();
+        const evidenceRoot = join(REPO_ROOT, ".omo", "evidence", "modelshelf-prototype", scenarioEvidenceDir(name));
+        mkdirSync(evidenceRoot, { recursive: true });
+        const runDir = join(evidenceRoot, `run-${new Date().toISOString().replace(/[:.]/g, "-")}`);
+        mkdirSync(runDir, { recursive: true });
+        const log = (fileName, value) =>
+          writeFileSync(join(runDir, fileName), typeof value === "string" ? value : JSON.stringify(value, null, 2));
+        await runScenarioByName(name, runDir, check, log);
+        entry.checks = tee.ok + tee.fail;
+        entry.failures = tee.fail;
+        entry.passed = tee.fail === 0;
+        entry.runDir = runDir;
+      } catch (err) {
+        entry.checks = tee.ok + tee.fail;
+        entry.failures = tee.fail;
+        entry.passed = false;
+        entry.error = err instanceof Error ? err.message : String(err);
+      } finally {
+        flush(name);
+      }
+      summary.scenarios.push(entry);
+    }
+    summary.failed = summary.scenarios.some((s) => !s.passed);
+    summary.failures = summary.scenarios.reduce((total, s) => total + (s.failures ?? 0), 0);
+  } finally {
+    console.log = realLog;
+    console.error = realError;
+    writeFileSync(join(allRunDir, "summary.json"), JSON.stringify(summary, null, 2));
+  }
+
+  console.log(`\nevidence written to ${allRunDir}`);
+  if (summary.failed) {
+    const failedNames = summary.scenarios.filter((s) => !s.passed).map((s) => s.scenario).join(", ");
+    console.error(`\n${failedNames} scenario(s) failed`);
+    process.exit(1);
+  }
+  console.log("\nall scenarios passed");
+}
 
 async function main() {
   const scenario = requireScenario();
+  if (scenario === "all") {
+    await runAllScenarios();
+    return;
+  }
   const { check, failureCount } = createChecker();
-  const evidenceRoot = join(
-    REPO_ROOT,
-    ".omo",
-    "evidence",
-    "modelshelf-prototype",
-    scenario === "checks" ? "task-6" : scenario === "first-loop" ? "task-9" : scenario === "comparisons" ? "ticket-13" : scenario === "finding-comparisons" ? "ticket-14" : "task-2",
-  );
+  const evidenceRoot = join(REPO_ROOT, ".omo", "evidence", "modelshelf-prototype", scenarioEvidenceDir(scenario));
   mkdirSync(evidenceRoot, { recursive: true });
   const runDir = join(evidenceRoot, `run-${new Date().toISOString().replace(/[:.]/g, "-")}`);
   mkdirSync(runDir, { recursive: true });
@@ -1456,19 +1746,7 @@ async function main() {
 
   buildBinary(runDir);
 
-  if (scenario === "revisions") {
-    await runRevisionsScenarioTop(runDir, check, log);
-  } else if (scenario === "worker-failure") {
-    await runWorkerFailureScenario(check, log);
-  } else if (scenario === "first-loop") {
-    await runFirstLoopScenario(runDir, check, log);
-  } else if (scenario === "comparisons") {
-    await runComparisonsScenario(runDir, check, log);
-  } else if (scenario === "finding-comparisons") {
-    await runFindingComparisonsScenario(runDir, check, log);
-  } else {
-    await runChecksScenario(runDir, check, log);
-  }
+  await runScenarioByName(scenario, runDir, check, log);
 
   console.log(`\nevidence written to ${runDir}`);
   if (failureCount() > 0) {

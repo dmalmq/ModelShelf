@@ -66,3 +66,22 @@ Append an Answer with changes, exact commands/results, evidence links, remaining
 ## Comments
 
 Raised on 2026-09-09 by the plan-alignment review of tickets 01-11 and 18. Every claim below cites the file and line observed in that review. No implementation is claimed by ticket creation.
+
+2026-09-09, ticket 16 delivered the reusable viewer extraction as a prerequisite
+for this ticket. `packages/model-viewer` now exposes `model-viewer`,
+`model-viewer/core`, and `model-viewer/ifc`; the ModelShelf app consumes only
+the public wrapper/core exports, and the standalone example uses only the
+framework-independent core. The host URL seam is explicit:
+`modelFileUrl(model)` in the core and `resolveModelFileUrl(model)` in the
+wrapper.
+
+`node scripts/check-viewer-imports.mjs` passed, including controlled invalid
+core/app import fixtures. The standalone scenario passed all 9 checks with the
+ModelShelf services stopped; the combined viewer and inspection scenarios also
+passed after extraction. Evidence:
+[standalone](../../../.omo/evidence/modelshelf-prototype/ticket-16/standalone/run-2026-09-09T08-21-23-700Z/results.json),
+[combined](../evidence/07-combined-viewer/results.json), and
+[inspection](../evidence/08-finding-inspection/results.json).
+
+This comment records delivery only. Ticket 19 remains open and unassigned; its
+status is not changed by ticket 16.

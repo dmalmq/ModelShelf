@@ -1,10 +1,11 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import type { Discipline } from "@/lib/types";
+
 import {
   objectRefKey,
   type DeliveryModel,
   type DrawTarget,
+  type ModelDiscipline,
   type ObjectRef,
   type ObjectRefKey,
   type RendererDiagnostics,
@@ -16,7 +17,7 @@ import {
   type ViewerRenderer,
   type ViewerResourceStats,
   type WorkerHeader,
-} from "./types";
+} from "./viewer-types";
 
 interface RendererOptions {
   readonly canvas: HTMLCanvasElement;
@@ -51,7 +52,7 @@ export class RendererOwner implements ViewerRenderer {
   private readonly records = new Map<ObjectRefKey, SelectionRecord>();
   private readonly targetRecords = new Map<string, SelectionRecord>();
   private readonly trianglesByRevision = new Map<RevisionId, number>();
-  private readonly visibleByDiscipline: Record<Discipline, boolean> = {
+  private readonly visibleByDiscipline: Record<ModelDiscipline, boolean> = {
     ARCH: true,
     STRUCT: true,
     MEP: true,
@@ -262,7 +263,7 @@ export class RendererOwner implements ViewerRenderer {
     if (!box.isEmpty()) this.positionCamera(box);
   }
 
-  setDisciplineVisibility(discipline: Discipline, visible: boolean): void {
+  setDisciplineVisibility(discipline: ModelDiscipline, visible: boolean): void {
     this.visibleByDiscipline[discipline] = visible;
     this.applyVisibility();
   }

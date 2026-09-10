@@ -1,6 +1,6 @@
 import type { Discipline, Finding, FindingObject, ObjectDetail, RunDetail } from "@/lib/types";
-import { parseObjectRef } from "./object-ref";
-import type { ObjectRef } from "./types";
+import { parseObjectRef } from "model-viewer/core";
+import type { ObjectRef } from "model-viewer/core";
 
 /**
  * Finding payloads carry plain-string refs; the viewer core brands them.

@@ -578,11 +578,17 @@ async function main() {
   const kindValue = await page.getByLabel(/種別 \/ Kind/).inputValue();
   record("side toggle preserves filters", kindValue === "moved", `kind=${kindValue}`);
   await page.getByLabel(/種別 \/ Kind/).selectOption("all");
+  // The kind-select re-render is async from the driver's view: poll for the
+  // preserved selection instead of racing the commit with an immediate count.
+  await page.waitForFunction(
+    () => document.querySelectorAll('[data-change-row][data-selected="true"]').length === 1,
+    undefined,
+    { timeout: 30_000 },
+  );
   const stillSelected = await page.locator('[data-change-row][data-selected="true"]').count();
   record("side toggle preserves selection", stillSelected === 1, `${stillSelected} selected rows`);
   await page.waitForSelector("[data-change-detail] [data-frame-state=\"framed\"]", { timeout: 30_000 });
   record("added selection frames head-side geometry", true);
-  await page.screenshot({ path: join(runDir, "compare-head.png"), fullPage: true });
 
   // Head side: removed shows the base banner; the jump returns to base.
   await rowByName(page, "R-1").click();

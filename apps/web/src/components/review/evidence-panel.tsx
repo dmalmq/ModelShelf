@@ -10,9 +10,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../ui/button";
 import { SEVERITY_COLOR } from "@/lib/palette";
-import type { Finding, FindingObject, ModelInfo, RunSummary, SpecResultRow } from "@/lib/types";
-import { fetchAllFindingObjects } from "../viewer/findings-api";
-import type { DeliveryViewerController } from "../viewer/types";
+import type { Finding, FindingObject, ModelInfo, ObjectDetail, RunSummary, SpecResultRow } from "@/lib/types";
+import { fetchAllFindingObjects, fetchObjectDetail } from "./findings-api";
+
+import type { DeliveryViewerController } from "model-viewer/core";
 import { ObjectFilters, type FilterOptions } from "./object-filters";
 import { copy, REVIEW_COPY, type ReviewLang } from "./review-i18n";
 import type { LoadedMembers, ObjectFilterSet } from "./review-state";
@@ -89,6 +90,10 @@ export function EvidencePanel({
   const [loadFailed, setLoadFailed] = useState(false);
   /** Keys (`revisionId\0objectId`) with no drawable geometry in this delivery. */
   const [notDrawn, setNotDrawn] = useState<Record<string, true>>({});
+  const [sectionInput, setSectionInput] = useState("");
+  const [sectionActive, setSectionActive] = useState(false);
+  const [property, setProperty] = useState<ObjectDetail | null>(null);
+  const [propertyError, setPropertyError] = useState<string | null>(null);
 
   const knownModels = useMemo(() => new Set(models.map((model) => model.id)), [models]);
   const modelNameOf = useMemo(() => {
@@ -227,6 +232,58 @@ export function EvidencePanel({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewer, finding.id, finding.objectCount, refs.length === 0 ? "empty" : refs.map((r) => `${r.revisionId}${r.objectId}`).join(",")]);
+  useEffect(() => {
+    if (!viewer) {
+      setSelectedHidden(false);
+      return;
+    }
+    const refreshHidden = () => setSelectedHidden(viewer.diagnostics().selectedHidden);
+    refreshHidden();
+    return viewer.subscribe(refreshHidden);
+  }, [viewer]);
+  useEffect(() => {
+    setSectionInput("");
+    setSectionActive(false);
+    setProperty(null);
+    setPropertyError(null);
+  }, [finding.id]);
+
+  function applySection(): void {
+    if (!viewer) return;
+    const trimmed = sectionInput.trim();
+    if (trimmed === "") {
+      viewer.setSectionZ(null);
+      setSectionActive(false);
+      return;
+    }
+    const z = Number(trimmed);
+    if (!Number.isFinite(z)) return;
+    viewer.setSectionZ(z);
+    setSectionActive(true);
+  }
+
+  async function inspectSelection(): Promise<void> {
+    setProperty(null);
+    setPropertyError(null);
+    if (!viewer) return;
+    const selected = viewer.snapshot().selected;
+    if (!selected) return;
+    const member = membersForFinding.find(
+      (object) =>
+        object.ref.revisionId === selected.ref.revisionId &&
+        object.ref.objectId === selected.ref.objectId,
+    );
+    if (!member) return;
+    if (!member.objectId) {
+      setPropertyError("This finding member has no model occurrence to inspect.");
+      return;
+    }
+    try {
+      setProperty(await fetchObjectDetail(member.objectId));
+    } catch (reason: unknown) {
+      setPropertyError(reason instanceof Error ? reason.message : "Object properties could not be loaded");
+    }
+  }
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount - 1);
@@ -235,13 +292,23 @@ export function EvidencePanel({
   const first = valid[0] ?? null;
 
   return (
-    <div className="space-y-3" data-evidence-panel={finding.id}>
+    <div className="space-y-3" data-evidence-panel={finding.id} data-inspector-active={finding.id}>
       <div>
         <p className="text-[11px] text-muted-foreground">要件 / Requirement</p>
         <p className="mt-0.5 break-all font-mono text-xs" data-evidence-requirement>
           {finding.requirement}
         </p>
       </div>
+
+      {finding.incomplete && (
+        <p
+          className="border border-dashed border-border bg-muted/40 px-2 py-1.5 text-xs"
+          data-evidence-incomplete
+        >
+          レビュー未判定 / Review incomplete — the engine could not decide this requirement.
+          This is never counted as a pass.
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-2 text-xs">
         <div>
@@ -330,6 +397,61 @@ export function EvidencePanel({
         {valid.length !== uniqueKeys ? ` · 一意 ${uniqueKeys}件 (revisionId+objectIdで重複除去)` : ""}
         {matched !== null ? ` · ビューア一致 ${matched}件` : ""} · 描画不可 {withoutGeometry.length}件
       </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="flex items-center gap-1.5 text-[11px]">
+          <span className="text-muted-foreground">Section Z (m)</span>
+          <input
+            aria-label="Section Z metres"
+            className="w-20 border border-border bg-card px-1.5 py-1 font-mono text-xs"
+            value={sectionInput}
+            inputMode="decimal"
+            onChange={(event) => setSectionInput(event.target.value)}
+            onBlur={applySection}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") applySection();
+            }}
+          />
+          {sectionActive && <span className="text-muted-foreground">active</span>}
+        </label>
+        <Button variant="outline" size="sm" onClick={() => void inspectSelection()}>
+          Inspect selection properties / 属性表示
+        </Button>
+      </div>
+      {propertyError && <p className="text-[11px] text-destructive">{propertyError}</p>}
+      {property && (
+        <dl className="space-y-1.5 border border-border p-2 text-[11px]" data-property-panel>
+          <div className="flex justify-between gap-2">
+            <dt className="text-muted-foreground">Type</dt>
+            <dd className="font-mono">{property.ifcType}</dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-muted-foreground">Name</dt>
+            <dd className="truncate">{property.name ?? "Unnamed"}</dd>
+          </div>
+          <div className="flex justify-between gap-2">
+            <dt className="text-muted-foreground">Storey</dt>
+            <dd>{property.storey ?? "—"}</dd>
+          </div>
+          {property.properties.slice(0, 12).map((group) => (
+            <div key={`${group.pset}.${group.name}`}>
+              <dt className="text-muted-foreground">
+                {group.pset}.{group.name}
+                {group.origin === "type" ? " (type)" : ""}
+              </dt>
+              <dd className="font-mono">
+                {group.values
+                  .map((entry) =>
+                    entry.siValue === null || entry.siValue === undefined
+                      ? String(entry.value)
+                      : `${String(entry.value)} → ${entry.siValue}`,
+                  )
+                  .join("; ")}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+
 
       {loadFailed && !membersLoading && (
         <div

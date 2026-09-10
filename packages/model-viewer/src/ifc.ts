@@ -1,0 +1,1 @@
+export { createIfcGeometryLoader } from "./core/ifc-loader";
