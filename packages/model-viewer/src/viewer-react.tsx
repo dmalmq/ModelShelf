@@ -33,6 +33,8 @@ export interface CombinedDeliveryViewerProps {
   readonly resolveModelFileUrl: ModelFileUrlResolver;
   /** Optional geometry driver. Defaults to the real IFC path (`model-viewer/ifc`). */
   readonly geometryLoader?: GeometryLoader;
+  /** Directory that serves `web-ifc.wasm`. Ignored when `geometryLoader` is provided. */
+  readonly wasmBaseUrl?: string;
   /**
    * Controller seam for the host review panel: the viewer publishes its
    * controller here (or null on dispose) so the panel drives highlights
@@ -68,13 +70,32 @@ declare global {
   }
 }
 
-const DISCIPLINES: readonly ModelDiscipline[] = ["ARCH", "STRUCT", "MEP", "OTHER"];
 const DEFAULT_VISIBILITY: Readonly<Record<ModelDiscipline, boolean>> = {
   ARCH: true,
   STRUCT: true,
   MEP: true,
   OTHER: true,
 };
+
+function disciplinesInDelivery(delivery: ViewerDelivery): ModelDiscipline[] {
+  const seen = new Set<ModelDiscipline>();
+  const disciplines: ModelDiscipline[] = [];
+  for (const model of delivery.models) {
+    if (seen.has(model.discipline)) continue;
+    seen.add(model.discipline);
+    disciplines.push(model.discipline);
+  }
+  return disciplines;
+}
+
+function visibleWithDelivery(current: Record<ModelDiscipline, boolean>, delivery: ViewerDelivery): Record<ModelDiscipline, boolean> {
+  const next = { ...current };
+  for (const discipline of disciplinesInDelivery(delivery)) {
+    if (next[discipline] === undefined) next[discipline] = true;
+  }
+  return next;
+}
+
 export type ViewerLocale = "ja" | "en";
 
 interface ViewerCopy {
@@ -209,6 +230,7 @@ export function CombinedDeliveryViewer({
   loadDelivery,
   resolveModelFileUrl,
   geometryLoader,
+  wasmBaseUrl,
   onController,
   inspector,
   locale = DEFAULT_LOCALE,
@@ -247,7 +269,10 @@ export function CombinedDeliveryViewer({
     setError(null);
     setVisible({ ...DEFAULT_VISIBILITY });
     void loadDelivery(deliveryId, abortController.signal)
-      .then(setDelivery)
+      .then((loaded) => {
+        setVisible((current) => visibleWithDelivery(current, loaded));
+        setDelivery(loaded);
+      })
       .catch((reason: unknown) => {
         if (abortController.signal.aborted) return;
         setError(reason instanceof Error ? reason.message : "Delivery could not be loaded");
@@ -262,7 +287,7 @@ export function CombinedDeliveryViewer({
     const controller = createDeliveryViewer({
       delivery,
       canvas,
-      geometryLoader: geometryLoader ?? createIfcGeometryLoader(),
+      geometryLoader: geometryLoader ?? createIfcGeometryLoader({ wasmBaseUrl }),
       modelFileUrl: resolveModelFileUrl,
     });
     const verificationHandle: ViewerVerificationHandle = {
@@ -307,7 +332,7 @@ export function CombinedDeliveryViewer({
         }
       }
     };
-  }, [delivery, geometryLoader, onController, resolveModelFileUrl]);
+  }, [delivery, geometryLoader, onController, resolveModelFileUrl, wasmBaseUrl]);
 
   if (error) {
     return (
@@ -430,23 +455,26 @@ export function CombinedDeliveryViewer({
         >
           <div className="flex min-h-11 shrink-0 flex-wrap items-center gap-2 border-b bg-card px-3 py-1.5">
             <span className="mr-1 text-xs text-muted-foreground">{copy.visibility}</span>
-            {DISCIPLINES.map((discipline) => (
-              <button
-                key={discipline}
-                type="button"
-                aria-pressed={visible[discipline]}
-                className="inline-flex min-h-11 items-center gap-1.5 border border-border bg-card px-2 text-xs font-medium text-foreground transition-colors hover:bg-muted aria-pressed:border-primary aria-pressed:bg-accent aria-pressed:text-accent-foreground sm:min-h-8"
-                data-discipline-toggle={discipline}
-                onClick={() => {
-                  const next = !visible[discipline];
-                  setVisible((current) => ({ ...current, [discipline]: next }));
-                  controllerRef.current?.setDisciplineVisibility(discipline, next);
-                }}
-              >
-                {visible[discipline] ? <Eye className="size-3" /> : <EyeOff className="size-3" />}
-                {discipline}
-              </button>
-            ))}
+            {disciplinesInDelivery(delivery).map((discipline) => {
+              const shown = visible[discipline] !== false;
+              return (
+                <button
+                  key={discipline}
+                  type="button"
+                  aria-pressed={shown}
+                  className="inline-flex min-h-11 items-center gap-1.5 border border-border bg-card px-2 text-xs font-medium text-foreground transition-colors hover:bg-muted aria-pressed:border-primary aria-pressed:bg-accent aria-pressed:text-accent-foreground sm:min-h-8"
+                  data-discipline-toggle={discipline}
+                  onClick={() => {
+                    const next = !shown;
+                    setVisible((current) => ({ ...current, [discipline]: next }));
+                    controllerRef.current?.setDisciplineVisibility(discipline, next);
+                  }}
+                >
+                  {shown ? <Eye className="size-3" /> : <EyeOff className="size-3" />}
+                  {discipline}
+                </button>
+              );
+            })}
           </div>
           <div className="viewer-plate relative min-h-0 flex-1">
             <canvas

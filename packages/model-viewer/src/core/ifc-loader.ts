@@ -9,11 +9,17 @@ interface WorkerLike {
   onerror: ((event: ErrorEvent) => void) | null;
 }
 
+export interface IfcGeometryLoaderOptions {
+  /** Directory that serves `web-ifc.wasm`. Relative values resolve against the worker origin. */
+  readonly wasmBaseUrl?: string;
+}
+
 /** Authored IFC driver: one dedicated browser Worker per viewer lifetime, fed
  * the same request/response protocol the app used before this package existed.
  * The worker module is only reachable through this entry, so the framework
  * core bundle never contains web-ifc. */
-export function createIfcGeometryLoader(): GeometryLoader {
+export function createIfcGeometryLoader(options: IfcGeometryLoaderOptions = {}): GeometryLoader {
+  const wasmBaseUrl = resolveWasmBaseUrl(options.wasmBaseUrl);
   let worker: WorkerLike | null = null;
   let live = 0;
 
@@ -111,12 +117,17 @@ export function createIfcGeometryLoader(): GeometryLoader {
         revisionId: model.revisionId,
         discipline: model.discipline,
         fileUrl: model.fileUrl,
-        wasmBaseUrl: "/wasm/",
+        wasmBaseUrl,
       });
     });
 }
 
 let jobCounter = 0;
+
+function resolveWasmBaseUrl(value: string | undefined): string {
+  const trimmed = value?.trim() ?? "";
+  return trimmed.length > 0 ? trimmed : "/wasm/";
+}
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Unknown viewer error";

@@ -1,1 +1,1 @@
-export { createIfcGeometryLoader } from "./core/ifc-loader";
+export { createIfcGeometryLoader, type IfcGeometryLoaderOptions } from "./core/ifc-loader";

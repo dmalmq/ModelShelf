@@ -70,6 +70,8 @@ import { BIN_PATH, REPO_ROOT, buildBinary, createChecker, freePort, runCli, stop
 const FAKE_WORKER = join(REPO_ROOT, "scripts", "fixtures", "fake-worker.mjs");
 const FIXTURES_IFC = join(REPO_ROOT, "packs", "demo", "fixtures", "base.ifc");
 const FIXTURES_IDS = join(REPO_ROOT, "packs", "demo", "fixtures.ids");
+const DEMO_PACKS_DIR = join(REPO_ROOT, "packs", "demo");
+const DEMO_SAMPLES_DIR = join(REPO_ROOT, "samples", "ifc");
 
 /** The seven runnable scenarios, in the fixed order `--scenario all` runs them. */
 const SCENARIOS = ["revisions", "worker-failure", "checks", "first-loop", "comparisons", "finding-comparisons", "restart"];
@@ -1573,8 +1575,9 @@ async function runRestartScenario(runDir, check, log) {
   const dataDir = mkdtempSync(join(tmpdir(), "modelshelf-verify-api-restart-"));
   let server;
   try {
-    const seed = runCli(["seed", "--data-dir", dataDir, "--packs-dir", dataDir, "--samples-dir", dataDir]);
+    const seed = runCli(["seed", "--data-dir", dataDir, "--packs-dir", DEMO_PACKS_DIR, "--samples-dir", DEMO_SAMPLES_DIR]);
     check("restart: seed succeeds", seed.status === 0, seed.stderr);
+    check("restart: seed loads demo pack versions", /\(\+[1-9]\d* pack version/.test(seed.stdout), seed.stdout);
 
     server = await startServerOnPort(dataDir, await freePort());
     const base = server.base;
@@ -1683,11 +1686,13 @@ async function runRestartScenario(runDir, check, log) {
     );
 
     // --- seed against the live data dir is still idempotent ---
-    const reseed = runCli(["seed", "--data-dir", dataDir, "--packs-dir", dataDir, "--samples-dir", dataDir]);
+    const reseed = runCli(["seed", "--data-dir", dataDir, "--packs-dir", DEMO_PACKS_DIR, "--samples-dir", DEMO_SAMPLES_DIR]);
     check(
       "restart: re-running seed is idempotent (exit 0, state unchanged)",
-      reseed.status === 0 && canonicalDigest(await snapshotState()) === canonicalDigest(before),
-      JSON.stringify({ exit: reseed.status, seedErr: (reseed.stderr ?? "").trim() }),
+      reseed.status === 0
+        && /\(\+0 pack version/.test(reseed.stdout)
+        && canonicalDigest(await snapshotState()) === canonicalDigest(before),
+      JSON.stringify({ exit: reseed.status, seedOut: (reseed.stdout ?? "").trim(), seedErr: (reseed.stderr ?? "").trim() }),
     );
 
     log("restart-serve-2.log", server.getLog());
