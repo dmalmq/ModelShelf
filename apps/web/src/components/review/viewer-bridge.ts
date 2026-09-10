@@ -101,4 +101,5 @@ export function clearFindingFromViewer(controller: DeliveryViewerController): vo
   controller.setHighlights([]);
   controller.isolate(null);
   controller.setDimOpacity(1);
+  controller.setSectionZ(null);
 }

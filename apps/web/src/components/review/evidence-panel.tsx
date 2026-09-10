@@ -7,7 +7,7 @@
 // valid prefix still renders; nothing here throws on API data.
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../ui/button";
 import { SEVERITY_COLOR } from "@/lib/palette";
 import type { Finding, FindingObject, ModelInfo, ObjectDetail, RunSummary, SpecResultRow } from "@/lib/types";
@@ -94,6 +94,8 @@ export function EvidencePanel({
   const [sectionActive, setSectionActive] = useState(false);
   const [property, setProperty] = useState<ObjectDetail | null>(null);
   const [propertyError, setPropertyError] = useState<string | null>(null);
+  const propertyRequest = useRef<{ controller: AbortController; version: number } | null>(null);
+  const propertyRequestVersion = useRef(0);
 
   const knownModels = useMemo(() => new Set(models.map((model) => model.id)), [models]);
   const modelNameOf = useMemo(() => {
@@ -242,11 +244,19 @@ export function EvidencePanel({
     return viewer.subscribe(refreshHidden);
   }, [viewer]);
   useEffect(() => {
+    propertyRequest.current?.controller.abort();
+    propertyRequest.current = null;
+    propertyRequestVersion.current += 1;
     setSectionInput("");
     setSectionActive(false);
     setProperty(null);
     setPropertyError(null);
-  }, [finding.id]);
+    return () => {
+      propertyRequest.current?.controller.abort();
+      propertyRequest.current = null;
+      propertyRequestVersion.current += 1;
+    };
+  }, [finding.id, viewer]);
 
   function applySection(): void {
     if (!viewer) return;
@@ -263,6 +273,9 @@ export function EvidencePanel({
   }
 
   async function inspectSelection(): Promise<void> {
+    propertyRequest.current?.controller.abort();
+    propertyRequest.current = null;
+    const requestVersion = ++propertyRequestVersion.current;
     setProperty(null);
     setPropertyError(null);
     if (!viewer) return;
@@ -278,10 +291,36 @@ export function EvidencePanel({
       setPropertyError("This finding member has no model occurrence to inspect.");
       return;
     }
+    const selectedKey = `${selected.ref.revisionId}\0${selected.ref.objectId}`;
+    const controller = new AbortController();
+    propertyRequest.current = { controller, version: requestVersion };
     try {
-      setProperty(await fetchObjectDetail(member.objectId));
+      const detail = await fetchObjectDetail(member.objectId, controller.signal);
+      const current = viewer.snapshot().selected;
+      const currentKey = current ? `${current.ref.revisionId}\0${current.ref.objectId}` : null;
+      if (
+        controller.signal.aborted ||
+        requestVersion !== propertyRequestVersion.current ||
+        currentKey !== selectedKey
+      ) {
+        return;
+      }
+      setProperty(detail);
     } catch (reason: unknown) {
+      const current = viewer.snapshot().selected;
+      const currentKey = current ? `${current.ref.revisionId}\0${current.ref.objectId}` : null;
+      if (
+        controller.signal.aborted ||
+        requestVersion !== propertyRequestVersion.current ||
+        currentKey !== selectedKey
+      ) {
+        return;
+      }
       setPropertyError(reason instanceof Error ? reason.message : "Object properties could not be loaded");
+    } finally {
+      if (propertyRequest.current?.version === requestVersion) {
+        propertyRequest.current = null;
+      }
     }
   }
 
