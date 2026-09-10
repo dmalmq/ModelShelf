@@ -439,16 +439,16 @@ export async function runInspectionScenario() {
     });
     check(true, "reset view clears isolation and reveals the selection");
 
-    await review.getByLabel("Section Z metres").fill("1.5");
-    await review.getByLabel("Section Z metres").press("Enter");
+    await review.getByLabel(/Section Z metres|断面 Z メートル/).fill("1.5");
+    await review.getByLabel(/Section Z metres|断面 Z メートル/).press("Enter");
 
     await page.waitForFunction(() => window.__modelshelfViewer?.inspect().renderer.clipping === true, undefined, {
       timeout: 30_000,
     });
     check(true, "section cut clips above the project height");
     await page.screenshot({ path: join(EVIDENCE_DIR, "inspection-section.png") });
-    await review.getByLabel("Section Z metres").fill("");
-    await review.getByLabel("Section Z metres").press("Enter");
+    await review.getByLabel(/Section Z metres|断面 Z メートル/).fill("");
+    await review.getByLabel(/Section Z metres|断面 Z メートル/).press("Enter");
 
     const refreshedBox = await canvas.boundingBox();
     if (!refreshedBox) throw new Error("Inspector canvas has no layout box");
@@ -465,10 +465,25 @@ export async function runInspectionScenario() {
     check(Boolean(picked), "canvas picking selects geometry beside the inspector");
     const memberRef = paged.objects[0].ref;
     await page.evaluate((ref) => window.__modelshelfViewer?.select(ref), memberRef);
-    await review.getByRole("button", { name: /Inspect selection properties/ }).click();
+    await review.getByRole("button", { name: /Inspect selection properties|選択オブジェクトの属性を表示/ }).click();
     await page.waitForSelector("[data-property-panel]", { timeout: 30_000 });
     const panelText = (await review.locator("[data-property-panel]").innerText()).slice(0, 400);
     results.propertySample = panelText;
+    const propertyFontSize = await review.locator("[data-property-panel]").evaluate(
+      (node) => Number.parseFloat(getComputedStyle(node).fontSize),
+    );
+    check(propertyFontSize >= 12, `property inspector text meets the 12px floor (${propertyFontSize}px)`);
+    const secondMemberRef = paged.objects.find(
+      (object) =>
+        object.ref.revisionId !== memberRef.revisionId ||
+        object.ref.objectId !== memberRef.objectId,
+    )?.ref;
+    check(Boolean(secondMemberRef), "a second member is available for property cleanup");
+    if (secondMemberRef) {
+      await page.evaluate((ref) => window.__modelshelfViewer?.select(ref), secondMemberRef);
+      await page.waitForSelector("[data-property-panel]", { state: "detached", timeout: 30_000 });
+      check(true, "changing viewer selection clears stale property details");
+    }
 
     const finale = await inspect(page);
     perf.inputs = {
@@ -524,7 +539,7 @@ export async function runInspectionScenario() {
     await page.waitForSelector(`[data-inspector-active="${incompleteFinding.id}"]`, { timeout: 60_000 });
     await page.waitForSelector("[data-evidence-panel]", { timeout: 30_000 });
     const evidenceText = await page.locator("[data-evidence-panel]").innerText();
-    check(/review incomplete/i.test(evidenceText), "non-geometric finding renders evidence with an explanation");
+    check(/review incomplete|レビュー未判定/i.test(evidenceText), "non-geometric finding renders evidence with an explanation");
     await page.screenshot({ path: join(EVIDENCE_DIR, "inspection-evidence.png"), fullPage: true });
 
     results.passed = true;

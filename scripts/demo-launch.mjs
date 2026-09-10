@@ -24,8 +24,8 @@ function usage() {
   console.log(`usage: node scripts/demo-launch.mjs [options]
 
 Starts the complete ModelShelf local demo: builds the checker, seeds the
-demo data, serves the API, launches the web app, and shuts both down on
-SIGINT/SIGTERM.
+demo data, serves the API, launches the web app, and stops both services on
+SIGINT/SIGTERM or when either child exits unexpectedly.
 
 Options:
   --data-dir <dir>   data directory to seed and serve (default: ${DEFAULT_DATA_DIR})
@@ -104,17 +104,35 @@ async function main() {
   let serveProcess;
   let webProcess;
   let shuttingDown = false;
-  async function shutdown() {
+  async function shutdown(exitCode = 0) {
     if (shuttingDown) return;
     shuttingDown = true;
     console.log("\nstopping ModelShelf demo...");
     await stopProcess(webProcess);
     await stopProcess(serveProcess);
     console.log("demo stopped");
-    process.exit(0);
+    process.exit(exitCode);
   }
   process.on("SIGINT", () => void shutdown());
   process.on("SIGTERM", () => void shutdown());
+  function watchForUnexpectedExit(name, child) {
+    let observed = false;
+    const report = (reason) => {
+      if (observed || shuttingDown) return;
+      observed = true;
+      console.error(`\n${name} exited unexpectedly (${reason}).`);
+      void shutdown(1);
+    };
+    child.once("error", (error) => report(`spawn error: ${error.message}`));
+    child.once("exit", (code, signal) => {
+      const reason = signal ? `signal ${signal}` : `exit code ${String(code)}`;
+      report(reason);
+    });
+    if (child.exitCode !== null || child.signalCode !== null) {
+      const reason = child.signalCode ? `signal ${child.signalCode}` : `exit code ${String(child.exitCode)}`;
+      report(reason);
+    }
+  }
 
   // 1. build the checker once
   console.log("building modelshelf-checker...");
@@ -142,6 +160,7 @@ async function main() {
     ["serve", "--data-dir", dataDir, "--port", String(port), "--worker-command", WORKER_COMMAND],
     { cwd: REPO_ROOT, stdio: "inherit" },
   );
+  watchForUnexpectedExit("checker", serveProcess);
   try {
     await waitForHealth(port, { child: serveProcess, timeoutMs: 15_000 });
   } catch (err) {
@@ -157,6 +176,7 @@ async function main() {
     env: { ...process.env, CHECKER_ORIGIN: apiOrigin },
     stdio: "inherit",
   });
+  watchForUnexpectedExit("web", webProcess);
   try {
     await waitForWeb(WEB_PORT, { child: webProcess });
   } catch (err) {

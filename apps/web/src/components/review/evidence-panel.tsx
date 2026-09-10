@@ -67,6 +67,10 @@ function validateMember(object: FindingObject, knownModels: Set<string>): string
   return null;
 }
 
+function refKey(ref: { readonly revisionId: string; readonly objectId: string } | null): string | null {
+  return ref ? `${ref.revisionId}\0${ref.objectId}` : null;
+}
+
 export function EvidencePanel({
   finding,
   run,
@@ -96,6 +100,7 @@ export function EvidencePanel({
   const [propertyError, setPropertyError] = useState<string | null>(null);
   const propertyRequest = useRef<{ controller: AbortController; version: number } | null>(null);
   const propertyRequestVersion = useRef(0);
+  const lastSelectionKey = useRef<string | null>(null);
 
   const knownModels = useMemo(() => new Set(models.map((model) => model.id)), [models]);
   const modelNameOf = useMemo(() => {
@@ -236,12 +241,24 @@ export function EvidencePanel({
   }, [viewer, finding.id, finding.objectCount, refs.length === 0 ? "empty" : refs.map((r) => `${r.revisionId}${r.objectId}`).join(",")]);
   useEffect(() => {
     if (!viewer) {
+      lastSelectionKey.current = null;
       setSelectedHidden(false);
       return;
     }
-    const refreshHidden = () => setSelectedHidden(viewer.diagnostics().selectedHidden);
-    refreshHidden();
-    return viewer.subscribe(refreshHidden);
+    const refreshSelection = () => {
+      const selectedKey = refKey(viewer.snapshot().selected?.ref ?? null);
+      if (selectedKey !== lastSelectionKey.current) {
+        lastSelectionKey.current = selectedKey;
+        propertyRequest.current?.controller.abort();
+        propertyRequest.current = null;
+        propertyRequestVersion.current += 1;
+        setProperty(null);
+        setPropertyError(null);
+      }
+      setSelectedHidden(viewer.diagnostics().selectedHidden);
+    };
+    refreshSelection();
+    return viewer.subscribe(refreshSelection);
   }, [viewer]);
   useEffect(() => {
     propertyRequest.current?.controller.abort();
@@ -288,16 +305,16 @@ export function EvidencePanel({
     );
     if (!member) return;
     if (!member.objectId) {
-      setPropertyError("This finding member has no model occurrence to inspect.");
+      setPropertyError(copy(REVIEW_COPY.noOccurrence, lang));
       return;
     }
-    const selectedKey = `${selected.ref.revisionId}\0${selected.ref.objectId}`;
+    const selectedKey = refKey(selected.ref);
     const controller = new AbortController();
     propertyRequest.current = { controller, version: requestVersion };
     try {
       const detail = await fetchObjectDetail(member.objectId, controller.signal);
       const current = viewer.snapshot().selected;
-      const currentKey = current ? `${current.ref.revisionId}\0${current.ref.objectId}` : null;
+      const currentKey = refKey(current?.ref ?? null);
       if (
         controller.signal.aborted ||
         requestVersion !== propertyRequestVersion.current ||
@@ -308,7 +325,7 @@ export function EvidencePanel({
       setProperty(detail);
     } catch (reason: unknown) {
       const current = viewer.snapshot().selected;
-      const currentKey = current ? `${current.ref.revisionId}\0${current.ref.objectId}` : null;
+      const currentKey = refKey(current?.ref ?? null);
       if (
         controller.signal.aborted ||
         requestVersion !== propertyRequestVersion.current ||
@@ -316,7 +333,7 @@ export function EvidencePanel({
       ) {
         return;
       }
-      setPropertyError(reason instanceof Error ? reason.message : "Object properties could not be loaded");
+      setPropertyError(reason instanceof Error ? reason.message : copy(REVIEW_COPY.propertyError, lang));
     } finally {
       if (propertyRequest.current?.version === requestVersion) {
         propertyRequest.current = null;
@@ -344,8 +361,7 @@ export function EvidencePanel({
           className="border border-dashed border-border bg-muted/40 px-2 py-1.5 text-xs"
           data-evidence-incomplete
         >
-          レビュー未判定 / Review incomplete — the engine could not decide this requirement.
-          This is never counted as a pass.
+          {copy(REVIEW_COPY.incompleteNotice, lang)}
         </p>
       )}
 
@@ -437,10 +453,10 @@ export function EvidencePanel({
         {matched !== null ? ` · ビューア一致 ${matched}件` : ""} · 描画不可 {withoutGeometry.length}件
       </p>
       <div className="flex flex-wrap items-center gap-2">
-        <label className="flex items-center gap-1.5 text-[11px]">
-          <span className="text-muted-foreground">Section Z (m)</span>
+        <label className="flex items-center gap-1.5 text-xs">
+          <span className="text-muted-foreground">{copy(REVIEW_COPY.sectionZ, lang)}</span>
           <input
-            aria-label="Section Z metres"
+            aria-label={copy(REVIEW_COPY.sectionZInputLabel, lang)}
             className="w-20 border border-border bg-card px-1.5 py-1 font-mono text-xs"
             value={sectionInput}
             inputMode="decimal"
@@ -450,32 +466,32 @@ export function EvidencePanel({
               if (event.key === "Enter") applySection();
             }}
           />
-          {sectionActive && <span className="text-muted-foreground">active</span>}
+          {sectionActive && <span className="text-muted-foreground">{copy(REVIEW_COPY.sectionActive, lang)}</span>}
         </label>
         <Button variant="outline" size="sm" onClick={() => void inspectSelection()}>
-          Inspect selection properties / 属性表示
+          {copy(REVIEW_COPY.inspectSelection, lang)}
         </Button>
       </div>
-      {propertyError && <p className="text-[11px] text-destructive">{propertyError}</p>}
+      {propertyError && <p className="text-xs text-destructive">{propertyError}</p>}
       {property && (
-        <dl className="space-y-1.5 border border-border p-2 text-[11px]" data-property-panel>
+        <dl className="space-y-1.5 border border-border p-2 text-xs" data-property-panel>
           <div className="flex justify-between gap-2">
-            <dt className="text-muted-foreground">Type</dt>
+            <dt className="text-muted-foreground">{copy(REVIEW_COPY.propertyType, lang)}</dt>
             <dd className="font-mono">{property.ifcType}</dd>
           </div>
           <div className="flex justify-between gap-2">
-            <dt className="text-muted-foreground">Name</dt>
-            <dd className="truncate">{property.name ?? "Unnamed"}</dd>
+            <dt className="text-muted-foreground">{copy(REVIEW_COPY.propertyName, lang)}</dt>
+            <dd className="truncate">{property.name ?? copy(REVIEW_COPY.unnamed, lang)}</dd>
           </div>
           <div className="flex justify-between gap-2">
-            <dt className="text-muted-foreground">Storey</dt>
-            <dd>{property.storey ?? "—"}</dd>
+            <dt className="text-muted-foreground">{copy(REVIEW_COPY.propertyStorey, lang)}</dt>
+            <dd>{property.storey ?? copy(REVIEW_COPY.noValue, lang)}</dd>
           </div>
           {property.properties.slice(0, 12).map((group) => (
             <div key={`${group.pset}.${group.name}`}>
               <dt className="text-muted-foreground">
                 {group.pset}.{group.name}
-                {group.origin === "type" ? " (type)" : ""}
+                {group.origin === "type" ? copy(REVIEW_COPY.propertyTypeOrigin, lang) : ""}
               </dt>
               <dd className="font-mono">
                 {group.values

@@ -34,6 +34,10 @@ export const REVIEW_COPY = {
   incomplete: { ja: "未判定", en: "Incomplete" },
   pass: { ja: "合格", en: "Pass" },
   fail: { ja: "不合格", en: "Fail" },
+  incompleteNotice: {
+    ja: "レビュー未判定 — エンジンはこの要件を判定できませんでした。合格には数えません。",
+    en: "Review incomplete — the engine could not decide this requirement. This is never counted as a pass.",
+  },
   expectedAbsent: { ja: "期待値は記載なし", en: "Expected value not stated" },
   instructionsAbsent: { ja: "指示は記載なし", en: "No instructions stated" },
   scopeHeading: { ja: "適用範囲", en: "Scope" },
@@ -50,6 +54,21 @@ export const REVIEW_COPY = {
   newRun: { ja: "新規ラン", en: "New run" },
   runLabel: { ja: "ラン", en: "Run" },
   packLabel: { ja: "チェックパック", en: "Check pack" },
+  sectionZ: { ja: "断面 Z (m)", en: "Section Z (m)" },
+  sectionZInputLabel: { ja: "断面 Z メートル", en: "Section Z metres" },
+  sectionActive: { ja: "適用中", en: "active" },
+  inspectSelection: { ja: "選択オブジェクトの属性を表示", en: "Inspect selection properties" },
+  noOccurrence: {
+    ja: "このメンバーには照会できるモデル出現がありません。",
+    en: "This finding member has no model occurrence to inspect.",
+  },
+  propertyError: { ja: "オブジェクト属性を読み込めませんでした", en: "Object properties could not be loaded" },
+  propertyType: { ja: "タイプ", en: "Type" },
+  propertyName: { ja: "名称", en: "Name" },
+  propertyStorey: { ja: "階", en: "Storey" },
+  unnamed: { ja: "名称なし", en: "Unnamed" },
+  noValue: { ja: "—", en: "—" },
+  propertyTypeOrigin: { ja: " (型)", en: " (type)" },
 } as const;
 
 export type ReviewLang = "ja" | "en";

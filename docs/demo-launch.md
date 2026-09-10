@@ -39,7 +39,7 @@ node scripts/demo-launch.mjs
 
 `scripts/demo-launch.mjs` performs the launch exactly as the manual sequence
 below: build the checker, seed the demo data, start the API, start the web dev
-server, and shut both down on SIGINT.
+server, and stop both services on SIGINT/SIGTERM or if either child exits.
 
 Manual sequence (equivalent, step by step):
 
@@ -205,7 +205,8 @@ Verification commands and what each proves:
 ## Shutdown and restart
 
 - Stop the service with Ctrl-C (SIGINT). `scripts/demo-launch.mjs` shuts down
-  both the API and the web dev server on SIGINT.
+  both the API and the web dev server on SIGINT/SIGTERM. If either child exits
+  unexpectedly, it stops the survivor and exits nonzero.
 - The checker holds no state outside its `--data-dir` (README): a restart
   against the same directory picks up where it left off, and deliveries,
   runs, and artifacts remain identical (ticket 16 acceptance; the `restart`
