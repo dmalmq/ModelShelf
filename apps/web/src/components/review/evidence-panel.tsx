@@ -96,6 +96,7 @@ export function EvidencePanel({
   /** True after "Reset view": the finding stays coloured, nothing stays hidden. */
   const [isolationOff, setIsolationOff] = useState(false);
   const inspectAbort = useRef<AbortController | null>(null);
+  const [readyModels, setReadyModels] = useState(0);
 
   useEffect(() => {
     inspectAbort.current?.abort();
@@ -121,6 +122,17 @@ export function EvidencePanel({
       }
     };
   }, [finding.id, viewer]);
+
+  useEffect(() => {
+    if (!viewer) {
+      setReadyModels(0);
+      return;
+    }
+    const countReady = (snapshot: { sources: readonly { status: string }[] }): number =>
+      snapshot.sources.filter((source) => source.status === "ready").length;
+    setReadyModels(countReady(viewer.snapshot()));
+    return viewer.subscribe((snapshot) => setReadyModels(countReady(snapshot)));
+  }, [viewer]);
 
   function applySection(): void {
     if (!viewer) return;
@@ -337,16 +349,19 @@ export function EvidencePanel({
     } catch {
       setMatched(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewer, finding.id, finding.objectCount, isolationOff, readyModels, refs.length === 0 ? "empty" : refs.map((r) => `${r.revisionId}${r.objectId}`).join(",")]);
+
+  useEffect(() => {
+    if (!viewer) return;
     return () => {
-      // Unmount (run switch, deselect) must not leave stale highlights behind.
       try {
         clearFindingFromViewer(viewer);
       } catch {
         // Viewer already disposed; nothing to clear.
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewer, finding.id, finding.objectCount, isolationOff, refs.length === 0 ? "empty" : refs.map((r) => `${r.revisionId}${r.objectId}`).join(",")]);
+  }, [viewer, finding.id]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount - 1);

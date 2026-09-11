@@ -2,19 +2,20 @@ import { internDriver, GeometryLoadError, type GeometryLoadSink, type InternalGe
 import { SceneOwner } from "./scene";
 import { refKey } from "./object-ref";
 import type { ObjectRef, RevisionId } from "./object-ref";
-import type {
-  Bounds3,
-  FailureStage,
-  ModelViewer,
-  ModelViewerOptions,
-  Overlay,
-  OverlayResult,
-  SharedOrigin,
-  SourceState,
-  ViewerDiagnostics,
-  ViewerResourceStats,
-  ViewerSnapshot,
-  ViewerSource,
+import {
+  NO_OVERLAY,
+  type Bounds3,
+  type FailureStage,
+  type ModelViewer,
+  type ModelViewerOptions,
+  type Overlay,
+  type OverlayResult,
+  type SharedOrigin,
+  type SourceState,
+  type ViewerDiagnostics,
+  type ViewerResourceStats,
+  type ViewerSnapshot,
+  type ViewerSource,
 } from "./types";
 
 interface RevisionSlot {
@@ -45,6 +46,7 @@ class ModelViewerImpl implements ModelViewer {
   private pumping = false;
   private isolatedRequested: number | null = null;
   private sectionZ: number | null = null;
+  private overlay: Overlay = NO_OVERLAY;
   private workers = 0;
 
   constructor(options: ModelViewerOptions) {
@@ -97,6 +99,7 @@ class ModelViewerImpl implements ModelViewer {
 
     this.removeSelectionForRevision(revisionId);
     this.scene.removeRevision(revisionId);
+    this.restoreOverlay();
     slot.abort = null;
     slot.headerReceived = false;
     slot.headerBounds = null;
@@ -118,13 +121,11 @@ class ModelViewerImpl implements ModelViewer {
   }
 
   applyOverlay(overlay: Overlay): OverlayResult {
+    this.overlay = overlay;
     if (this.disposed) {
       return { groups: [], isolatedMatched: null, missing: [], selectionHidden: false };
     }
-    this.scene.setDimOpacity(overlay.dimOpacity);
-    const groups = this.scene.setHighlights(overlay.highlights);
-    this.isolatedRequested = overlay.isolate === null ? null : overlay.isolate.length;
-    this.scene.isolate(overlay.isolate);
+    this.restoreOverlay();
     if (overlay.frame !== null) this.scene.frame(overlay.frame);
     const missing = this.collectMissing([
       ...overlay.highlights.flatMap((group) => group.refs),
@@ -133,7 +134,7 @@ class ModelViewerImpl implements ModelViewer {
     ]);
     this.emit();
     return {
-      groups,
+      groups: this.scene.highlightResults(),
       isolatedMatched: overlay.isolate === null ? null : this.scene.countIsolatedMatched(),
       missing,
       selectionHidden: this.scene.selectedHidden(),
@@ -203,6 +204,7 @@ class ModelViewerImpl implements ModelViewer {
     this.selected = null;
     this.isolatedRequested = null;
     this.sectionZ = null;
+    this.overlay = NO_OVERLAY;
     this.listeners.clear();
   }
 
@@ -251,6 +253,7 @@ class ModelViewerImpl implements ModelViewer {
       },
       header: (header) => {
         this.scene.uploadHeader(slot.revisionId, header);
+        this.restoreOverlay();
         slot.headerReceived = true;
         slot.headerBounds = header.bounds;
         slot.objectCount = header.objectCount;
@@ -307,6 +310,7 @@ class ModelViewerImpl implements ModelViewer {
   private failSlot(slot: RevisionSlot, stage: FailureStage, message: string, retryable: boolean): void {
     this.scene.removeRevision(slot.revisionId);
     this.removeSelectionForRevision(slot.revisionId);
+    this.restoreOverlay();
     slot.state = {
       status: "failed",
       revisionId: slot.revisionId,
@@ -316,6 +320,14 @@ class ModelViewerImpl implements ModelViewer {
       retryable,
     };
     this.emit();
+  }
+
+  private restoreOverlay(): void {
+    if (this.disposed) return;
+    this.scene.setDimOpacity(this.overlay.dimOpacity);
+    this.scene.setHighlights(this.overlay.highlights);
+    this.isolatedRequested = this.overlay.isolate === null ? null : this.overlay.isolate.length;
+    this.scene.isolate(this.overlay.isolate);
   }
 
   private collectMissing(refs: readonly ObjectRef[]): ObjectRef[] {
