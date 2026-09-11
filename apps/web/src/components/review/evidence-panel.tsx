@@ -185,9 +185,9 @@ export function EvidencePanel({
       const detail = await fetchObjectDetail(match.objectId, abort.signal);
       if (abort.signal.aborted) return;
       setProperty(detail);
-    } catch (reason: unknown) {
+    } catch {
       if (abort.signal.aborted) return;
-      setPropertyError(reason instanceof Error ? reason.message : copy.propertyFailed);
+      setPropertyError(copy.propertyFailed);
     }
   }
 
