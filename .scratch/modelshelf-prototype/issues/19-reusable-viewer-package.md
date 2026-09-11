@@ -67,13 +67,22 @@ Append an Answer with changes, exact commands/results, evidence links, remaining
 
 Raised on 2026-09-09 by the plan-alignment review of tickets 01-11 and 18. Every claim below cites the file and line observed in that review. No implementation is claimed by ticket creation.
 
-2026-09-11, claimed by `cursor-grok-ticket-19-2026-09-11` in worktree `C:/Users/Daniel/orca/workspaces/ModelShelf/19-extract-viewer` at `6092235` (origin/main after design-review). Ticket 16 PR 39 already contains a `packages/model-viewer` extraction that is not on main; this session will treat that as a prior candidate against current main rather than merging PR 39. Ticket 20 owns generated-contract wiring of the same viewer modules; this session will not consume `model-contracts-ts`. Ticket 21 owns mock/design/domain files and will not be edited here. `finding-inspector.tsx` is absent on current main.
+2026-09-09, ticket 16 delivered a reusable viewer extraction as a prerequisite
+for this ticket. That shape exposed `model-viewer`, `model-viewer/core`, and
+`model-viewer/ifc`, with `CombinedDeliveryViewer` chrome inside the package.
+Evidence from that extraction:
+[standalone](../../../.omo/evidence/modelshelf-prototype/ticket-16/standalone/run-2026-09-09T08-21-23-700Z/results.json),
+[combined](../evidence/07-combined-viewer/results.json), and
+[inspection](../evidence/08-finding-inspection/results.json).
+Ticket 19 remains open; ticket 16 did not close it.
+
+2026-09-11, claimed by `cursor-grok-ticket-19-2026-09-11` in worktree `C:/Users/Daniel/orca/workspaces/ModelShelf/19-extract-viewer` at `6092235` (origin/main after design-review). Ticket 20 owns generated-contract wiring of the same viewer modules; this session will not consume `model-contracts-ts`. Ticket 21 owns mock/design/domain files and will not be edited here. `finding-inspector.tsx` is absent on current main. After ticket 16 landed on main, this ticket replaces that package shape with `.` / `./ifc` / `./react`, overlay values, and host chrome in `apps/web`.
 
 ## Answer
 
 Extraction is implemented in the worktree. It is not resolved until `--scenario inspection` passes.
 
-`packages/model-viewer` exports `.` / `./ifc` / `./react`. `apps/web` imports only those specifiers. Overlay paint is `applyOverlay`. Geometry is an opaque driver. Fetch, chrome, and `window.__modelshelfViewer` stay in the app. Old `components/viewer` internals are deleted. No commit.
+`packages/model-viewer` exports `.` / `./ifc` / `./react`. `apps/web` imports only those specifiers. Overlay paint is `applyOverlay`. Geometry is an opaque driver. Fetch, chrome, and `window.__modelshelfViewer` stay in the app. Old `components/viewer` internals are deleted.
 
 Parent verification after the implementer report:
 

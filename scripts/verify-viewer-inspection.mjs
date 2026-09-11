@@ -292,7 +292,9 @@ export async function runInspectionScenario() {
     perf.coldMs = Date.now() - navStart;
     await mark(page, perf.marks, "ready");
 
-    const canvas = page.locator("canvas");
+    const review = page.locator("[data-review-screen]");
+    const canvas = review.locator("canvas");
+
     const canvasBox = await canvas.boundingBox();
     if (!canvasBox) throw new Error("Inspector canvas has no layout box");
     for (let sample = 0; sample < 3; sample += 1) {
@@ -398,6 +400,7 @@ export async function runInspectionScenario() {
       { timeout: 120_000 },
     );
 
+
     const highlighted = await inspect(page);
     const group = highlighted.renderer.highlightGroups[0];
     check(group?.requested === flow.objectCount, `highlight requests every affected object (${group?.requested})`);
@@ -435,7 +438,8 @@ export async function runInspectionScenario() {
       timeout: 30_000,
     });
     check(true, "selecting an object outside the isolation is reported as hidden");
-    check(await page.locator("[data-hidden-notice]").isVisible(), "hidden selection renders an explicit notice");
+    check(await review.locator("[data-hidden-notice]").isVisible(), "hidden selection renders an explicit notice");
+
     await page.screenshot({ path: join(EVIDENCE_DIR, "inspection-selection.png") });
 
     await page.locator("[data-reset-view]").click();
@@ -480,8 +484,23 @@ export async function runInspectionScenario() {
     await page.evaluate((ref) => window.__modelshelfViewer?.select(ref), memberRef);
     await page.locator("[data-inspect-selection]").click();
     await page.waitForSelector("[data-property-panel]", { timeout: 30_000 });
-    const panelText = (await page.locator("[data-property-panel]").innerText()).slice(0, 400);
+    const panelText = (await review.locator("[data-property-panel]").innerText()).slice(0, 400);
     results.propertySample = panelText;
+    const propertyFontSize = await review.locator("[data-property-panel]").evaluate(
+      (node) => Number.parseFloat(getComputedStyle(node).fontSize),
+    );
+    check(propertyFontSize >= 12, `property inspector text meets the 12px floor (${propertyFontSize}px)`);
+    const secondMemberRef = paged.objects.find(
+      (object) =>
+        object.ref.revisionId !== memberRef.revisionId ||
+        object.ref.objectId !== memberRef.objectId,
+    )?.ref;
+    check(Boolean(secondMemberRef), "a second member is available for property cleanup");
+    if (secondMemberRef) {
+      await page.evaluate((ref) => window.__modelshelfViewer?.select(ref), secondMemberRef);
+      await page.waitForSelector("[data-property-panel]", { state: "detached", timeout: 30_000 });
+      check(true, "changing viewer selection clears stale property details");
+    }
 
     const finale = await inspect(page);
     perf.inputs = {

@@ -1,115 +1,65 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@source "../../../../packages/model-viewer/src";
 
-@custom-variant dark (&:is(.dark *));
+/* Theme follows `data-theme` (artboard shell) and `.dark` (shadcn leftovers). */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *));
 
 /* ===========================================================================
-   ModelShelf chrome tokens — Direction A ("Instrument").
+   Chrome tokens — Light artboard values, with shadcn names aliased onto them.
 
-   THE RULE THIS FILE EXISTS TO ENFORCE:
+   DATA colours (severity, outcome, change kind, viewer highlight) live in
+   src/lib/palette.ts and are never variables here.
 
-     If a colour encodes a value that came from the API, it comes from
-     src/lib/palette.ts. If it is chrome, it is a token here.
-
-   Severity, spec outcome, change kind and viewer highlight are DATA. They live
-   in TypeScript and are applied as an inline style, an SVG fill, or a chart
-   config entry — never as a Tailwind class and never as a variable here. That
-   keeps one source for every colour a reviewer's decision depends on, and it is
-   lintable: no `bg-red-*` / `text-amber-*` / `border-green-*` in components.
-
-   Nothing below encodes data. These are surfaces, ink, lines and one accent.
-
-   NOTE: `shadcn init` writes its own neutral defaults over this block. If these
-   values ever come back as `oklch(... 0 0)` greys, the CLI has been re-run —
-   restore from here rather than accepting them.
+   The white model plate (--viewer) is a product surface, not a theme. It does
+   not follow data-theme.
    =========================================================================== */
 
-:root {
-  color-scheme: light;
-
-  --radius: 0.5rem;
-
-  /* surfaces */
-  --background: #f5f7fa;
-  --foreground: #0f172a;
-  --card: #ffffff;
-  --card-foreground: #0f172a;
-  --popover: #ffffff;
-  --popover-foreground: #0f172a;
-
-  /* brand accent — nav, primary actions, focus, selection */
-  --primary: #1d4ed8;
-  --primary-foreground: #ffffff;
-
-  /* shadcn's `secondary` and `accent` are quiet UI fills, not brand colour */
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0f172a;
-  --accent: #eef2ff;
-  --accent-foreground: #1d4ed8;
-
-  --muted: #f8fafc;
-  /* 4.81:1 against #f5f7fa, the worst surface it lands on. The previous
-     #7a879b was 3.39:1 and failed WCAG AA on every caption in the design. */
-  --muted-foreground: #646e7d;
-  /* Body-secondary ink, 7.06:1 on canvas. */
-  --ink-secondary: #475569;
-
-  --border: #e3e8ef;
-  --border-soft: #eef2f6;
-  --input: #e3e8ef;
-  --ring: #1d4ed8;
-
-  /* Irreversible UI actions only (discard a draft delivery). Deliberately NOT
-     a severity colour — this never encodes a finding. */
-  --destructive: #b42318;
-  --destructive-foreground: #ffffff;
-
-  /* The white model plate needs its own boundary and ground grid. */
-  --viewer: #ffffff;
-  --viewer-edge: #d7dee7;
-  --viewer-grid: rgb(215 222 231 / 0.42);
-
-  /* Neutral steps for incidental chart fills. Severity, outcome and change kind
-     never come from here — see the rule at the top of this file. */
-  --chart-1: #334155;
-  --chart-2: #64748b;
-  --chart-3: #94a3b8;
-  --chart-4: #a1aab8;
-  --chart-5: #c3cad4;
-
-  --sidebar: #ffffff;
-  --sidebar-foreground: #0f172a;
-  --sidebar-primary: #1d4ed8;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #eef2ff;
-  --sidebar-accent-foreground: #1d4ed8;
-  --sidebar-border: #e3e8ef;
-  --sidebar-ring: #1d4ed8;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-ink-secondary: var(--ink-secondary);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-border-soft: var(--border-soft);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
+  --color-surface: var(--ms-surface);
+  --color-panel: var(--ms-panel);
+  --color-panel-raised: var(--ms-panel-raised);
+  --color-edge: var(--ms-edge);
+  --color-edge-strong: var(--ms-edge-strong);
+  --color-ink: var(--ms-ink);
+  --color-ink-dim: var(--ms-ink-dim);
+  --color-ink-faint: var(--ms-ink-faint);
+  --color-ink-secondary: var(--ms-ink-dim);
+  --color-accent-strong: var(--ms-accent-strong);
+  --color-accent-soft: var(--ms-accent-soft);
+  --color-danger: var(--ms-danger);
+
+  --font-sans: var(--ms-font-sans);
+  --font-display: var(--ms-font-display);
+  --font-mono: var(--ms-font-mono);
+  --font-heading: var(--ms-font-display);
+
+  --spacing-sidebar: 15rem;
+  --spacing-sidebar-rail: 3.5rem;
+
+  /* shadcn/ui: brand sits on --primary. --accent is the quiet selected fill,
+     not the teal — otherwise every Select/Dropdown hover goes solid brand. */
+  --color-background: var(--ms-surface);
+  --color-foreground: var(--ms-ink);
+  --color-card: var(--ms-panel-raised);
+  --color-card-foreground: var(--ms-ink);
+  --color-popover: var(--ms-panel-raised);
+  --color-popover-foreground: var(--ms-ink);
+  --color-primary: var(--ms-accent);
+  --color-primary-foreground: var(--ms-accent-ink);
+  --color-secondary: var(--ms-panel);
+  --color-secondary-foreground: var(--ms-ink);
+  --color-muted: var(--ms-panel);
+  --color-muted-foreground: var(--ms-ink-faint);
+  --color-accent: var(--ms-accent-soft);
+  --color-accent-foreground: var(--ms-accent-strong);
+  --color-destructive: var(--ms-danger);
+  --color-destructive-foreground: var(--ms-accent-ink);
+  --color-border: var(--ms-edge);
+  --color-border-soft: var(--ms-edge);
+  --color-input: var(--ms-edge-strong);
+  --color-ring: var(--ms-accent);
   --color-viewer: var(--viewer);
 
   --color-chart-1: var(--chart-1);
@@ -118,41 +68,79 @@
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
 
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar: var(--ms-panel-raised);
+  --color-sidebar-foreground: var(--ms-ink);
+  --color-sidebar-primary: var(--ms-accent);
+  --color-sidebar-primary-foreground: var(--ms-accent-ink);
+  --color-sidebar-accent: var(--ms-accent-soft);
+  --color-sidebar-accent-foreground: var(--ms-accent-strong);
+  --color-sidebar-border: var(--ms-edge);
+  --color-sidebar-ring: var(--ms-accent);
 
-  /* Radius scales with the element. One value on everything is a tell. */
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) * 1.4);
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
+}
 
-  /* ------------------------------------------------------------------
-     `shadcn init` wired in Geist via next/font/google. Replaced, for two
-     reasons that both matter to this product:
+/* Light — warm-grey review surface from the Light artboard. */
+:root {
+  color-scheme: light;
 
-       1. Geist has no CJK coverage. Half this product's content is
-          Japanese, so a Latin webfont would silently fall back mid-line
-          and put two typefaces in the same sentence.
-       2. It fetches from Google at build time. This is a local, offline
-          prototype; a build should not need the network.
+  --radius: 5px;
 
-     The system stack below covers both scripts on every target OS.
-     ------------------------------------------------------------------ */
-  --font-sans:
+  --ms-surface: #f2f2f0;
+  --ms-panel: #eeeeec;
+  --ms-panel-raised: #ffffff;
+  --ms-edge: #e3e3e0;
+  --ms-edge-strong: #dededa;
+  --ms-ink: #18181b;
+  --ms-ink-dim: #3f3f46;
+  --ms-ink-faint: #6b6b70;
+  --ms-accent: #0b7c74;
+  --ms-accent-strong: #0a5c56;
+  --ms-accent-soft: #e8f3f1;
+  --ms-accent-ink: #ffffff;
+  --ms-danger: #b91c1c;
+
+  /* Offline prototype: system stacks, no next/font Google fetch. */
+  --ms-font-sans:
     ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
     "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", Meiryo,
     "Helvetica Neue", Arial, sans-serif;
-  --font-heading: var(--font-sans);
-  --font-mono: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
+  --ms-font-display: var(--ms-font-sans);
+  --ms-font-mono: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
+
+  --viewer: #ffffff;
+  --viewer-edge: #d7dee7;
+  --viewer-grid: rgb(215 222 231 / 0.42);
+
+  --chart-1: #334155;
+  --chart-2: #64748b;
+  --chart-3: #94a3b8;
+  --chart-4: #a1aab8;
+  --chart-5: #c3cad4;
+}
+
+/* Dark chrome for the artboard shell toggle. Viewer plate stays white. */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --ms-surface: #0b0b0d;
+  --ms-panel: #131316;
+  --ms-panel-raised: #1a1a1f;
+  --ms-edge: #26262c;
+  --ms-edge-strong: #3a3a42;
+  --ms-ink: #e4e4e7;
+  --ms-ink-dim: #a1a1aa;
+  --ms-ink-faint: #71717a;
+  --ms-accent: #2dd4bf;
+  --ms-accent-strong: #5eead4;
+  --ms-accent-soft: rgb(45 212 191 / 0.12);
+  --ms-accent-ink: #0b0b0d;
+  --ms-danger: #f87171;
 }
 
 @layer base {
@@ -171,19 +159,6 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* --------------------------------------------------------------------
-     Bilingual typography.
-
-     The UI ships Japanese and English as equals, so every hierarchy device
-     has to survive both. Two Latin-only tricks are neutralised rather than
-     left to degrade silently:
-
-       - negative tracking, which damages kanji spacing;
-       - text-transform, which does nothing at all to kanji — any hierarchy
-         resting on uppercase collapses to "slightly smaller grey text".
-
-     Hierarchy is therefore carried by size, weight and ink colour only.
-     -------------------------------------------------------------------- */
   :lang(ja) {
     letter-spacing: normal;
     text-transform: none;
@@ -191,22 +166,11 @@
     font-feature-settings: "palt" 1;
   }
 
-  /* 11px is a Latin floor, not a CJK one. Nothing in the UI goes below 12px. */
   small,
   .text-xs {
     font-size: 12px;
   }
 
-  /* ------------------------------------------------------------------
-     Touch targets.
-
-     Every interactive control clears 44px below the `sm` breakpoint —
-     the site survey is done on a tablet, one-handed, and the desktop
-     kit is sized for a mouse. This lives here rather than in
-     `components/ui/button.tsx`, which is CLI-vendored and would lose
-     the rule on the next regeneration; it also covers native buttons,
-     selects and file inputs the primitive never sees.
-     ------------------------------------------------------------------ */
   @media (width < 40rem) {
     button,
     [role="button"],
@@ -217,28 +181,26 @@
     }
   }
 
-  /* Identifiers, hashes, counts and timestamps scan vertically. */
   .tnum {
     font-variant-numeric: tabular-nums;
   }
 
   :focus-visible {
-    outline: 2px solid var(--ring);
+    outline: 2px solid var(--ms-accent);
     outline-offset: 1px;
     border-radius: 2px;
   }
 
-  /* Thin scrollbars suit the dense two-pane layouts. */
   * {
     scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 transparent;
+    scrollbar-color: var(--ms-edge-strong) transparent;
   }
   *::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
   *::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
+    background: var(--ms-edge-strong);
     border-radius: 4px;
   }
   *::-webkit-scrollbar-track {
@@ -254,38 +216,11 @@
   background-size: 32px 32px;
 }
 
-/* ---------------------------------------------------------------------------
-   Dark theme: NOT DESIGNED YET.
-
-   `shadcn init` generates this block and its components reference `dark:`
-   variants, so removing it would leave those variants undefined. Nothing
-   applies the `.dark` class today and no theme toggle ships. The 3D viewer
-   panel (`--viewer`) is white per product decision, not a dark surface.
-
-   Before shipping a dark mode, every severity and change-kind value in
-   palette.ts must be re-validated against the dark surface. The light ramps
-   below are NOT valid there: no five-way severity ramp passes on a dark
-   background (measured — see palette.ts).
-   --------------------------------------------------------------------------- */
-.dark {
-  --background: #0b0e13;
-  --foreground: #e7ecf3;
-  --card: #131820;
-  --card-foreground: #e7ecf3;
-  --popover: #131820;
-  --popover-foreground: #e7ecf3;
-  --primary: #60a5fa;
-  --primary-foreground: #0b0e13;
-  --secondary: #1c2430;
-  --secondary-foreground: #e7ecf3;
-  --muted: #1c2430;
-  --muted-foreground: #9aa7b8;
-  --accent: #1e293b;
-  --accent-foreground: #93c5fd;
-  --destructive: #f87171;
-  --destructive-foreground: #0b0e13;
-  --border: #242e3c;
-  --border-soft: #1b2431;
-  --input: #242e3c;
-  --ring: #60a5fa;
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
