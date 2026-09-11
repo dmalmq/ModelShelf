@@ -1,18 +1,4 @@
 import type { Discipline, Finding, FindingObject, ObjectDetail, RunDetail } from "@/lib/types";
-import { parseObjectRef } from "model-viewer/core";
-import type { ObjectRef } from "model-viewer/core";
-
-/**
- * Finding payloads carry plain-string refs; the viewer core brands them.
- * Members without a renderable identity (non-geometric evidence) yield null.
- */
-export function toViewerRef(ref: { revisionId: string; objectId: string }): ObjectRef | null {
-  try {
-    return parseObjectRef(ref);
-  } catch {
-    return null;
-  }
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;

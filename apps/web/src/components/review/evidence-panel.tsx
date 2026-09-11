@@ -12,17 +12,17 @@ import { Button } from "../ui/button";
 import { SEVERITY_COLOR } from "@/lib/palette";
 import { EVIDENCE_COPY, UI, type Locale } from "@/lib/i18n";
 import type { Finding, FindingObject, ModelInfo, ObjectDetail, RunSummary, SpecResultRow } from "@/lib/types";
-import { fetchAllFindingObjects, fetchObjectDetail } from "./findings-api";
-import type { DeliveryViewerController } from "model-viewer/core";
+import { fetchAllFindingObjects, fetchObjectDetail } from "@/lib/findings-api";
+import type { ModelViewer } from "model-viewer";
+import { refKey } from "model-viewer";
 import { ObjectFilters, type FilterOptions } from "./object-filters";
 import type { LoadedMembers, ObjectFilterSet } from "./review-state";
 import {
-  applyFindingToViewer,
+  overlayForFinding,
   clearFindingFromViewer,
   filterMembers,
-  findingToHighlights,
   MISSING_STOREY,
-  toViewerRefPlain,
+  toViewerRef,
 } from "./viewer-bridge";
 
 const PAGE_SIZE = 25;
@@ -42,7 +42,7 @@ interface EvidencePanelProps {
   readonly onMembersLoading: () => void;
   readonly onMembersReady: (findingId: string, objects: FindingObject[], total: number) => void;
   readonly onMembersFailed: () => void;
-  readonly viewer: DeliveryViewerController | null;
+  readonly viewer: ModelViewer | null;
   readonly lang?: Locale;
 }
 
@@ -64,9 +64,6 @@ function validateMember(object: FindingObject, knownModels: Set<string>): string
     return "missing ref";
   }
   return null;
-}
-function refKey(ref: { readonly revisionId: string; readonly objectId: string } | null): string | null {
-  return ref ? `${ref.revisionId}\0${ref.objectId}` : null;
 }
 
 export function EvidencePanel({
@@ -96,16 +93,46 @@ export function EvidencePanel({
   const [sectionActive, setSectionActive] = useState(false);
   const [property, setProperty] = useState<ObjectDetail | null>(null);
   const [propertyError, setPropertyError] = useState<string | null>(null);
-  const propertyRequest = useRef<{ controller: AbortController; version: number } | null>(null);
-  const propertyRequestVersion = useRef(0);
-  const lastSelectionKey = useRef<string | null>(null);
   /** True after "Reset view": the finding stays coloured, nothing stays hidden. */
   const [isolationOff, setIsolationOff] = useState(false);
+  const inspectAbort = useRef<AbortController | null>(null);
+  const [readyModels, setReadyModels] = useState(0);
 
-  // A new finding is a new question: it isolates again.
   useEffect(() => {
+    inspectAbort.current?.abort();
+    inspectAbort.current = null;
     setIsolationOff(false);
+    setSectionInput("");
+    setSectionActive(false);
+    setProperty(null);
+    setPropertyError(null);
   }, [finding.id]);
+
+  useEffect(() => {
+    try {
+      viewer?.setSectionZ(null);
+    } catch {
+      // Viewer already disposed; the panel is gone with it.
+    }
+    return () => {
+      try {
+        viewer?.setSectionZ(null);
+      } catch {
+        // Viewer already disposed; nothing to clear.
+      }
+    };
+  }, [finding.id, viewer]);
+
+  useEffect(() => {
+    if (!viewer) {
+      setReadyModels(0);
+      return;
+    }
+    const countReady = (snapshot: { sources: readonly { status: string }[] }): number =>
+      snapshot.sources.filter((source) => source.status === "ready").length;
+    setReadyModels(countReady(viewer.snapshot()));
+    return viewer.subscribe((snapshot) => setReadyModels(countReady(snapshot)));
+  }, [viewer]);
 
   function applySection(): void {
     if (!viewer) return;
@@ -137,12 +164,12 @@ export function EvidencePanel({
   }
 
   async function inspectSelection(): Promise<void> {
-    propertyRequest.current?.controller.abort();
-    propertyRequest.current = null;
-    const requestVersion = ++propertyRequestVersion.current;
+    if (!viewer) return;
+    inspectAbort.current?.abort();
+    const abort = new AbortController();
+    inspectAbort.current = abort;
     setProperty(null);
     setPropertyError(null);
-    if (!viewer) return;
     const selected = viewer.snapshot().selected;
     if (!selected) return;
     const match = membersForFinding.find(
@@ -154,34 +181,13 @@ export function EvidencePanel({
       setPropertyError(copy.noOccurrence);
       return;
     }
-    const selectedKey = refKey(selected.ref);
-    const controller = new AbortController();
-    propertyRequest.current = { controller, version: requestVersion };
     try {
-      const detail = await fetchObjectDetail(match.objectId, controller.signal);
-      const currentKey = refKey(viewer.snapshot().selected?.ref ?? null);
-      if (
-        controller.signal.aborted ||
-        requestVersion !== propertyRequestVersion.current ||
-        currentKey !== selectedKey
-      ) {
-        return;
-      }
+      const detail = await fetchObjectDetail(match.objectId, abort.signal);
+      if (abort.signal.aborted) return;
       setProperty(detail);
     } catch {
-      const currentKey = refKey(viewer.snapshot().selected?.ref ?? null);
-      if (
-        controller.signal.aborted ||
-        requestVersion !== propertyRequestVersion.current ||
-        currentKey !== selectedKey
-      ) {
-        return;
-      }
+      if (abort.signal.aborted) return;
       setPropertyError(copy.propertyFailed);
-    } finally {
-      if (propertyRequest.current?.version === requestVersion) {
-        propertyRequest.current = null;
-      }
     }
   }
 
@@ -255,59 +261,32 @@ export function EvidencePanel({
 
   const filtered = useMemo(() => filterMembers(valid, filters), [valid, filters]);
 
-  // The viewer owns selection truth; mirror its hidden flag so the notice
-  // appears the moment the selection leaves the isolated set.
   useEffect(() => {
-    if (!viewer) {
-      lastSelectionKey.current = null;
-      setSelectedHidden(false);
-      return;
-    }
-    const refreshSelection = () => {
-      const selectedKey = refKey(viewer.snapshot().selected?.ref ?? null);
-      if (selectedKey !== lastSelectionKey.current) {
-        lastSelectionKey.current = selectedKey;
-        propertyRequest.current?.controller.abort();
-        propertyRequest.current = null;
-        propertyRequestVersion.current += 1;
-        setProperty(null);
-        setPropertyError(null);
+    if (!viewer) return;
+    let lastKey: string | null | undefined;
+    return viewer.subscribe((snapshot) => {
+      setSelectedHidden(snapshot.selectionHidden);
+      const key = snapshot.selected ? refKey(snapshot.selected.ref) : null;
+      if (lastKey === undefined) {
+        lastKey = key;
+        return;
       }
-      setSelectedHidden(viewer.diagnostics().selectedHidden);
-    };
-    refreshSelection();
-    return viewer.subscribe(refreshSelection);
+      if (key === lastKey) return;
+      lastKey = key;
+      inspectAbort.current?.abort();
+      inspectAbort.current = null;
+      setProperty(null);
+      setPropertyError(null);
+    });
   }, [viewer]);
 
-  useEffect(() => {
-    propertyRequest.current?.controller.abort();
-    propertyRequest.current = null;
-    propertyRequestVersion.current += 1;
-    setSectionInput("");
-    setSectionActive(false);
-    setProperty(null);
-    setPropertyError(null);
-    try {
-      viewer?.setSectionZ(null);
-    } catch {
-      // Viewer already disposed.
-    }
-    return () => {
-      propertyRequest.current?.controller.abort();
-      propertyRequest.current = null;
-      propertyRequestVersion.current += 1;
-      try {
-        viewer?.setSectionZ(null);
-      } catch {
-        // Viewer already disposed.
-      }
-    };
-  }, [finding.id, viewer]);
-
-  const { refs, undrawable: nullRefs } = useMemo(() => findingToHighlights(filtered), [filtered]);
+  const { refs } = useMemo(() => {
+    const parsed = filtered.flatMap((object) => toViewerRef(object.ref) ?? []);
+    return { refs: parsed };
+  }, [filtered]);
 
   const nullRefMembers = useMemo(
-    () => valid.filter((object) => toViewerRefPlain(object.ref) === null),
+    () => valid.filter((object) => toViewerRef(object.ref) === null),
     [valid],
   );
   const uniqueKeys = useMemo(() => {
@@ -320,7 +299,7 @@ export function EvidencePanel({
     const listed = [...nullRefMembers];
     for (const object of valid) {
       const key = `${object.ref.revisionId}\0${object.ref.objectId}`;
-      if (toViewerRefPlain(object.ref) !== null && notDrawn[key] && !listed.includes(object)) {
+      if (toViewerRef(object.ref) !== null && notDrawn[key] && !listed.includes(object)) {
         listed.push(object);
       }
     }
@@ -349,45 +328,40 @@ export function EvidencePanel({
       return;
     }
     if (finding.objectCount === 0 || filtered.length === 0) {
-      clearFindingFromViewer(viewer, { clearSection: false });
+      clearFindingFromViewer(viewer);
       setMatched(0);
-      setSelectedHidden(viewer.diagnostics().selectedHidden);
+      setSelectedHidden(viewer.snapshot().selectionHidden);
       setNotDrawn({});
       return;
     }
     try {
-      // "Reset view" keeps the finding highlighted but stops hiding the rest of
-      // the delivery: colour without isolation, full opacity, camera untouched.
-      const readback = applyFindingToViewer(
-        viewer,
-        { refs, color: SEVERITY_COLOR[finding.severity], label: finding.title },
-        isolationOff ? { isolate: false, dimOpacity: 1, frame: false } : undefined,
-      );
-      setMatched(readback.matched);
-      setSelectedHidden(readback.selectedHidden);
-      const drawn: Record<string, true> = {};
-      for (const key of readback.drawnKeys) drawn[key] = true;
+      const overlay = overlayForFinding(filtered, {
+        color: SEVERITY_COLOR[finding.severity],
+        label: finding.title,
+        mode: isolationOff ? "colour-only" : "isolate",
+      });
+      const drawn = viewer.applyOverlay(overlay);
+      setMatched(drawn.groups[0]?.matched ?? 0);
+      setSelectedHidden(drawn.selectionHidden);
       const missing: Record<string, true> = {};
-      for (const object of filtered) {
-        const ref = toViewerRefPlain(object.ref);
-        if (ref && !drawn[`${ref.revisionId}\0${ref.objectId}`]) {
-          missing[`${object.ref.revisionId}\0${object.ref.objectId}`] = true;
-        }
-      }
+      for (const object of drawn.missing) missing[refKey(object)] = true;
       setNotDrawn(missing);
     } catch {
       setMatched(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewer, finding.id, finding.objectCount, isolationOff, readyModels, refs.length === 0 ? "empty" : refs.map((r) => `${r.revisionId}${r.objectId}`).join(",")]);
+
+  useEffect(() => {
+    if (!viewer) return;
     return () => {
-      // Unmount (run switch, deselect) must not leave stale highlights behind.
       try {
-        clearFindingFromViewer(viewer, { clearSection: false });
+        clearFindingFromViewer(viewer);
       } catch {
         // Viewer already disposed; nothing to clear.
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [viewer, finding.id, finding.objectCount, isolationOff, refs.length === 0 ? "empty" : refs.map((r) => `${r.revisionId}${r.objectId}`).join(",")]);
+  }, [viewer, finding.id]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount - 1);
@@ -396,7 +370,7 @@ export function EvidencePanel({
   const first = valid[0] ?? null;
 
   return (
-    <div className="space-y-3" data-evidence-panel={finding.id} data-inspector-active={finding.id}>
+    <div className="space-y-3" data-evidence-panel={finding.id}>
       {finding.incomplete && (
         <p
           className="border border-border bg-muted px-2 py-1.5 text-xs font-medium"

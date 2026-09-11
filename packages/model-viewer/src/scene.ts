@@ -1,40 +1,44 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { refKey, type ObjectRef, type ObjectRefKey, type RevisionId } from "./object-ref";
+import type { GeometryHeader, TransferGeometry, TransferInstance } from "./geometry-driver.internal";
+import type {
+  Attributes,
+  HighlightGroup,
+  HighlightResult,
+  SceneDiagnostics,
+  SelectedObject,
+  ViewerResourceStats,
+} from "./types";
 
-import {
-  objectRefKey,
-  type DeliveryModel,
-  type DrawTarget,
-  type ModelDiscipline,
-  type ObjectRef,
-  type ObjectRefKey,
-  type RendererDiagnostics,
-  type RevisionId,
-  type SelectionRecord,
-  type TransferGeometry,
-  type TransferInstance,
-  type ViewerHighlight,
-  type ViewerRenderer,
-  type ViewerResourceStats,
-  type WorkerHeader,
-} from "./viewer-types";
-
-interface RendererOptions {
+interface SceneOptions {
   readonly canvas: HTMLCanvasElement;
+  readonly selectionColor: string;
   readonly onPick: (ref: ObjectRef) => void;
 }
+
+interface DrawTarget {
+  readonly revisionId: RevisionId;
+  readonly instanceId: number;
+  readonly baseColor: readonly [number, number, number];
+}
+
+interface ObjectRecord {
+  readonly ref: ObjectRef;
+  readonly name: string | null;
+  readonly attributes: Attributes;
+  readonly targets: readonly DrawTarget[];
+}
+
 interface RevisionResource {
   readonly root: THREE.Group;
   readonly mesh: THREE.BatchedMesh;
-  readonly model: DeliveryModel;
-  readonly geometryIds: Map<number, number>;
+  readonly geometryIds: Map<string, number>;
 }
 
-// Installed three types omit BatchedMesh.instanceColor even though setColorAt maintains it at runtime.
 type ColoredMesh = THREE.BatchedMesh & { instanceColor?: { needsUpdate: boolean } };
-const SELECTION_OUTLINE_COLOR = new THREE.Color(0x0d9488);
 
-export class RendererOwner implements ViewerRenderer {
+export class SceneOwner {
   private readonly scene = new THREE.Scene();
   private readonly selectionOutlines = new THREE.Group();
   private readonly camera = new THREE.PerspectiveCamera(45, 1, 0.01, 100_000);
@@ -50,32 +54,30 @@ export class RendererOwner implements ViewerRenderer {
   private readonly pointer = new THREE.Vector2();
   private readonly resources = new Map<RevisionId, RevisionResource>();
   private readonly revisionByMesh = new Map<THREE.BatchedMesh, RevisionId>();
-  private readonly records = new Map<ObjectRefKey, SelectionRecord>();
-  private readonly targetRecords = new Map<string, SelectionRecord>();
+  private readonly records = new Map<ObjectRefKey, ObjectRecord>();
+  private readonly targetRecords = new Map<string, ObjectRecord>();
   private readonly trianglesByRevision = new Map<RevisionId, number>();
-  private readonly visibleByDiscipline: Record<ModelDiscipline, boolean> = {
-    ARCH: true,
-    STRUCT: true,
-    MEP: true,
-    OTHER: true,
-  };
+  private hiddenAttribute: string | null = null;
+  private hiddenValues = new Set<string>();
   private highlightColors = new Map<ObjectRefKey, THREE.Color>();
-  private highlightGroups: { label: string | null; color: string; requested: number; matched: number }[] = [];
+  private highlightGroups: HighlightResult[] = [];
   private isolated: Set<ObjectRefKey> | null = null;
   private dimOpacity = 1;
   private readonly dimWhite = new THREE.Color(0xffffff);
   private sectionPlane: THREE.Plane | null = null;
   private readonly canvas: HTMLCanvasElement;
   private readonly onPick: (ref: ObjectRef) => void;
+  private readonly selectionColor: string;
   private readonly resizeObserver: ResizeObserver;
   private animationFrame = 0;
   private pointerStart: readonly [number, number] | null = null;
-  private selected: SelectionRecord | null = null;
+  private selected: ObjectRecord | null = null;
   private disposed = false;
 
-  constructor(options: RendererOptions) {
+  constructor(options: SceneOptions) {
     this.canvas = options.canvas;
     this.onPick = options.onPick;
+    this.selectionColor = options.selectionColor;
     this.renderer = new THREE.WebGLRenderer({ canvas: options.canvas, antialias: true, alpha: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -101,7 +103,7 @@ export class RendererOwner implements ViewerRenderer {
     this.animationFrame = requestAnimationFrame(this.render);
   }
 
-  uploadHeader(revisionId: RevisionId, header: WorkerHeader, model: DeliveryModel): void {
+  uploadHeader(revisionId: RevisionId, header: GeometryHeader): void {
     if (this.disposed) return;
     this.removeRevision(revisionId);
 
@@ -125,7 +127,6 @@ export class RendererOwner implements ViewerRenderer {
     this.resources.set(revisionId, {
       root,
       mesh,
-      model,
       geometryIds: new Map(),
     });
     this.revisionByMesh.set(mesh, revisionId);
@@ -145,7 +146,7 @@ export class RendererOwner implements ViewerRenderer {
       geometry.setAttribute("normal", new THREE.BufferAttribute(transfer.normals, 3));
       geometry.setIndex(new THREE.BufferAttribute(transfer.indices, 1));
       const geometryId = resource.mesh.addGeometry(geometry);
-      resource.geometryIds.set(transfer.geometryExpressId, geometryId);
+      resource.geometryIds.set(transfer.geometryId, geometryId);
       this.trianglesByRevision.set(
         revisionId,
         (this.trianglesByRevision.get(revisionId) ?? 0) + Math.floor(transfer.indices.length / 3),
@@ -154,9 +155,9 @@ export class RendererOwner implements ViewerRenderer {
     }
 
     for (const transfer of instances) {
-      const geometryId = resource.geometryIds.get(transfer.geometryExpressId);
+      const geometryId = resource.geometryIds.get(transfer.geometryId);
       if (geometryId === undefined) {
-        throw new Error(`Geometry ${transfer.geometryExpressId} was not uploaded before its instance`);
+        throw new Error(`Geometry ${transfer.geometryId} was not uploaded before its instance`);
       }
 
       const instanceId = resource.mesh.addInstance(geometryId);
@@ -170,16 +171,12 @@ export class RendererOwner implements ViewerRenderer {
         instanceId,
         baseColor: [baseColor.r, baseColor.g, baseColor.b],
       };
-      const addition: SelectionRecord = {
+      this.addRecord({
         ref,
-        expressId: transfer.expressId,
-        globalId: transfer.globalId,
-        ifcType: transfer.ifcType,
         name: transfer.name,
-        discipline: transfer.discipline,
+        attributes: transfer.attributes,
         targets: [target],
-      };
-      this.addRecord(addition);
+      });
     }
 
     this.applyVisibility();
@@ -247,38 +244,64 @@ export class RendererOwner implements ViewerRenderer {
     this.updateSelectionOutlines();
     if (fitCamera) this.fitAll();
   }
-  select(record: SelectionRecord | null): void {
+
+  select(record: ObjectRecord | null): void {
     this.selected = record;
     this.updateSelectionOutlines();
     this.repaint();
   }
 
-  selection(ref: ObjectRef): SelectionRecord | null {
-    return this.records.get(objectRefKey(ref)) ?? null;
+  selection(ref: ObjectRef): ObjectRecord | null {
+    return this.records.get(refKey(ref)) ?? null;
   }
 
-  selectionRecords(): readonly SelectionRecord[] {
-    return [...this.records.values()];
+  selectedObject(): SelectedObject | null {
+    if (!this.selected) return null;
+    return {
+      ref: this.selected.ref,
+      name: this.selected.name,
+      attributes: this.selected.attributes,
+      placements: this.selected.targets.length,
+    };
+  }
+
+  objectEntries(): readonly Readonly<{
+    ref: ObjectRef;
+    name: string | null;
+    attributes: Attributes;
+    targetCount: number;
+  }>[] {
+    return [...this.records.values()].map((record) => ({
+      ref: record.ref,
+      name: record.name,
+      attributes: record.attributes,
+      targetCount: record.targets.length,
+    }));
+  }
+
+  hasObject(ref: ObjectRef): boolean {
+    return this.records.has(refKey(ref));
   }
 
   frame(refs: readonly ObjectRef[]): void {
     const box = new THREE.Box3();
     for (const ref of refs) {
-      const record = this.records.get(objectRefKey(ref));
+      const record = this.records.get(refKey(ref));
       if (!record) continue;
       for (const target of record.targets) this.expandTargetBox(box, target);
     }
     if (!box.isEmpty()) this.positionCamera(box);
   }
 
-  setDisciplineVisibility(discipline: ModelDiscipline, visible: boolean): void {
-    this.visibleByDiscipline[discipline] = visible;
+  setHidden(attribute: string, values: readonly string[]): void {
+    this.hiddenAttribute = attribute;
+    this.hiddenValues = new Set(values);
     this.applyVisibility();
   }
 
-  setHighlights(groups: readonly ViewerHighlight[]): void {
+  setHighlights(groups: readonly HighlightGroup[]): HighlightResult[] {
     const colors = new Map<ObjectRefKey, THREE.Color>();
-    const summaries: { label: string | null; color: string; requested: number; matched: number }[] = [];
+    const summaries: HighlightResult[] = [];
     for (const group of groups) {
       let color: THREE.Color;
       try {
@@ -288,19 +311,25 @@ export class RendererOwner implements ViewerRenderer {
       }
       let matched = 0;
       for (const ref of group.refs) {
-        const key = objectRefKey(ref);
+        const key = refKey(ref);
         if (this.records.has(key)) matched += 1;
         colors.set(key, color);
       }
-      summaries.push({ label: group.label ?? null, color: group.color, requested: group.refs.length, matched });
+      summaries.push({
+        label: group.label ?? null,
+        color: group.color,
+        requested: group.refs.length,
+        matched,
+      });
     }
     this.highlightColors = colors;
     this.highlightGroups = summaries;
     this.repaint();
+    return summaries;
   }
 
   isolate(refs: readonly ObjectRef[] | null): void {
-    this.isolated = refs === null ? null : new Set(refs.map((ref) => objectRefKey(ref)));
+    this.isolated = refs === null ? null : new Set(refs.map((ref) => refKey(ref)));
     this.applyVisibility();
   }
 
@@ -361,18 +390,33 @@ export class RendererOwner implements ViewerRenderer {
     this.controls.update();
   }
 
-  diagnostics(): RendererDiagnostics {
+  highlightResults(): readonly HighlightResult[] {
+    return this.highlightGroups.map((group) => ({ ...group }));
+  }
+
+  countIsolatedMatched(): number {
+    let matched = 0;
+    for (const key of this.isolated ?? []) {
+      if (this.records.has(key)) matched += 1;
+    }
+    return matched;
+  }
+
+  selectedHidden(): boolean {
+    return this.selected !== null && this.isolated !== null && !this.isolated.has(refKey(this.selected.ref));
+  }
+
+  diagnostics(): SceneDiagnostics {
     return {
       cameraPosition: this.camera.position.toArray(),
       cameraTarget: this.controls.target.toArray(),
       roots: [...this.resources].map(([revisionId, resource]) => ({
         revisionId,
-        offset: resource.root.position.toArray(),
+        offset: resource.root.position.toArray() as [number, number, number],
         visible: resource.root.visible,
       })),
-      highlightGroups: this.highlightGroups.map((group) => ({ ...group })),
+      highlightGroups: this.highlightResults(),
       isolatedMatched: this.isolated === null ? null : this.countIsolatedMatched(),
-      selectedHidden: this.selected !== null && this.isolated !== null && !this.isolated.has(objectRefKey(this.selected.ref)),
       clipping: this.sectionPlane !== null,
     };
   }
@@ -396,6 +440,7 @@ export class RendererOwner implements ViewerRenderer {
       triangles: this.disposed ? 0 : triangles,
     };
   }
+
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
@@ -418,8 +463,8 @@ export class RendererOwner implements ViewerRenderer {
     this.renderer.dispose();
   }
 
-  private addRecord(addition: SelectionRecord): void {
-    const key = objectRefKey(addition.ref);
+  private addRecord(addition: ObjectRecord): void {
+    const key = refKey(addition.ref);
     const previous = this.records.get(key);
     const combined = previous
       ? { ...previous, targets: [...previous.targets, ...addition.targets] }
@@ -429,11 +474,16 @@ export class RendererOwner implements ViewerRenderer {
       this.targetRecords.set(targetKey(target.revisionId, target.instanceId), combined);
     }
   }
+
+  private attributeHidden(record: ObjectRecord): boolean {
+    if (this.hiddenAttribute === null || this.hiddenValues.size === 0) return false;
+    const value = record.attributes[this.hiddenAttribute];
+    return value !== undefined && this.hiddenValues.has(value);
+  }
+
   private applyVisibility(): void {
     for (const [key, record] of this.records) {
-      const visible =
-        (this.visibleByDiscipline[record.discipline] ?? true) &&
-        (this.isolated === null || this.isolated.has(key));
+      const visible = !this.attributeHidden(record) && (this.isolated === null || this.isolated.has(key));
       for (const target of record.targets) this.setTargetVisible(target, visible);
     }
     this.updateSelectionOutlines();
@@ -443,13 +493,6 @@ export class RendererOwner implements ViewerRenderer {
     this.resources.get(target.revisionId)?.mesh.setVisibleAt(target.instanceId, visible);
   }
 
-  private countIsolatedMatched(): number {
-    let matched = 0;
-    for (const key of this.isolated ?? []) {
-      if (this.records.has(key)) matched += 1;
-    }
-    return matched;
-  }
   private clearSelectionOutlines(): void {
     for (const child of this.selectionOutlines.children) {
       if (!(child instanceof THREE.LineSegments)) continue;
@@ -466,11 +509,8 @@ export class RendererOwner implements ViewerRenderer {
   private updateSelectionOutlines(): void {
     this.clearSelectionOutlines();
     if (this.selected === null) return;
-    const key = objectRefKey(this.selected.ref);
-    if (
-      this.visibleByDiscipline[this.selected.discipline] === false ||
-      (this.isolated !== null && !this.isolated.has(key))
-    ) {
+    const key = refKey(this.selected.ref);
+    if (this.attributeHidden(this.selected) || (this.isolated !== null && !this.isolated.has(key))) {
       return;
     }
     for (const target of this.selected.targets) {
@@ -478,10 +518,9 @@ export class RendererOwner implements ViewerRenderer {
       if (!resource?.root.visible) continue;
       const box = new THREE.Box3();
       this.expandTargetBox(box, target);
-      if (!box.isEmpty()) this.selectionOutlines.add(new THREE.Box3Helper(box, SELECTION_OUTLINE_COLOR));
+      if (!box.isEmpty()) this.selectionOutlines.add(new THREE.Box3Helper(box, this.selectionColor));
     }
   }
-
 
   private repaint(): void {
     if (this.disposed) return;

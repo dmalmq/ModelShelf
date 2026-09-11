@@ -533,7 +533,7 @@ async function main() {
   record("every compare label carries its Japanese copy", japaneseCopy.length === 0, japaneseCopy.join(", "));
 
   await page.waitForFunction(
-    () => window.__modelshelfViewer?.inspect().snapshot.models.every(({ status }) => status === "ready"),
+    () => window.__modelshelfViewer?.inspect().snapshot.sources.every(({ status }) => status === "ready"),
     undefined,
     { timeout: 360_000 },
   );
@@ -571,7 +571,7 @@ async function main() {
     `${cameraBeforeFilter} -> ${cameraAfterFilter}`);
   await page.locator('[data-compare-side="head"]').click();
   await page.waitForFunction(
-    () => window.__modelshelfViewer?.inspect().snapshot.models.every(({ status }) => status === "ready"),
+    () => window.__modelshelfViewer?.inspect().snapshot.sources.every(({ status }) => status === "ready"),
     undefined,
     { timeout: 360_000 },
   );

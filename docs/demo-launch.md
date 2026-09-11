@@ -191,16 +191,15 @@ Verification commands and what each proves:
   node scripts/generate-model-contracts.ts --check
   ```
 
-- `packages/model-viewer` exposes three public exports: `"."` is the thin
-  React wrapper, `"./core"` is the framework-independent rendering core, and
-  `"./ifc"` is the optional real-IFC geometry driver. The app imports only
-  `model-viewer` or `model-viewer/core`, never internal module paths (ticket
-  19). The standalone example consumes only the framework-independent public
-  core.
-- The core's `modelFileUrl` resolver and the React wrapper's
-  `resolveModelFileUrl` prop are required host ports. ModelShelf supplies its
-  `/api/models/:revisionId/file` route; the package itself contains no
-  application route or persistence assumption.
+- `packages/model-viewer` exposes three public exports: `"."` is the
+  framework-independent core (`createModelViewer`, `applyOverlay`), `"./ifc"`
+  is the optional IFC geometry driver, and `"./react"` is the `useModelViewer`
+  hook. The app imports only those specifiers, never internal module paths
+  (ticket 19). Chrome, fetch, and `window.__modelshelfViewer` stay in
+  `apps/web`. The standalone example consumes only the public core.
+- Hosts supply IFC bytes through `createIfcGeometryDriver({ loadBytes })`.
+  ModelShelf fetches `/api/models/:revisionId/file`; the package itself
+  contains no application route or persistence assumption.
 
 ## Shutdown and restart
 

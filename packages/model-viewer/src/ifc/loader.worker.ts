@@ -1,18 +1,12 @@
 import { IfcAPI } from "web-ifc";
-import { objectIdForExpressId } from "./object-ref";
-import type { WorkerRequest, WorkerResponse } from "./ifc-worker-protocol";
-import type {
-  Bounds3,
-  FailureStage,
-  ObjectId,
-  TransferGeometry,
-  TransferInstance,
-  WorkerHeader,
-} from "./viewer-types";
+import { ifcObjectId } from "./object-id";
+import type { WorkerRequest, WorkerResponse } from "./protocol";
+import type { ObjectId } from "../object-ref";
+import type { Bounds3, FailureStage } from "../types";
+import type { GeometryHeader, TransferGeometry, TransferInstance } from "../geometry-driver.internal";
 
 const BATCH_LIMIT_BYTES = 8 * 1024 * 1024;
 const HASH_BATCH_SIZE = 128;
-const PROGRESS_STEP_BYTES = 1024 * 1024;
 
 const activeJobs = new Set<string>();
 const pendingAcks = new Map<string, () => void>();
@@ -59,24 +53,10 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
 async function loadRevision(request: Extract<WorkerRequest, { type: "load" }>): Promise<void> {
   let api: IfcAPI | null = null;
   let modelId: number | null = null;
-  let stage: FailureStage = "download";
+  let stage: FailureStage = "parse";
   let sequence = 0;
 
   try {
-    const bytes = await download(request, (loaded, total) => {
-      post({
-        type: "progress",
-        jobId: request.jobId,
-        revisionId: request.revisionId,
-        phase: "download",
-        loaded,
-        total,
-        sequence: ++sequence,
-      });
-    });
-    if (!activeJobs.has(request.jobId)) return;
-
-    stage = "parse";
     post({
       type: "progress",
       jobId: request.jobId,
@@ -92,6 +72,7 @@ async function loadRevision(request: Extract<WorkerRequest, { type: "load" }>): 
       self.location.origin,
     );
     api = await getIfcApi(wasmBaseUrl);
+    const bytes = new Uint8Array(request.bytes);
     const openedModelId = api.OpenModel(bytes, { COORDINATE_TO_ORIGIN: false });
     if (openedModelId < 0) throw new Error("web-ifc could not open the IFC file");
     modelId = openedModelId;
@@ -148,7 +129,7 @@ async function loadRevision(request: Extract<WorkerRequest, { type: "load" }>): 
         revisionId: request.revisionId,
         stage,
         message: errorMessage(error),
-        retryable: stage === "download",
+        retryable: false,
         sequence: ++sequence,
       });
     }
@@ -177,57 +158,15 @@ async function getIfcApi(wasmBaseUrl: URL): Promise<IfcAPI> {
   return ifcApiPromise;
 }
 
-async function download(
-  request: Extract<WorkerRequest, { type: "load" }>,
-  onProgress: (loaded: number, total: number | null) => void,
-): Promise<Uint8Array> {
-  const response = await fetch(request.fileUrl);
-  if (!response.ok) throw new Error(`IFC download failed with HTTP ${response.status}`);
-  if (!response.body) throw new Error("IFC download did not provide a body");
-
-  const contentLength = response.headers.get("content-length");
-  const parsedLength = contentLength === null ? null : Number(contentLength);
-  const total = parsedLength !== null && Number.isFinite(parsedLength) && parsedLength >= 0
-    ? parsedLength
-    : null;
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let loaded = 0;
-  let reported = 0;
-
-  for (;;) {
-    const result = await reader.read();
-    if (result.done) break;
-    chunks.push(result.value);
-    loaded += result.value.byteLength;
-    if (
-      activeJobs.has(request.jobId) &&
-      loaded - reported >= PROGRESS_STEP_BYTES
-    ) {
-      reported = loaded;
-      onProgress(loaded, total);
-    }
-  }
-  if (activeJobs.has(request.jobId) && reported !== loaded) onProgress(loaded, total);
-
-  const bytes = new Uint8Array(loaded);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return bytes;
-}
-
 interface MutableBounds {
   readonly min: [number, number, number];
   readonly max: [number, number, number];
 }
 
-type RawInstance = Omit<TransferInstance, "objectId">;
+type RawInstance = Omit<TransferInstance, "objectId"> & { expressId: number };
 
 interface ExtractedModel {
-  readonly header: Omit<WorkerHeader, "batchCount">;
+  readonly header: Omit<GeometryHeader, "batchCount">;
   readonly geometries: readonly TransferGeometry[];
   readonly instances: readonly TransferInstance[];
 }
@@ -237,8 +176,8 @@ async function extractModel(
   modelId: number,
   request: Extract<WorkerRequest, { type: "load" }>,
 ): Promise<ExtractedModel> {
-  const geometryMap = new Map<number, TransferGeometry>();
-  const skippedGeometryIds = new Set<number>();
+  const geometryMap = new Map<string, TransferGeometry>();
+  const skippedGeometryIds = new Set<string>();
   const rawInstances: RawInstance[] = [];
   const productIds = new Set<number>();
   const bounds = mutableBounds();
@@ -254,17 +193,17 @@ async function extractModel(
 
     for (let index = 0; index < mesh.geometries.size(); index += 1) {
       const placed = mesh.geometries.get(index);
-      const geometryExpressId = placed.geometryExpressID;
-      if (skippedGeometryIds.has(geometryExpressId)) continue;
-      let geometry = geometryMap.get(geometryExpressId);
+      const geometryId = String(placed.geometryExpressID);
+      if (skippedGeometryIds.has(geometryId)) continue;
+      let geometry = geometryMap.get(geometryId);
       if (!geometry) {
-        const extracted = extractGeometry(api, modelId, geometryExpressId);
+        const extracted = extractGeometry(api, modelId, placed.geometryExpressID, geometryId);
         if (!extracted) {
-          skippedGeometryIds.add(geometryExpressId);
+          skippedGeometryIds.add(geometryId);
           continue;
         }
         geometry = extracted;
-        geometryMap.set(geometryExpressId, geometry);
+        geometryMap.set(geometryId, geometry);
         vertexCount += geometry.positions.length / 3;
         indexCount += geometry.indices.length;
       }
@@ -278,15 +217,19 @@ async function extractModel(
         placed.color.w,
       ];
       if (color.some((value) => !Number.isFinite(value))) continue;
+      const attributes: Record<string, string> = {
+        ...request.attributes,
+        expressId: String(mesh.expressID),
+        ifcType,
+      };
+      if (globalId) attributes.globalId = globalId;
       rawInstances.push({
         expressId: mesh.expressID,
-        globalId,
-        ifcType,
-        name,
-        discipline: request.discipline,
-        geometryExpressId,
+        geometryId,
         matrix,
         color,
+        name,
+        attributes,
       });
       expandBounds(bounds, geometry.bounds, matrix);
     }
@@ -296,7 +239,8 @@ async function extractModel(
   const instances = rawInstances.map((instance): TransferInstance => {
     const objectId = objectIds.get(instance.expressId);
     if (!objectId) throw new Error(`ObjectRef mapping is missing for expressId ${instance.expressId}`);
-    return { ...instance, objectId };
+    const { expressId: _expressId, ...rest } = instance;
+    return { ...rest, objectId };
   });
 
   return {
@@ -321,14 +265,14 @@ async function resolveObjectIds(
   for (let offset = 0; offset < expressIds.length; offset += HASH_BATCH_SIZE) {
     const chunk = expressIds.slice(offset, offset + HASH_BATCH_SIZE);
     const resolved = await Promise.all(
-      chunk.map(async (expressId) => [expressId, await objectIdForExpressId(revisionId, expressId)] as const),
+      chunk.map(async (expressId) => [expressId, await ifcObjectId(revisionId, expressId)] as const),
     );
     for (const [expressId, objectId] of resolved) objectIds.set(expressId, objectId);
   }
   return objectIds;
 }
 
-function extractGeometry(api: IfcAPI, modelId: number, expressId: number): TransferGeometry | null {
+function extractGeometry(api: IfcAPI, modelId: number, expressId: number, geometryId: string): TransferGeometry | null {
   const geometry = api.GetGeometry(modelId, expressId);
   try {
     const vertices = api.GetVertexArray(geometry.GetVertexData(), geometry.GetVertexDataSize());
@@ -372,7 +316,7 @@ function extractGeometry(api: IfcAPI, modelId: number, expressId: number): Trans
     }
 
     return {
-      geometryExpressId: expressId,
+      geometryId,
       positions,
       normals,
       indices: new Uint32Array(sourceIndices),
@@ -392,11 +336,11 @@ function createBatches(
   geometries: readonly TransferGeometry[],
   instances: readonly TransferInstance[],
 ): readonly TransferBatch[] {
-  const instancesByGeometry = new Map<number, TransferInstance[]>();
+  const instancesByGeometry = new Map<string, TransferInstance[]>();
   for (const instance of instances) {
-    const entries = instancesByGeometry.get(instance.geometryExpressId) ?? [];
+    const entries = instancesByGeometry.get(instance.geometryId) ?? [];
     entries.push(instance);
-    instancesByGeometry.set(instance.geometryExpressId, entries);
+    instancesByGeometry.set(instance.geometryId, entries);
   }
 
   const batches: TransferBatch[] = [];
@@ -411,7 +355,7 @@ function createBatches(
       currentBytes = 0;
     }
     current.geometries.push(geometry);
-    current.instances.push(...(instancesByGeometry.get(geometry.geometryExpressId) ?? []));
+    current.instances.push(...(instancesByGeometry.get(geometry.geometryId) ?? []));
     currentBytes += geometryBytes;
   }
 

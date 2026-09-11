@@ -134,7 +134,7 @@ async function inspect(page) {
 
 async function waitForModelsReady(page, timeout) {
   await page.waitForFunction(
-    () => window.__modelshelfViewer?.inspect().snapshot.models.every(({ status }) => status === "ready"),
+    () => window.__modelshelfViewer?.inspect().snapshot.sources.every(({ status }) => status === "ready"),
     undefined,
     { timeout },
   );
@@ -504,7 +504,7 @@ export async function runInspectionScenario() {
 
     const finale = await inspect(page);
     perf.inputs = {
-      revisions: finale.snapshot.models.map((m) => ({ revisionId: m.model.revisionId, bytes: m.model.byteSize })),
+      revisions: finale.snapshot.sources.map((source) => ({ revisionId: source.revisionId })),
       objects: finale.objects.length,
       triangles: finale.resources.triangles,
     };

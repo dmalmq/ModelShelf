@@ -3,25 +3,29 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Framework-independent 3D model viewer core with a thin React wrapper.",
+  "description": "Framework-independent 3D model viewer core with a React hook.",
   "exports": {
     ".": "./src/index.ts",
-    "./core": "./src/core/index.ts",
-    "./ifc": "./src/ifc.ts"
+    "./ifc": "./src/ifc/index.ts",
+    "./react": "./src/react/index.ts"
   },
   "scripts": {
-    "build:example": "esbuild src/core/index.ts --bundle --format=esm --outfile=dist/model-viewer.core.mjs"
+    "build:example": "esbuild src/index.ts --bundle --format=esm --outfile=dist/model-viewer.mjs"
   },
   "dependencies": {
-    "lucide-react": "^1.41.0",
-    "react": "^19.2.8",
     "three": "^0.185.1",
     "web-ifc": "0.0.77"
   },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react": { "optional": true }
+  },
   "devDependencies": {
     "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.7",
     "@types/three": "^0.185.4",
-    "esbuild": "^0.25.0"
+    "esbuild": "^0.25.0",
+    "typescript": "^5.9.3"
   }
 }

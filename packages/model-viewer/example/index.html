@@ -5,16 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>model-viewer standalone example</title>
     <style>
-      body { margin: 0; font-family: system-ui, sans-serif; background: #0b1220; color: #e2e8f0; }
+      body { margin: 0; font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; }
       header { display: flex; gap: 8px; align-items: center; padding: 10px 14px; border-bottom: 1px solid #1e293b; flex-wrap: wrap; }
       header h1 { font-size: 14px; margin: 0 12px 0 0; }
       header button { background: #1e293b; color: #e2e8f0; border: 1px solid #334155; border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer; }
       header button:hover { background: #334155; }
       main { display: grid; grid-template-columns: minmax(0, 1fr) 300px; height: calc(100vh - 48px); }
       canvas { width: 100%; height: 100%; display: block; touch-action: none; }
-      aside { border-left: 1px solid #263b29; padding: 12px; overflow-y: auto; font-size: 12px; }
+      aside { border-left: 1px solid #1e293b; padding: 12px; overflow-y: auto; font-size: 12px; }
       aside h2 { font-size: 13px; margin: 0 0 8px; }
-      pre { white-space: pre-wrap; background: #0f172a; border: 1px solid #1e293b; padding: 8px; border-radius: 6px; }
+      pre { white-space: pre-wrap; background: #020617; border: 1px solid #1e293b; padding: 8px; border-radius: 6px; }
       .status { color: #94a3b8; }
     </style>
   </head>
@@ -22,11 +22,11 @@
     <header>
       <h1>model-viewer standalone</h1>
       <button type="button" id="pick">Pick</button>
-      <button type="button" id="highlight">Highlight A</button>
-      <button type="button" id="isolate">Isolate A</button>
-      <button type="button" id="section">Section z=0.5</button>
+      <button type="button" id="highlight">Highlight</button>
+      <button type="button" id="isolate">Isolate</button>
+      <button type="button" id="section">Section</button>
       <button type="button" id="unload">Unload</button>
-      <span class="status">Checker, worker, and Next.js are stopped. This page runs only bundles built from the public core.</span>
+      <span class="status">Checker, worker, and Next.js are stopped. Public core exports only.</span>
     </header>
     <main>
       <canvas id="viewer" aria-label="Standalone viewer canvas"></canvas>

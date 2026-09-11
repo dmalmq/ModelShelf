@@ -1,18 +1,16 @@
-// Standalone example. Imports ONLY the public core bundle. Geometry is
-// self-authored (two detached buildings) and arrives through a fixture
-// geometry loader, so no IFC, worker, or backend is involved.
-//
-// Build the bundle first: npm --prefix packages/model-viewer run build:example
-// Then serve this directory; the page has no other dependencies.
 import {
-  createDeliveryViewer,
-  objectIdFrom,
-  GeometryLoadError,
-} from "../dist/model-viewer.core.mjs";
+  createModelViewer,
+  parseViewerScene,
+  objectRef,
+  NO_OVERLAY,
+  createPreparedGeometryDriver,
+} from "../dist/model-viewer.mjs";
 
 const canvas = document.getElementById("viewer");
 const state = document.getElementById("state");
-let viewer = null;
+
+const WALL = objectRef("east-wing", "wall-01");
+const SLAB = objectRef("east-wing", "slab-01");
 
 const IDENTITY = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 
@@ -41,9 +39,10 @@ function boxGeometry(size, offset) {
   const ys = positions.filter((_, i) => i % 3 === 1);
   const zs = positions.filter((_, i) => i % 3 === 2);
   return {
-    positions,
-    normals,
-    indices,
+    id: `box-${offset.join("x")}`,
+    positions: new Float32Array(positions),
+    normals: new Float32Array(normals),
+    indices: new Uint32Array(indices),
     bounds: {
       min: [Math.min(...xs), Math.min(...ys), Math.min(...zs)],
       max: [Math.max(...xs), Math.max(...ys), Math.max(...zs)],
@@ -51,161 +50,130 @@ function boxGeometry(size, offset) {
   };
 }
 
-function hash(value) {
-  let h = 2166136261;
-  for (let i = 0; i < value.length; i += 1) {
-    h ^= value.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return (h >>> 0).toString(16).padStart(16, "0");
-}
-
-function objectId(revision, expressId) {
-  return objectIdFrom(`occ_${hash(`${revision}:${expressId}`)}`);
-}
-
-function modelRecord(id, discipline) {
+function prepared(objects, origin) {
+  const geometries = objects.map((object, index) => boxGeometry(object.size, object.offset));
   return {
-    id,
-    deliveryId: "fixture-delivery",
-    discipline,
-    sourceModelId: id,
-    sourceModelName: discipline === "ARCH" ? "Detached House A" : "Detached House B",
-    filename: `${id}.fixture`,
-    contentSha256: hash(id),
-    byteSize: 0,
-    schemaLabel: "fixture",
-    entityCount: 0,
-    productCount: 0,
-    lengthToMetre: 1,
-    parseMs: null,
-    uploadedAt: "2026-09-09T00:00:00Z",
-    originatingSystem: "standalone example",
+    bounds: unionBounds(geometries.map((geometry) => geometry.bounds)),
+    geometries,
+    instances: objects.map((object, index) => ({
+      objectId: object.id,
+      geometryId: geometries[index].id,
+      matrix: translate(origin),
+      color: object.color,
+      name: object.name,
+      attributes: { storey: "L01", kind: object.kind },
+    })),
   };
 }
 
-const delivery = {
-  delivery: {
-    id: "fixture-delivery",
-    projectId: "example-project",
-    label: "Fixture delivery",
-    deliveryDate: null,
-    createdAt: "2026-09-09T00:00:00Z",
-    finalizedAt: "2026-09-09T00:00:00Z",
-    modelCount: 2,
-    productCount: 0,
-  },
-  models: [modelRecord("rev-a", "ARCH"), modelRecord("rev-b", "STRUCT")],
-  runs: [],
-  locked: true,
-};
-
-const geometries = {
-  "rev-a": boxGeometry(2, [0.5, 0, 0.5]),
-  "rev-b": boxGeometry(2, [-0.5, 0, -0.5]),
-};
-
-function objectsFor(model) {
-  const count = model.discipline === "ARCH" ? 3 : 2;
-  const names = model.discipline === "ARCH" ? ["Wall A", "Slab A", "Roof A"] : ["Column B", "Beam B"];
-  return Array.from({ length: count }, (_, i) => ({
-    expressId: i + 1,
-    name: names[i],
-    color: model.discipline === "ARCH" ? [0.36, 0.57, 0.9, 1] : [0.56, 0.78, 0.42, 1],
-  }));
+function translate(origin) {
+  const matrix = IDENTITY.slice();
+  matrix[12] = origin[0];
+  matrix[13] = origin[1];
+  matrix[14] = origin[2];
+  return matrix;
 }
 
-async function fixtureLoader(model, sink, signal) {
-  if (signal.aborted) throw new GeometryLoadError("worker", "load aborted", false);
-  const geometry = geometries[model.revisionId];
-  const objects = objectsFor(model);
-  const instances = objects.map((object) => ({
-    expressId: object.expressId,
-    objectId: objectId(model.revisionId, object.expressId),
-    globalId: null,
-    ifcType: "IfcBuildingElementProxy",
-    name: object.name,
-    discipline: model.discipline,
-    geometryExpressId: 1000,
-    matrix: IDENTITY,
-    color: object.color,
-  }));
-  sink.progress("download", 0, 0);
-  sink.progress("parse", 100, 100);
-  sink.header({
-    bounds: geometry.bounds,
-    objectCount: instances.length,
-    uniqueGeometryCount: 1,
-    instanceCount: instances.length,
-    vertexCount: geometry.positions.length / 3,
-    indexCount: geometry.indices.length,
-    batchCount: 1,
-  });
-  sink.batch(
+function unionBounds(list) {
+  const min = [Infinity, Infinity, Infinity];
+  const max = [-Infinity, -Infinity, -Infinity];
+  for (const bounds of list) {
+    for (let axis = 0; axis < 3; axis += 1) {
+      min[axis] = Math.min(min[axis], bounds.min[axis]);
+      max[axis] = Math.max(max[axis], bounds.max[axis]);
+    }
+  }
+  return { min, max };
+}
+
+const FIXTURES = {
+  "east-wing": prepared(
     [
-      {
-        geometryExpressId: 1000,
-        positions: new Float32Array(geometry.positions),
-        normals: new Float32Array(geometry.normals),
-        indices: new Uint32Array(geometry.indices),
-        bounds: geometry.bounds,
-      },
+      { id: "wall-01", name: "Wall", kind: "wall", size: 2, offset: [0, 0, 1], color: [0.39, 0.4, 0.95, 1] },
+      { id: "slab-01", name: "Slab", kind: "slab", size: 2.4, offset: [0, 0, 0], color: [0.55, 0.63, 0.75, 1] },
     ],
-    instances,
-  );
-}
+    [8, 0, 0],
+  ),
+  "west-wing": prepared(
+    [
+      { id: "column-01", name: "Column", kind: "column", size: 1.2, offset: [0, 0, 1], color: [0.34, 0.7, 0.45, 1] },
+    ],
+    [-8, 0, 0],
+  ),
+};
 
-function startViewer() {
-  viewer = createDeliveryViewer({
-    delivery,
-    canvas,
-    geometryLoader: fixtureLoader,
-    modelFileUrl: (model) => `fixture://${model.id}`,
-  });
-  viewer.start();
-  viewer.subscribe(render);
-}
+const scene = parseViewerScene({
+  sources: [
+    { revisionId: "east-wing", attributes: { storey: "L01" } },
+    { revisionId: "west-wing", attributes: { storey: "L01" } },
+  ],
+});
 
-function render() {
+const geometry = createPreparedGeometryDriver({
+  load: (source) => FIXTURES[source.revisionId],
+});
+
+let viewer = createModelViewer({
+  canvas,
+  scene,
+  geometry,
+  selectionColor: "#334155",
+});
+viewer.subscribe(paintStatePanel);
+viewer.start();
+
+function paintStatePanel() {
+  if (!viewer) return;
   const diagnostics = viewer.diagnostics();
   state.textContent = JSON.stringify(
     {
-      models: diagnostics.snapshot.models.map((m) => ({
-        id: m.model.id,
-        status: m.status,
-        objects: m.status === "ready" ? m.objectCount : null,
+      sources: diagnostics.snapshot.sources.map((source) => ({
+        revisionId: source.revisionId,
+        status: source.status,
+        objects: source.status === "ready" ? source.objectCount : null,
       })),
       selected: diagnostics.snapshot.selected?.ref ?? null,
-      highlightGroups: diagnostics.renderer.highlightGroups.map((g) => g.matched),
+      highlightGroups: diagnostics.renderer.highlightGroups.map((group) => group.matched),
       isolatedMatched: diagnostics.renderer.isolatedMatched,
       clipping: diagnostics.renderer.clipping,
-      resources: { workers: diagnostics.resources.workers, renderers: diagnostics.resources.renderers },
+      resources: {
+        workers: diagnostics.resources.workers,
+        renderers: diagnostics.resources.renderers,
+      },
     },
     null,
     2,
   );
 }
 
-document.getElementById("pick").addEventListener("click", () => {
-  render();
-});
-document.getElementById("highlight").addEventListener("click", () => {
-  const refs = viewer.diagnostics().objects.map((object) => object.ref);
-  viewer.setHighlights([{ refs, color: "#e02424", label: "Everything" }]);
-});
-document.getElementById("isolate").addEventListener("click", () => {
-  const arch = viewer.diagnostics().objects
-    .filter((object) => object.ref.revisionId === "rev-a")
-    .map((object) => object.ref);
-  viewer.isolate(arch.length > 0 ? arch : null);
-});
-document.getElementById("section").addEventListener("click", () => {
-  viewer.setSectionZ(viewer.diagnostics().sectionZ === null ? 0.5 : null);
-});
-document.getElementById("unload").addEventListener("click", () => {
-  viewer.dispose();
-  viewer = null;
-  state.textContent = JSON.stringify({ unloaded: true }, null, 2);
-});
+function report(stats) {
+  state.textContent = JSON.stringify({ unloaded: true, resources: stats }, null, 2);
+}
 
-startViewer();
+document.getElementById("pick").onclick = () => {
+  viewer.select(WALL, { frame: true });
+};
+
+document.getElementById("highlight").onclick = () =>
+  viewer.applyOverlay({
+    highlights: [{ refs: [WALL, SLAB], color: "#7c3aed", label: "Sample" }],
+    isolate: null,
+    dimOpacity: 0.35,
+    frame: null,
+  });
+
+document.getElementById("isolate").onclick = () =>
+  viewer.applyOverlay({
+    highlights: [],
+    isolate: [WALL],
+    dimOpacity: 1,
+    frame: [WALL],
+  });
+
+document.getElementById("section").onclick = () => viewer.setSectionZ(1.5);
+
+document.getElementById("unload").onclick = () => {
+  viewer.dispose();
+  report(viewer.resourceStats());
+  viewer = null;
+};

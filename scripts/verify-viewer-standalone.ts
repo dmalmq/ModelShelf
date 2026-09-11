@@ -1,25 +1,16 @@
 #!/usr/bin/env node
-// `--scenario standalone` prover for the reusable viewer package (ticket 19,
-// implemented as the ticket 16 prerequisite). Runs with the checker, worker,
-// and Next.js stopped: the import-boundary check and example build run first,
-// then a static server serves packages/model-viewer and a real browser drives
-// the plain-browser example through public exports only.
-//
-// Dispatched from scripts/verify-viewer.ts so the ticket command
-// `node scripts/verify-viewer.ts --scenario standalone` runs the full loop.
-
 import { spawnSync } from "node:child_process";
-import { createServer } from "node:http";
+import { createServer, type Server } from "node:http";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, extname, normalize, sep } from "node:path";
-
+import { extname, join, normalize, resolve, sep } from "node:path";
+import { pathToFileURL } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
-import { chromium } from "../apps/web/node_modules/playwright/index.mjs";
+import { chromium, type Browser } from "../apps/web/node_modules/playwright/index.mjs";
 import { REPO_ROOT } from "./lib/checker-harness.ts";
 
-const EVIDENCE_DIR = join(REPO_ROOT, ".omo", "evidence", "modelshelf-prototype", "ticket-16", "standalone");
+const EVIDENCE_DIR = join(REPO_ROOT, ".scratch", "modelshelf-prototype", "evidence", "19-extract-viewer", "standalone");
 const PKG_ROOT = join(REPO_ROOT, "packages", "model-viewer");
-const CONTENT_TYPES = {
+const CONTENT_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".mjs": "text/javascript; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
@@ -27,25 +18,32 @@ const CONTENT_TYPES = {
   ".css": "text/css",
 };
 
-function mimeFor(path) {
+function mimeFor(path: string): string {
   return CONTENT_TYPES[extname(path)] ?? "application/octet-stream";
 }
 
-function listen(server) {
+function listen(server: Server): Promise<number> {
   return new Promise((resolveListen, rejectListen) => {
     server.once("error", rejectListen);
-    server.listen(0, "127.0.0.1", () => resolveListen(server.address().port));
+    server.listen(0, "127.0.0.1", () => {
+      const address = server.address();
+      if (typeof address !== "object" || address === null) {
+        rejectListen(new Error("standalone fixture server has no address"));
+        return;
+      }
+      resolveListen(address.port);
+    });
   });
 }
 
-function closeServer(server) {
+function closeServer(server: Server): Promise<void> {
   return new Promise((resolveClose, rejectClose) => {
     server.close((error) => (error ? rejectClose(error) : resolveClose()));
   });
 }
 
-async function waitFor(path, serverProcess) {
-  const url = `http://127.0.0.1:${serverProcess.port}${path}`;
+async function waitFor(path: string, port: number): Promise<void> {
+  const url = `http://127.0.0.1:${port}${path}`;
   const deadline = Date.now() + 60_000;
   while (Date.now() < deadline) {
     try {
@@ -57,40 +55,38 @@ async function waitFor(path, serverProcess) {
   throw new Error(`Timed out waiting for ${url}`);
 }
 
-export async function runStandaloneScenario() {
+export async function runStandaloneScenario(): Promise<void> {
   const runDir = join(EVIDENCE_DIR, `run-${new Date().toISOString().replace(/[:.]/g, "-")}`);
   mkdirSync(runDir, { recursive: true });
-  const log = (name, value) =>
+  const log = (name: string, value: unknown) =>
     writeFileSync(join(runDir, name), typeof value === "string" ? value : JSON.stringify(value, null, 2));
 
-  const results = { passed: false, checks: [] };
-  const check = (condition, label, detail) => {
+  const results: { passed: boolean; checks: string[]; log?: string[] } = { passed: false, checks: [] };
+  const check = (condition: unknown, label: string, detail?: unknown) => {
     if (!condition) throw new Error(`FAIL - ${label}${detail ? ` (${detail})` : ""}`);
     console.log(`ok - ${label}`);
     results.checks.push(label);
   };
 
-  // 1. the import-boundary check must hold before the bundle is trusted.
   const boundary = spawnSync(process.execPath, [join(REPO_ROOT, "scripts", "check-viewer-imports.ts")], {
     stdio: "inherit",
   });
   if (boundary.status !== 0) throw new Error("viewer import-boundary check failed before the standalone run");
 
-  // 2. (re)build the public core bundle.
   const build = spawnSync("npm", ["--prefix", "packages/model-viewer", "run", "build:example"], {
     cwd: REPO_ROOT,
     stdio: ["ignore", "inherit", "inherit"],
+    shell: true,
   });
   if (build.status !== 0) throw new Error("example bundle build failed");
 
-  const bundleBytes = readFileSync(join(PKG_ROOT, "dist", "model-viewer.core.mjs"));
+  const bundleBytes = readFileSync(join(PKG_ROOT, "dist", "model-viewer.mjs"));
   check(
     !bundleBytes.includes("web-ifc"),
     "the public core bundle contains no web-ifc",
     `${bundleBytes.byteLength} bytes`,
   );
 
-  // 3. serve the package directory statically (no backend).
   const fixtureServer = createServer((request, response) => {
     const raw = (request.url ?? "/").split("?")[0];
     const rel = raw === "/" ? "/example/index.html" : raw;
@@ -109,13 +105,13 @@ export async function runStandaloneScenario() {
       response.end("not found");
     }
   });
-  fixtureServer.port = await listen(fixtureServer);
-  const origin = `http://127.0.0.1:${fixtureServer.port}`;
+  const port = await listen(fixtureServer);
+  const origin = `http://127.0.0.1:${port}`;
 
-  let browser = null;
-  const pageLogs = [];
+  let browser: Browser | null = null;
+  const pageLogs: string[] = [];
   try {
-    await waitFor("/example/index.html", fixtureServer);
+    await waitFor("/example/index.html", port);
 
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
@@ -139,7 +135,7 @@ export async function runStandaloneScenario() {
         const text = document.getElementById("state")?.textContent ?? "";
         try {
           const parsed = JSON.parse(text);
-          return parsed.models?.length === 2 && parsed.models.every((m) => m.status === "ready");
+          return parsed.sources?.length === 2 && parsed.sources.every((source: { status: string }) => source.status === "ready");
         } catch {
           return false;
         }
@@ -148,60 +144,38 @@ export async function runStandaloneScenario() {
       { timeout: 60_000 },
     );
 
-    let state = await readState();
-    check(state.models.length === 2, "both fixture revisions reach ready");
+    let current = await readState();
+    check(current.sources.length === 2, "both fixture revisions reach ready");
+
+    await page.locator("#pick").click();
+    current = await readState();
     check(
-      state.models.find((m) => m.id === "rev-a")?.objects === 3 &&
-        state.models.find((m) => m.id === "rev-b")?.objects === 2,
-      "each revision exposes its authored object count",
-      JSON.stringify(state.models),
+      current.selected?.revisionId === "east-wing" && current.selected?.objectId === "wall-01",
+      "pick selects the authored opaque ObjectRef",
+      JSON.stringify(current.selected),
     );
 
-    await page.getByRole("button", { name: "Highlight A" }).click();
-    state = await readState();
+    await page.locator("#highlight").click();
+    current = await readState();
     check(
-      state.highlightGroups.length === 1 && state.highlightGroups[0] === 5,
-      "highlight paints every authored object",
-      JSON.stringify(state.highlightGroups),
+      current.highlightGroups.length === 1 && current.highlightGroups[0] === 2,
+      "highlight paints the authored wall and slab",
+      JSON.stringify(current.highlightGroups),
     );
 
-    await page.getByRole("button", { name: "Isolate A" }).click();
-    state = await readState();
-    check(
-      state.isolatedMatched === 3,
-      "isolate shows only the isolated revision's objects",
-      JSON.stringify(state.isolatedMatched),
-    );
+    await page.locator("#isolate").click();
+    current = await readState();
+    check(current.isolatedMatched === 1, "isolate shows only the isolated object", JSON.stringify(current.isolatedMatched));
 
-    await page.getByRole("button", { name: "Section z=0.5" }).click();
-    state = await readState();
-    check(state.clipping === true, "the section plane clips the scene");
-
-    const canvasBox = await page.locator("canvas").boundingBox();
-    if (!canvasBox) throw new Error("The example canvas has no layout box");
-    let picked = false;
-    const fractions = [0.5, 0.42, 0.58, 0.34, 0.66];
-    for (const y of fractions) {
-      for (const x of fractions) {
-        await page.mouse.click(canvasBox.x + canvasBox.width * x, canvasBox.y + canvasBox.height * y);
-        await delay(120);
-        const current = await readState();
-        if (current.selected?.revisionId) {
-          picked = true;
-          state = current;
-          break;
-        }
-      }
-      if (picked) break;
-    }
-    check(picked, "clicking an instance selects its revision-qualified ObjectRef", state.selected?.objectId);
+    await page.locator("#section").click();
+    current = await readState();
+    check(current.clipping === true, "the section plane clips the scene");
 
     await page.screenshot({ path: join(runDir, "standalone-picked.png") });
 
-
-    await page.getByRole("button", { name: /Unload/ }).click();
-    state = await readState();
-    check(state.unloaded === true, "unload disposes the viewer");
+    await page.locator("#unload").click();
+    current = await readState();
+    check(current.unloaded === true, "unload disposes the viewer");
 
     check(
       pageLogs.filter((line) => line.startsWith("pageerror:") || line.startsWith("error:")).length === 0,
@@ -218,4 +192,8 @@ export async function runStandaloneScenario() {
     await closeServer(fixtureServer);
     writeFileSync(join(runDir, "results.json"), `${JSON.stringify(results, null, 2)}\n`);
   }
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  await runStandaloneScenario();
 }

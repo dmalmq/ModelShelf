@@ -1,8 +1,3 @@
-// Host adapter: maps ModelShelf wire payloads onto the generic viewer shapes.
-// The viewer package never imports application types; this module is the only
-// seam that knows both sides. The parsed DeliveryDetail is structurally a
-// ViewerDelivery, so consumers can hand it straight to the wrapper's
-// loadDelivery prop.
 import type {
   Delivery,
   DeliveryDetail,
@@ -11,9 +6,6 @@ import type {
   RunStatus,
   RunSummary,
 } from "@/lib/types";
-export function viewerFileUrl(model: { readonly id: string }): string {
-  return `/api/models/${encodeURIComponent(model.id)}/file`;
-}
 
 export async function fetchDelivery(deliveryId: string, signal?: AbortSignal): Promise<DeliveryDetail> {
   if (deliveryId.trim().length === 0) throw new Error("deliveryId must not be empty");
@@ -127,11 +119,13 @@ function runStatusValue(value: unknown): RunStatus {
 
 function requireRecord(value: unknown, field: string): Record<string, unknown> {
   if (typeof value !== "object" || value === null) throw new Error(`${field} must be an object`);
-  return value as Record<string, unknown>;
+  return Object.fromEntries(Object.entries(value));
 }
 
 function stringValue(value: unknown, field: string): string {
-  if (typeof value !== "string") throw new Error(`${field} must be a string`);
+  if (typeof value !== "string" || value.length === 0) {
+    throw new Error(`${field} must be a non-empty string`);
+  }
   return value;
 }
 
@@ -143,19 +137,20 @@ function nonEmptyString(value: unknown, field: string): string {
 
 function nullableString(value: unknown, field: string): string | null {
   if (value === null) return null;
-  return stringValue(value, field);
+  if (typeof value === "string") return value;
+  throw new Error(`${field} must be a string or null`);
 }
 
 function integerValue(value: unknown, field: string): number {
-  if (typeof value !== "number" || !Number.isInteger(value)) {
-    throw new Error(`${field} must be an integer`);
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
+    throw new Error(`${field} must be a non-negative integer`);
   }
   return value;
 }
 
 function numberValue(value: unknown, field: string): number {
   if (typeof value !== "number" || !Number.isFinite(value)) {
-    throw new Error(`${field} must be a finite number`);
+    throw new Error(`${field} must be finite`);
   }
   return value;
 }
