@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-// Dispatched from scripts/verify-viewer.ts --scenario standalone.
-
 import { spawnSync } from "node:child_process";
 import { createServer, type Server } from "node:http";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";

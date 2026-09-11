@@ -97,7 +97,6 @@ export function EvidencePanel({
   const [isolationOff, setIsolationOff] = useState(false);
   const inspectAbort = useRef<AbortController | null>(null);
 
-  // A new finding is a new question: it isolates again.
   useEffect(() => {
     inspectAbort.current?.abort();
     inspectAbort.current = null;
@@ -235,8 +234,6 @@ export function EvidencePanel({
 
   const filtered = useMemo(() => filterMembers(valid, filters), [valid, filters]);
 
-  // The viewer owns selection truth; mirror its hidden flag so the notice
-  // appears the moment the selection leaves the isolated set.
   useEffect(() => {
     if (!viewer) return;
     let lastKey: string | null | undefined;
@@ -254,7 +251,6 @@ export function EvidencePanel({
       setProperty(null);
       setPropertyError(null);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewer]);
 
   const { refs } = useMemo(() => {

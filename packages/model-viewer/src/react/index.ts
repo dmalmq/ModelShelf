@@ -27,7 +27,6 @@ export function useModelViewer(options: UseModelViewerOptions): UseModelViewerRe
   const viewerRef = useRef<ModelViewer | null>(null);
   const [viewer, setViewer] = useState<ModelViewer | null>(null);
   const [snapshot, setSnapshot] = useState<ViewerSnapshot | null>(null);
-  const sceneKey = sceneSignature(options.scene);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -55,8 +54,7 @@ export function useModelViewer(options: UseModelViewerOptions): UseModelViewerRe
       setViewer(null);
       setSnapshot(null);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sceneKey, options.selectionColor, options.geometry]);
+  }, [options.scene, options.selectionColor, options.geometry]);
 
   const canvasProps = useMemo<ViewerCanvasProps>(
     () => ({
@@ -80,11 +78,4 @@ export function useModelViewer(options: UseModelViewerOptions): UseModelViewerRe
   );
 
   return { viewer, snapshot, canvasProps };
-}
-
-function sceneSignature(scene: ViewerScene | null): string {
-  if (!scene) return "";
-  return scene.sources
-    .map((source) => `${source.revisionId}\0${JSON.stringify(source.attributes)}`)
-    .join("\n");
 }

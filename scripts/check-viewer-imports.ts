@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-// Usage: node scripts/check-viewer-imports.ts
-
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
