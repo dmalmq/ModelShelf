@@ -55,7 +55,7 @@ slightly different counts.
 Stage the existing files into the working tree with:
 
 ```
-node scripts/stage-snowdon-models.mjs --from "<directory holding the four .ifc files>"
+node scripts/stage-snowdon-models.ts --from "<directory holding the four .ifc files>"
 ```
 
 The script verifies each file against the SHA-256 pinned in

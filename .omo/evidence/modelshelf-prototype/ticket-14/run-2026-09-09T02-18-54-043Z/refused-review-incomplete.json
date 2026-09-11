@@ -1,6 +1,0 @@
-{
-  "error": {
-    "code": "run_incomplete",
-    "message": "run has review-incomplete outcomes (run b42586a6-839d-47e7-94d6-927f68047545 reports 1 review-incomplete outcomes; base run 5a4b3cac-7b88-4f35-ad8f-9101e193d65d, head run b42586a6-839d-47e7-94d6-927f68047545); rerun one or both sides under identical settings before comparing"
-  }
-}

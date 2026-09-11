@@ -8,7 +8,7 @@ plan review. Used here as the three-discipline demo delivery ticket 05 requires.
 
 ## Acquisition
 
-Run `node scripts/fetch-demo-models.mjs` from the repo root. It downloads three
+Run `node scripts/fetch-demo-models.ts` from the repo root. It downloads three
 archives from URLs read directly off the official BLCJ sample-model page
 (saved locally at
 [`references/bim-checking/downloads/03-blcj-mapping/source-and-terms.html`](../../references/bim-checking/downloads/03-blcj-mapping/source-and-terms.html),
@@ -52,7 +52,7 @@ files (`samples/ifc/*.ifc`) are gitignored (see this directory's `.gitignore`
 and the root `.gitignore`) and must never be committed, bundled, or otherwise
 redistributed. Only this README and `manifest.json` — provenance metadata, not
 the copyrighted content itself — are tracked in git. A teammate reproduces the
-actual files locally via `fetch-demo-models.mjs`, never from git history.
+actual files locally via `fetch-demo-models.ts`, never from git history.
 
 ## Alignment
 

@@ -1,2 +1,0 @@
-[2m2026-09-06T09:39:47.561214Z[0m [32m INFO[0m [2mmodelshelf_checker[0m[2m:[0m modelshelf-checker listening [3maddr[0m[2m=[0m127.0.0.1:41597
-[2m2026-09-06T09:39:47.661659Z[0m [33m WARN[0m [2mmodelshelf_checker::jobs[0m[2m:[0m ingestion job failed [3mjob_id[0m[2m=[0m"9bcb073b-ef5c-4d8e-95e6-3321b0b8b0a5" [3merror[0m[2m=[0mmalformed NDJSON on line 2: EOF while parsing an object at line 1 column 40

@@ -34,10 +34,10 @@ outcomes, shared-contract generation, and the shutdown/restart contract.
 One command:
 
 ```sh
-node scripts/demo-launch.mjs
+node scripts/demo-launch.ts
 ```
 
-`scripts/demo-launch.mjs` performs the launch exactly as the manual sequence
+`scripts/demo-launch.ts` performs the launch exactly as the manual sequence
 below: build the checker, seed the demo data, start the API, start the web dev
 server, and stop both services on SIGINT/SIGTERM or if either child exits.
 
@@ -79,7 +79,7 @@ checksum-verifiable and idempotent.
 ### BLCJ S1000 (public downloads)
 
 ```sh
-node scripts/fetch-demo-models.mjs
+node scripts/fetch-demo-models.ts
 ```
 
 - Downloads three archives from the official BLCJ sample-model page
@@ -95,8 +95,8 @@ node scripts/fetch-demo-models.mjs
 ### Snowdon Towers (operator-owned copy)
 
 ```sh
-node scripts/stage-snowdon-models.mjs --from "<directory holding the four .ifc files>"
-node scripts/stage-snowdon-models.mjs --from "$SNOWDON_SRC" --verify-only
+node scripts/stage-snowdon-models.ts --from "<directory holding the four .ifc files>"
+node scripts/stage-snowdon-models.ts --from "$SNOWDON_SRC" --verify-only
 ```
 
 - Copies the four Snowdon Towers IFC exports into `samples/ifc/`, verifying
@@ -158,13 +158,13 @@ Verification commands and what each proves:
 
 | Command | Purpose |
 | --- | --- |
-| `node scripts/generate-model-contracts.mjs --check` | Fails if the committed generated bindings have drifted from the canonical `schemas/model/v1/` files (ticket 18). |
-| `node scripts/verify-model-contracts.mjs` | Proves a real Python-produced payload is consumed by both Rust and TypeScript and that none of the three packages import application, database, or checking-engine code (ticket 18). |
-| `node scripts/verify-viewer.mjs` | Combined scenario (default): the real BLCJ models load and align in the browser, duplicate-GlobalId revisions select independently, an empty model stays ready without bounds, and unload releases resources (ticket 07). |
-| `node scripts/verify-viewer.mjs --scenario inspection` | Finding inspector: a 100+ object finding highlights every member, filters, section cut, isolation/reset, property inspection, and incomplete-evidence handling (ticket 08). |
-| `node scripts/verify-viewer.mjs --scenario standalone` | Standalone example: proves `packages/model-viewer` runs in a plain browser with the checker, worker, and Next.js stopped, exercising pick, highlight, isolate, section, and unload through public exports only, with the import-boundary check (`scripts/check-viewer-imports.mjs`) green (ticket 19, landing as this ticket's prerequisite). |
-| `node scripts/verify-api.mjs --scenario all` | Runs the seven API scenarios sequentially and fails (nonzero) if any fails: `revisions` (immutable delivery data model, ticket 02), `worker-failure` (job queue failure modes, ticket 04), `checks` (scoped IDS runs with pinned inputs, ticket 06), `first-loop` (upload to grouped finding to member resolution, ticket 09), `comparisons` (revision diff with match confidence, ticket 13), `finding-comparisons` (settings-gated run diff, ticket 14), and `restart` (a fresh serve process against the same data directory retains deliveries, runs, and artifacts). |
-| `node scripts/verify-ui.mjs --scenario all` | Runs the three UI scenarios sequentially: `deliveries` (shelf create/upload/reuse/finalize/reload, ticket 10), `findings` (grouped findings review, ticket 11), and `comparisons` (delivery comparison screen, ticket 15) against the real checker, worker, production web build, and Chromium. |
+| `node scripts/generate-model-contracts.ts --check` | Fails if the committed generated bindings have drifted from the canonical `schemas/model/v1/` files (ticket 18). |
+| `node scripts/verify-model-contracts.ts` | Proves a real Python-produced payload is consumed by both Rust and TypeScript and that none of the three packages import application, database, or checking-engine code (ticket 18). |
+| `node scripts/verify-viewer.ts` | Combined scenario (default): the real BLCJ models load and align in the browser, duplicate-GlobalId revisions select independently, an empty model stays ready without bounds, and unload releases resources (ticket 07). |
+| `node scripts/verify-viewer.ts --scenario inspection` | Finding inspector: a 100+ object finding highlights every member, filters, section cut, isolation/reset, property inspection, and incomplete-evidence handling (ticket 08). |
+| `node scripts/verify-viewer.ts --scenario standalone` | Standalone example: proves `packages/model-viewer` runs in a plain browser with the checker, worker, and Next.js stopped, exercising pick, highlight, isolate, section, and unload through public exports only, with the import-boundary check (`scripts/check-viewer-imports.ts`) green (ticket 19, landing as this ticket's prerequisite). |
+| `node scripts/verify-api.ts --scenario all` | Runs the seven API scenarios sequentially and fails (nonzero) if any fails: `revisions` (immutable delivery data model, ticket 02), `worker-failure` (job queue failure modes, ticket 04), `checks` (scoped IDS runs with pinned inputs, ticket 06), `first-loop` (upload to grouped finding to member resolution, ticket 09), `comparisons` (revision diff with match confidence, ticket 13), `finding-comparisons` (settings-gated run diff, ticket 14), and `restart` (a fresh serve process against the same data directory retains deliveries, runs, and artifacts). |
+| `node scripts/verify-ui.ts --scenario all` | Runs the three UI scenarios sequentially: `deliveries` (shelf create/upload/reuse/finalize/reload, ticket 10), `findings` (grouped findings review, ticket 11), and `comparisons` (delivery comparison screen, ticket 15) against the real checker, worker, production web build, and Chromium. |
 
 ## Shared contracts and package exports
 
@@ -187,8 +187,8 @@ Verification commands and what each proves:
 - Regenerate all three languages' bindings, or check for drift:
 
   ```sh
-  node scripts/generate-model-contracts.mjs
-  node scripts/generate-model-contracts.mjs --check
+  node scripts/generate-model-contracts.ts
+  node scripts/generate-model-contracts.ts --check
   ```
 
 - `packages/model-viewer` exposes three public exports: `"."` is the thin
@@ -204,7 +204,7 @@ Verification commands and what each proves:
 
 ## Shutdown and restart
 
-- Stop the service with Ctrl-C (SIGINT). `scripts/demo-launch.mjs` shuts down
+- Stop the service with Ctrl-C (SIGINT). `scripts/demo-launch.ts` shuts down
   both the API and the web dev server on SIGINT/SIGTERM. If either child exits
   unexpectedly, it stops the survivor and exits nonzero.
 - The checker holds no state outside its `--data-dir` (README): a restart
@@ -217,12 +217,11 @@ Verification commands and what each proves:
 ## Where evidence lives
 
 Ticket-16 aggregate and standalone runs write logs, JSON responses, and
-screenshots under `.omo/evidence/modelshelf-prototype/ticket-16/`. The existing
+screenshots under `.omo/evidence/modelshelf-prototype/ticket-16/` (gitignored). The existing
 ticket-owned viewer and UI scenarios retain their historical `.scratch`
 directories (`07-combined-viewer`, `08-finding-inspection`, and
-`11-priority-review`); each command records its own result there. Third-party
-inputs and restricted samples are never committed; only provenance metadata and
-evidence artifacts are tracked.
+`11-priority-review`); each command records its own result there locally. Third-party
+inputs and restricted samples are never committed.
 
 ## Verification ownership
 

@@ -1,2 +1,0 @@
-[2m2026-09-06T09:44:32.736949Z[0m [32m INFO[0m [2mmodelshelf_checker[0m[2m:[0m modelshelf-checker listening [3maddr[0m[2m=[0m127.0.0.1:38905
-[2m2026-09-06T09:44:32.971033Z[0m [33m WARN[0m [2mmodelshelf_checker::jobs[0m[2m:[0m ingestion job failed [3mjob_id[0m[2m=[0m"18dc0e43-b661-46e3-ae5f-a001c78a893f" [3merror[0m[2m=[0mworker protocol version mismatch on line 1: expected 1, got 2
