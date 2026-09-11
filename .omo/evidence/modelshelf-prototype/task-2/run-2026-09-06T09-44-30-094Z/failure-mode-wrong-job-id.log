@@ -1,2 +1,0 @@
-[2m2026-09-06T09:44:31.436936Z[0m [32m INFO[0m [2mmodelshelf_checker[0m[2m:[0m modelshelf-checker listening [3maddr[0m[2m=[0m127.0.0.1:35599
-[2m2026-09-06T09:44:31.665100Z[0m [33m WARN[0m [2mmodelshelf_checker::jobs[0m[2m:[0m ingestion job failed [3mjob_id[0m[2m=[0m"3cc0043f-093a-42e6-9b52-23d1b1e04da2" [3merror[0m[2m=[0mworker reported job id "not-3cc0043f-093a-42e6-9b52-23d1b1e04da2" on line 1, expected "3cc0043f-093a-42e6-9b52-23d1b1e04da2"

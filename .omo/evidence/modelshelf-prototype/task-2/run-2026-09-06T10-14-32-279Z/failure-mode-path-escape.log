@@ -1,2 +1,0 @@
-2026-09-06T10:14:33.887003Z  INFO modelshelf_checker: modelshelf-checker listening addr=127.0.0.1:33257
-2026-09-06T10:14:34.119720Z  WARN modelshelf_checker::jobs: ingestion job failed job_id="3b9b162e-d5bf-4556-a6af-3a5bd79f3895" error=semantic artifact path escapes the job's own output directory

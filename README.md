@@ -1,6 +1,6 @@
 # ModelShelf
 
-A local BIM delivery checker: Rust/Axum service, SQLite storage, a Next.js frontend, and (later) an IfcOpenShell/IfcTester worker. See [`VISION.md`](VISION.md) for the accept/resist policy. See [`CONTEXT.md`](CONTEXT.md) for domain terms and [`.scratch/modelshelf-prototype/`](.scratch/modelshelf-prototype/) for the prototype ticket set.
+A local BIM delivery checker: Rust/Axum service, SQLite storage, a Next.js frontend, and (later) an IfcOpenShell/IfcTester worker. See [`VISION.md`](VISION.md) for the accept/resist policy. See [`CONTEXT.md`](CONTEXT.md) for domain terms and [the GitHub ticket set](docs/agents/issue-tracker.md) for prototype work.
 
 ## Backend service (`modelshelf-checker`)
 
@@ -39,10 +39,10 @@ Full contract: [`docs/contracts/http-api.md`](docs/contracts/http-api.md).
 ## QA harness
 
 ```sh
-node scripts/qa-harness.mjs
+node scripts/qa-harness.ts
 ```
 
-Builds the service, then against its own temporary data directory and an unused port: seeds twice and checks the result is idempotent, starts `serve`, checks `/api/health` and `/api/projects` and `/api/packs`, rejects an unknown CLI command, then stops the server and deletes its own temp directories. Logs and JSON responses from each run land under `.omo/evidence/modelshelf-prototype/task-1/run-<timestamp>/`.
+Node 24 runs these `.ts` scripts directly. The harness builds the service, then against its own temporary data directory and an unused port: seeds twice and checks the result is idempotent, starts `serve`, checks `/api/health` and `/api/projects` and `/api/packs`, rejects an unknown CLI command, then stops the server and deletes its own temp directories. Logs and JSON responses from each run land locally under `.omo/evidence/modelshelf-prototype/task-1/run-<timestamp>/` (gitignored).
 
 ## Frontend (`apps/web`)
 
@@ -76,9 +76,9 @@ uv sync --project packages/model-contracts-py
 ```
 
 ```sh
-node scripts/generate-model-contracts.mjs           # regenerate all three languages' bindings
-node scripts/generate-model-contracts.mjs --check   # fail if committed bindings have drifted
-node scripts/verify-model-contracts.mjs             # cross-language fixture + round-trip + import-boundary proof
+node scripts/generate-model-contracts.ts           # regenerate all three languages' bindings
+node scripts/generate-model-contracts.ts --check   # fail if committed bindings have drifted
+node scripts/verify-model-contracts.ts             # cross-language fixture + round-trip + import-boundary proof
 ```
 
 ## Tests

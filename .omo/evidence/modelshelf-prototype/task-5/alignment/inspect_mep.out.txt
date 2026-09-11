@@ -1,9 +1,0 @@
-mep products with placement: 3014
-mep bbox min: [-2560.44668 -5988.22857 -3500.05   ]
-mep bbox max: [14543.728144 18606.771432 17000.      ]
-arch products with placement: 2177
-arch bbox min: [-2000. -1700. -2060.]
-arch bbox max: [15050.32793509 20573.0304448  16760.        ]
-structure products with placement: 322
-structure bbox min: [-1000. -1000. -2060.]
-structure bbox max: [13200. 19400. 16500.]

@@ -2,9 +2,9 @@
 
 This document is the prototype's support profile. It records what the local demo
 is and is not, and where a capability is unproven it names the ticket that owns
-proving it. Facts here trace to the plan (`.omo/plans/modelshelf-prototype.md`),
-the contract documents (`docs/contracts/`), the sample documentation
-(`samples/`), and the ticket Answers under `.scratch/modelshelf-prototype/issues/`.
+proving it. Facts here trace to [the GitHub ticket set](agents/issue-tracker.md),
+the contract documents (`docs/contracts/`), and the sample documentation
+(`samples/`).
 
 ## Supported IFC inputs
 
@@ -17,8 +17,7 @@ the contract documents (`docs/contracts/`), the sample documentation
 - The demo samples exercise both IFC2X3 and IFC4:
   - The BLCJ S1000 set is three IFC2X3 files (architecture by GLOOBE, structure
     by Revit/SS7, MEP by Rebro). The combined-viewer evidence records
-    `schemaLabel: "IFC2X3"` for all three ("IFC2X3" at
-    `.scratch/modelshelf-prototype/evidence/07-combined-viewer/results.json`);
+    `schemaLabel: "IFC2X3"` for all three;
     `samples/blcj-s1000/alignment.md` confirms all three are IFC2X3 and metric.
   - The Snowdon Towers set is four IFC4 files exported from Revit 2026 with the
     `ReferenceView_V1.2` MVD; `samples/snowdon-towers/manifest.json` records
@@ -108,11 +107,11 @@ the contract documents (`docs/contracts/`), the sample documentation
 ## Sample redistribution
 
 - The BLCJ S1000 files are public downloads from the official BLCJ sample-model
-  page, fetched by `scripts/fetch-demo-models.mjs` with pinned SHA-256 hashes.
+  page, fetched by `scripts/fetch-demo-models.ts` with pinned SHA-256 hashes.
   BLCJ prohibits unauthorized redistribution, so the archives and extracted
   IFC files are gitignored and never committed (`samples/blcj-s1000/README.md`).
 - The Snowdon Towers files come only from an operator-owned copy via
-  `scripts/stage-snowdon-models.mjs --from <dir>`. There is no confirmed public
+  `scripts/stage-snowdon-models.ts --from <dir>`. There is no confirmed public
   URL and no redistribution grant, so no download step exists and the files are
   gitignored (`samples/snowdon-towers/README.md`).
 
@@ -124,6 +123,6 @@ the contract documents (`docs/contracts/`), the sample documentation
   scope").
 - The viewer package extraction is delivered in `packages/model-viewer` with a
   framework-independent core, a thin React wrapper, and a standalone example.
-  `node scripts/verify-viewer.mjs --scenario standalone` proves the example
+  `node scripts/verify-viewer.ts --scenario standalone` proves the example
   with ModelShelf services stopped; the package remains a prototype seam, not a
   plugin framework.

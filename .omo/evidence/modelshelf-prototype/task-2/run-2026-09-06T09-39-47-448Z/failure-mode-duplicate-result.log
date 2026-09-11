@@ -1,2 +1,0 @@
-[2m2026-09-06T09:39:47.758507Z[0m [32m INFO[0m [2mmodelshelf_checker[0m[2m:[0m modelshelf-checker listening [3maddr[0m[2m=[0m127.0.0.1:37757
-[2m2026-09-06T09:39:47.994281Z[0m [33m WARN[0m [2mmodelshelf_checker::jobs[0m[2m:[0m ingestion job failed [3mjob_id[0m[2m=[0m"7201c24a-ec33-4a67-a4c9-9b9c921033f2" [3merror[0m[2m=[0mworker emitted more than one terminal result event

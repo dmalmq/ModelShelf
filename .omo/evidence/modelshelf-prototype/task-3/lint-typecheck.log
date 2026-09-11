@@ -1,8 +1,0 @@
-$ cd services/ifc-worker && uv run ruff check src tests
-All checks passed!
-
-$ uv run ruff format --check src tests
-18 files already formatted
-
-$ uv run basedpyright src tests
-0 errors, 0 warnings, 0 notes

@@ -1,6 +1,0 @@
-base objects: 141, head objects: 141
-profile_version: fp-v1, profile_id: 96533e3132aa448248262f76af0b792139d67e4d58f374bf11fb6e7dd11601f7
-full 64-hex digests: True
-shared globalIds: 133, added: 6, removed: 6
-component deltas: {'same': 121, 'S': 3, 'P': 3, 'L': 6}
-absent shape token stable across revisions and disjoint from available: True

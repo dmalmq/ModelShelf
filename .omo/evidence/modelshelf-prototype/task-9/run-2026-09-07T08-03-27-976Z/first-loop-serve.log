@@ -1,6 +1,0 @@
-2026-09-07T08:03:28.339510Z  INFO modelshelf_checker: modelshelf-checker listening addr=127.0.0.1:40517
-2026-09-07T08:03:29.645501Z  WARN modelshelf_checker::jobs: ingestion job failed job_id="86327365-0803-47a5-9dca-affb5a4ff014" error=worker exited with exit status: 1: Exception ignored in: <function file.__del__ at 0x7e4562477560>
-Traceback (most recent call last):
-  File "/home/daniel/orca/workspaces/ModelShelf/timingila/services/ifc-worker/.venv/lib/python3.13/site-packages/ifcopenshell/file.py", line 649, in __del__
-    del file_dict[self.file_pointer()]
-KeyError: 521475888

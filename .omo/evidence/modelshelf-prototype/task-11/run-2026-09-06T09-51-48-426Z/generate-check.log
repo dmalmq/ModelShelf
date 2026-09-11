@@ -1,3 +1,0 @@
-ok - typescript (packages/model-contracts-ts): generated files match schemas/model/v1 (no drift)
-ok - rust (crates/model-contracts/src/generated.rs): up to date
-ok - python (packages/model-contracts-py/src/model_contracts/generated.py): up to date

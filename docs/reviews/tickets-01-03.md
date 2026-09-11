@@ -87,7 +87,7 @@ The same extractor walks only occurrence property relations. A wall with a prope
 
 ## F6. Remove the smoke test's untracked fixture dependency
 
-**Evidence.** The updated [qa-harness.mjs](../../scripts/qa-harness.mjs) copies an IDS file from `.local/ids-testcases`, which `.gitignore` excludes. The copy runs before `try/finally`. A copied checkout without that file exits on `ENOENT` and leaves both temporary directories behind.
+**Evidence.** The updated [qa-harness.ts](../../scripts/qa-harness.ts) copies an IDS file from `.local/ids-testcases`, which `.gitignore` excludes. The copy runs before `try/finally`. A copied checkout without that file exits on `ENOENT` and leaves both temporary directories behind.
 
 **Proposed fix.** Check in a tiny self-authored IDS fixture suitable for this seed test. Place setup that can fail inside the cleanup lifetime, including fixture copying. Keep the new stored pack-version count assertion.
 
@@ -115,13 +115,13 @@ Ticket 02 explicitly requires readable pre-migration history with incomplete pro
 
 ## Verification performed
 
-- `node scripts/verify-api.mjs --scenario revisions` passed against the real service, including revision reuse and concurrent finalize/member requests.
+- `node scripts/verify-api.ts --scenario revisions` passed against the real service, including revision reuse and concurrent finalize/member requests.
 - `cargo test -p modelshelf-checker` passed all five migration tests.
 - `uv run --locked --project services/ifc-worker pytest -q services/ifc-worker/tests` passed all 30 tests.
-- The updated `node scripts/qa-harness.mjs` passed locally.
+- The updated `node scripts/qa-harness.ts` passed locally.
 - Additional SQLite and IfcOpenShell probes reproduced F1, F2, F3, and F5. Isolated copied-harness probes reproduced F6 and verified the original startup fix.
 
-Evidence is saved under [tickets-1-3-review](../../.omo/evidence/modelshelf-prototype/tickets-1-3-review/). `probes.json` contains the extraction and foreign-key results. `ticket1-missing-fixture.json` and `ticket1-startup-recheck.json` distinguish the remaining setup failure from the repaired startup failure. `checker-tests.log` records migration test output.
+Evidence was saved locally under `.omo/evidence/modelshelf-prototype/tickets-1-3-review/` (gitignored). `probes.json` contains the extraction and foreign-key results. `ticket1-missing-fixture.json` and `ticket1-startup-recheck.json` distinguish the remaining setup failure from the repaired startup failure. `checker-tests.log` records migration test output.
 
 The service tests cover the current checkout, which includes work beyond ticket 01. Separate read-only reviewers inspected tickets 02 and 03. These results do not claim a complete security audit or large-model performance validation.
 

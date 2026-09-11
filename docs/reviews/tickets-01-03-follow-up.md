@@ -69,9 +69,9 @@ The following commands passed again during this review:
 
 - `cargo test --workspace`
 - `uv run --locked --project services/ifc-worker pytest -q services/ifc-worker/tests`: 39 tests.
-- `node scripts/verify-model-contracts.mjs`
-- `node scripts/verify-api.mjs --scenario revisions`
-- `node scripts/verify-api.mjs --scenario worker-failure`
+- `node scripts/verify-model-contracts.ts`
+- `node scripts/verify-api.ts --scenario revisions`
+- `node scripts/verify-api.ts --scenario worker-failure`
 
 Independent read-only reviews checked the migration/provenance changes and protocol integration. Parent probes reproduced R1 and R4 with real IfcOpenShell entities. R2, R3, R5, and R6 are implementation findings from traced producers and consumers.
 

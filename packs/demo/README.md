@@ -24,7 +24,7 @@ Verify independently:
 cargo run -p ids --example evaluate_pack -- packs/demo/blcj-s1000-v1.ids samples/ifc/blcj-s1000-architecture.ifc samples/ifc/blcj-s1000-structure.ifc samples/ifc/blcj-s1000-mep.ifc
 cargo run -p ids --example evaluate_pack -- packs/demo/blcj-s1000-v2.ids samples/ifc/blcj-s1000-architecture.ifc samples/ifc/blcj-s1000-structure.ifc samples/ifc/blcj-s1000-mep.ifc
 ```
-(`node scripts/fetch-demo-models.mjs` first, if `samples/ifc/blcj-s1000-*.ifc` aren't present locally yet.)
+(`node scripts/fetch-demo-models.ts` first, if `samples/ifc/blcj-s1000-*.ifc` aren't present locally yet.)
 
 ## The synthetic diff/checking fixtures (`fixtures.ids` + `fixtures/`)
 
