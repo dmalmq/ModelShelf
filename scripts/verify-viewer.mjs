@@ -10,15 +10,20 @@ import { spawn, spawnSync } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 import { chromium } from "../apps/web/node_modules/playwright/index.mjs";
 import { runInspectionScenario } from "./verify-viewer-inspection.mjs";
+import { runStandaloneScenario } from "./verify-viewer-standalone.mjs";
 
 const scenarioFlag = process.argv.indexOf("--scenario");
 const scenario = scenarioFlag >= 0 ? process.argv[scenarioFlag + 1] : "combined";
-if (scenario !== "combined" && scenario !== "inspection") {
-  console.error(`usage: node scripts/verify-viewer.mjs [--scenario combined|inspection] [--assert-perf] (got ${scenario ?? "<none>"})`);
+if (scenario !== "combined" && scenario !== "inspection" && scenario !== "standalone") {
+  console.error(`usage: node scripts/verify-viewer.mjs [--scenario combined|inspection|standalone] [--assert-perf] (got ${scenario ?? "<none>"})`);
   process.exit(2);
 }
 if (scenario === "inspection") {
   await runInspectionScenario();
+  process.exit(0);
+}
+if (scenario === "standalone") {
+  await runStandaloneScenario();
   process.exit(0);
 }
 
@@ -135,6 +140,7 @@ const fixtureServer = createServer((request, response) => {
     response.end("deliberate verifier failure");
     return;
   }
+
 
   const sample = revisionFiles.get(revisionId);
   if (!sample) {
@@ -289,7 +295,8 @@ try {
   check(combined.resources.renderers === 1, "one renderer owns the combined scene");
   check(combined.resources.renderLoops === 1, "one render loop drives the combined scene");
   check(combined.resources.materials === 1, "model revisions share one material");
-  check(activeWorkerCount === 1, "one browser Worker remains active after StrictMode remount");
+  check(activeWorkerCount === 1, "the retried viewer keeps one browser Worker active");
+
   check(combined.resources.gpuGeometries > 0, "Three.js observes uploaded GPU geometry");
   check(combined.resources.gpuTextures > 0, "Three.js observes BatchedMesh GPU textures");
   check(combined.resources.shaderPrograms > 0, "Three.js observes compiled shader programs");
@@ -302,7 +309,8 @@ try {
   verifyCommonOrigin(combined);
   verifyMetreScaleAndAlignment(combined.snapshot.models);
 
-  const canvas = page.locator("canvas");
+  const canvas = page.locator("canvas").last();
+
   const canvasBox = await canvas.boundingBox();
   if (!canvasBox) throw new Error("Combined viewer canvas has no layout box");
 
@@ -437,11 +445,12 @@ try {
     pickedRef: picked.ref,
   };
 
-  const firstDispose = await page.evaluate(() => window.__modelshelfViewer?.dispose());
-  const secondDispose = await page.evaluate(() => window.__modelshelfViewer?.dispose());
-  results.disposalRuns.push(firstDispose, secondDispose);
-  await verifyDisposed(page, firstDispose, combined.resources, "combined first unload");
-  await verifyDisposed(page, secondDispose, combined.resources, "combined repeated unload");
+  const combinedDisposal = await disposeViewer(page);
+  results.disposalRuns.push(combinedDisposal);
+  await verifyDisposed(page, combinedDisposal, combined.resources, "combined first unload");
+  const repeatedDispose = await page.evaluate(() => window.__modelshelfViewer?.dispose());
+  results.disposalRuns.push(repeatedDispose);
+  await verifyDisposed(page, repeatedDispose, combined.resources, "combined repeated unload");
 
   await page.goto(`${appOrigin}/deliveries/duplicate`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(
@@ -478,9 +487,9 @@ try {
     refs: matching.map(({ ref, expressId, targetCount }) => ({ ref, expressId, targetCount })),
   };
 
-  const duplicateDispose = await page.evaluate(() => window.__modelshelfViewer?.dispose());
-  results.disposalRuns.push(duplicateDispose);
-  await verifyDisposed(page, duplicateDispose, duplicate.resources, "duplicate unload");
+  const duplicateDisposal = await disposeViewer(page);
+  results.disposalRuns.push(duplicateDisposal);
+  await verifyDisposed(page, duplicateDisposal, duplicate.resources, "duplicate unload");
 
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForFunction(
@@ -496,9 +505,9 @@ try {
       remounted.resources.gpuGeometries > 0,
     "remount reacquires one Worker and batched GPU resources",
   );
-  const remountDispose = await page.evaluate(() => window.__modelshelfViewer?.dispose());
-  results.disposalRuns.push(remountDispose);
-  await verifyDisposed(page, remountDispose, remounted.resources, "duplicate remount unload");
+  const remountDisposal = await disposeViewer(page);
+  results.disposalRuns.push(remountDisposal);
+  await verifyDisposed(page, remountDisposal, remounted.resources, "duplicate remount unload");
 
   await page.goto(`${appOrigin}/deliveries/empty`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(
@@ -520,9 +529,9 @@ try {
     model: emptyModel,
     resources: empty.resources,
   };
-  const emptyDispose = await page.evaluate(() => window.__modelshelfViewer?.dispose());
-  results.disposalRuns.push(emptyDispose);
-  await verifyDisposed(page, emptyDispose, empty.resources, "empty revision unload", 0);
+  const emptyDisposal = await disposeViewer(page);
+  results.disposalRuns.push(emptyDisposal);
+  await verifyDisposed(page, emptyDisposal, empty.resources, "empty revision unload", 0);
 
   results.passed = true;
   console.log("viewer verification passed");
@@ -610,6 +619,11 @@ async function inspect(page) {
   const diagnostics = await page.evaluate(() => window.__modelshelfViewer?.inspect());
   if (!diagnostics) throw new Error("Viewer diagnostics are unavailable");
   return diagnostics;
+}
+async function disposeViewer(page) {
+  const stats = await page.evaluate(() => window.__modelshelfViewer?.dispose());
+  if (!stats) throw new Error("No viewer handle was available for disposal");
+  return stats;
 }
 
 function verifyCommonOrigin(diagnostics) {

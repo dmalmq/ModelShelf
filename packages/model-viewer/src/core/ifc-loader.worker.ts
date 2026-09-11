@@ -8,7 +8,7 @@ import type {
   TransferGeometry,
   TransferInstance,
   WorkerHeader,
-} from "./types";
+} from "./viewer-types";
 
 const BATCH_LIMIT_BYTES = 8 * 1024 * 1024;
 const HASH_BATCH_SIZE = 128;

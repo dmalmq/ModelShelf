@@ -123,4 +123,3 @@ export const VIEWER_HIGHLIGHT = {
 
 /** Enforces the three-class ceiling above at the call site. */
 export const VIEWER_MAX_HIGHLIGHT_GROUPS = 3;
-

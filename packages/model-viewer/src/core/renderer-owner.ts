@@ -1,11 +1,11 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { VIEWER_HIGHLIGHT } from "@/lib/palette";
-import type { Discipline } from "@/lib/types";
+
 import {
   objectRefKey,
   type DeliveryModel,
   type DrawTarget,
+  type ModelDiscipline,
   type ObjectRef,
   type ObjectRefKey,
   type RendererDiagnostics,
@@ -17,7 +17,7 @@ import {
   type ViewerRenderer,
   type ViewerResourceStats,
   type WorkerHeader,
-} from "./types";
+} from "./viewer-types";
 
 interface RendererOptions {
   readonly canvas: HTMLCanvasElement;
@@ -32,6 +32,7 @@ interface RevisionResource {
 
 // Installed three types omit BatchedMesh.instanceColor even though setColorAt maintains it at runtime.
 type ColoredMesh = THREE.BatchedMesh & { instanceColor?: { needsUpdate: boolean } };
+const SELECTION_OUTLINE_COLOR = new THREE.Color(0x0d9488);
 
 export class RendererOwner implements ViewerRenderer {
   private readonly scene = new THREE.Scene();
@@ -52,7 +53,7 @@ export class RendererOwner implements ViewerRenderer {
   private readonly records = new Map<ObjectRefKey, SelectionRecord>();
   private readonly targetRecords = new Map<string, SelectionRecord>();
   private readonly trianglesByRevision = new Map<RevisionId, number>();
-  private readonly visibleByDiscipline: Record<Discipline, boolean> = {
+  private readonly visibleByDiscipline: Record<ModelDiscipline, boolean> = {
     ARCH: true,
     STRUCT: true,
     MEP: true,
@@ -270,7 +271,7 @@ export class RendererOwner implements ViewerRenderer {
     if (!box.isEmpty()) this.positionCamera(box);
   }
 
-  setDisciplineVisibility(discipline: Discipline, visible: boolean): void {
+  setDisciplineVisibility(discipline: ModelDiscipline, visible: boolean): void {
     this.visibleByDiscipline[discipline] = visible;
     this.applyVisibility();
   }
@@ -431,7 +432,8 @@ export class RendererOwner implements ViewerRenderer {
   private applyVisibility(): void {
     for (const [key, record] of this.records) {
       const visible =
-        this.visibleByDiscipline[record.discipline] && (this.isolated === null || this.isolated.has(key));
+        (this.visibleByDiscipline[record.discipline] ?? true) &&
+        (this.isolated === null || this.isolated.has(key));
       for (const target of record.targets) this.setTargetVisible(target, visible);
     }
     this.updateSelectionOutlines();
@@ -466,7 +468,7 @@ export class RendererOwner implements ViewerRenderer {
     if (this.selected === null) return;
     const key = objectRefKey(this.selected.ref);
     if (
-      !this.visibleByDiscipline[this.selected.discipline] ||
+      this.visibleByDiscipline[this.selected.discipline] === false ||
       (this.isolated !== null && !this.isolated.has(key))
     ) {
       return;
@@ -476,7 +478,7 @@ export class RendererOwner implements ViewerRenderer {
       if (!resource?.root.visible) continue;
       const box = new THREE.Box3();
       this.expandTargetBox(box, target);
-      if (!box.isEmpty()) this.selectionOutlines.add(new THREE.Box3Helper(box, VIEWER_HIGHLIGHT.selection));
+      if (!box.isEmpty()) this.selectionOutlines.add(new THREE.Box3Helper(box, SELECTION_OUTLINE_COLOR));
     }
   }
 

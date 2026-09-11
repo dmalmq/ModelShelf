@@ -12,10 +12,10 @@ import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { REVIEW_COPY, VIEWER_COPY } from "@/lib/i18n";
 import { ProvenanceNotice } from "../domain/provenance-notice";
 import type { DeliveryDetail, Finding, RunDetail, Severity } from "@/lib/types";
-import { fetchDelivery } from "../viewer/delivery-api";
-import { fetchRunDetail } from "../viewer/findings-api";
-import type { DeliveryViewerController } from "../viewer/types";
-import { CombinedDeliveryViewer } from "../viewer/combined-delivery-viewer";
+import { fetchDelivery, viewerFileUrl } from "@/lib/viewer-adapter";
+import { fetchRunDetail } from "./findings-api";
+import type { DeliveryViewerController } from "model-viewer/core";
+import { CombinedDeliveryViewer } from "model-viewer";
 import { useLocale } from "../locale-provider";
 import { DecisionPanel } from "./decision-panel";
 import { EvidencePanel } from "./evidence-panel";
@@ -149,8 +149,11 @@ export function ReviewScreen({
     <div data-review-screen>
       <CombinedDeliveryViewer
         deliveryId={deliveryId}
+        loadDelivery={fetchDelivery}
+        resolveModelFileUrl={viewerFileUrl}
         onController={handleController}
         presentation={presentation}
+        locale={locale}
         inspector={
           !delivery ? (
             <p className="text-xs text-muted-foreground" role="status">

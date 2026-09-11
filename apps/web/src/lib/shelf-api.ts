@@ -27,8 +27,8 @@ import type {
   Severity,
   SourceModel,
 } from "@/lib/types";
-import { fetchDelivery, parseDeliveryDetail } from "@/components/viewer/delivery-api";
-import { fetchRunDetail as fetchViewerRunDetail } from "@/components/viewer/findings-api";
+import { fetchDelivery, parseDeliveryDetail } from "@/lib/viewer-adapter";
+import { fetchRunDetail as fetchViewerRunDetail } from "@/components/review/findings-api";
 
 export { fetchDelivery };
 

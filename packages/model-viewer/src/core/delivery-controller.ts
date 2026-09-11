@@ -1,6 +1,4 @@
-import type { DeliveryDetail, Discipline } from "@/lib/types";
-import { modelForDelivery } from "./delivery-api";
-import { parseWorkerResponse, type WorkerRequest, type WorkerResponse } from "./ifc-worker-protocol";
+import { modelForDelivery } from "./delivery-model";
 import { RendererOwner } from "./renderer-owner";
 import {
   type Bounds3,
@@ -8,33 +6,35 @@ import {
   type DeliverySnapshot,
   type DeliveryViewerController,
   type FailureStage,
+  type ModelDiscipline,
   type ModelLoadState,
   type ObjectRef,
   type RevisionId,
   type SelectionRecord,
+  type ViewerDelivery,
   type ViewerDiagnostics,
   type ViewerHighlight,
+  type ViewerModel,
   type ViewerRenderer,
   type ViewerResourceStats,
-} from "./types";
+} from "./viewer-types";
+import { GeometryLoadError, type GeometryLoader, type GeometryLoadSink } from "./geometry-loader";
 
-interface WorkerLike {
-  postMessage(message: WorkerRequest): void;
-  terminate(): void;
-  onmessage: ((event: MessageEvent<unknown>) => void) | null;
-  onerror: ((event: ErrorEvent) => void) | null;
-}
-
-type WorkerFactory = () => WorkerLike;
-type RendererFactory = (
+export type RendererFactory = (
   canvas: HTMLCanvasElement,
   onPick: (ref: ObjectRef) => void,
 ) => ViewerRenderer;
 
-interface ControllerOptions {
-  readonly delivery: DeliveryDetail;
+export type ModelFileUrlResolver = (model: ViewerModel) => string;
+
+export interface DeliveryViewerOptions {
+  readonly delivery: ViewerDelivery;
   readonly canvas: HTMLCanvasElement;
-  readonly workerFactory?: WorkerFactory;
+  /** Produces geometry for each model. The IFC driver is `model-viewer/ifc`;
+   * hosts may substitute their own source. */
+  readonly geometryLoader: GeometryLoader;
+  /** Resolves each host model descriptor to its loadable resource. */
+  readonly modelFileUrl: ModelFileUrlResolver;
   readonly rendererFactory?: RendererFactory;
 }
 
@@ -49,16 +49,15 @@ interface RevisionSlot {
   objectCount: number;
 }
 
-export function createDeliveryViewer(options: ControllerOptions): DeliveryViewerController {
-  const workerFactory = options.workerFactory ?? (() =>
-    new Worker(new URL("./ifc-loader.worker.ts", import.meta.url), { type: "module" }));
+export function createDeliveryViewer(options: DeliveryViewerOptions): DeliveryViewerController {
   const rendererFactory = options.rendererFactory ?? ((canvas, onPick) =>
     new RendererOwner({ canvas, onPick }));
   return new DeliveryViewerControllerImpl(
     options.delivery,
     options.canvas,
-    workerFactory,
+    options.geometryLoader,
     rendererFactory,
+    options.modelFileUrl,
   );
 }
 
@@ -67,9 +66,9 @@ class DeliveryViewerControllerImpl implements DeliveryViewerController {
   private readonly listeners = new Set<(snapshot: DeliverySnapshot) => void>();
   private readonly progressRevisionIds = new Set<RevisionId>();
   private readonly renderer: ViewerRenderer;
-  private readonly workerFactory: WorkerFactory;
-  private readonly delivery: DeliveryDetail;
-  private worker: WorkerLike | null = null;
+  private readonly geometryLoader: GeometryLoader;
+  private readonly abort = new AbortController();
+  private readonly delivery: ViewerDelivery;
   private activeRevision: RevisionId | null = null;
   private selected: SelectionRecord | null = null;
   private origin: readonly [number, number, number] | null = null;
@@ -79,19 +78,21 @@ class DeliveryViewerControllerImpl implements DeliveryViewerController {
   private disposed = false;
   private isolatedRequested: number | null = null;
   private sectionZ: number | null = null;
+  private liveWorkers = 0;
 
   constructor(
-    delivery: DeliveryDetail,
+    delivery: ViewerDelivery,
     canvas: HTMLCanvasElement,
-    workerFactory: WorkerFactory,
+    geometryLoader: GeometryLoader,
     rendererFactory: RendererFactory,
+    modelFileUrl: ModelFileUrlResolver,
   ) {
     this.delivery = delivery;
-    this.workerFactory = workerFactory;
+    this.geometryLoader = geometryLoader;
     this.renderer = rendererFactory(canvas, (ref) => this.select(ref));
 
     for (const model of delivery.models) {
-      const parsed = modelForDelivery(model);
+      const parsed = modelForDelivery(model, modelFileUrl(model));
       this.slots.set(parsed.revisionId, {
         model: parsed,
         state: { status: "queued", model: parsed },
@@ -157,7 +158,7 @@ class DeliveryViewerControllerImpl implements DeliveryViewerController {
     if (!this.disposed) this.renderer.frame(refs);
   }
 
-  setDisciplineVisibility(discipline: Discipline, visible: boolean): void {
+  setDisciplineVisibility(discipline: ModelDiscipline, visible: boolean): void {
     if (!this.disposed) this.renderer.setDisciplineVisibility(discipline, visible);
   }
 
@@ -202,7 +203,7 @@ class DeliveryViewerControllerImpl implements DeliveryViewerController {
 
   resourceStats(): ViewerResourceStats {
     const stats = this.renderer.resourceStats();
-    return { ...stats, workers: this.worker === null ? 0 : 1 };
+    return { ...stats, workers: this.liveWorkers };
   }
 
   diagnostics(): ViewerDiagnostics {
@@ -226,14 +227,8 @@ class DeliveryViewerControllerImpl implements DeliveryViewerController {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-
-    if (this.worker && this.activeRevision) {
-      const jobId = this.slots.get(this.activeRevision)?.jobId;
-      if (jobId) this.worker.postMessage({ type: "cancel", jobId });
-    }
-    this.worker?.terminate();
-    this.worker = null;
-    this.activeRevision = null;
+    this.abort.abort();
+    this.liveWorkers = 0;
 
     for (const slot of this.slots.values()) {
       slot.state = { status: "disposed", model: slot.model };
@@ -253,8 +248,7 @@ class DeliveryViewerControllerImpl implements DeliveryViewerController {
       return;
     }
 
-    if (!this.worker) this.installWorker();
-    const jobId = `${next.model.revisionId}\0${++this.jobNumber}`;
+    const jobId = `${next.model.revisionId}\u0000${++this.jobNumber}`;
     next.jobId = jobId;
     next.lastSequence = 0;
     next.state = {
@@ -266,124 +260,65 @@ class DeliveryViewerControllerImpl implements DeliveryViewerController {
     };
     this.activeRevision = next.model.revisionId;
     this.emit();
-    this.worker?.postMessage({
-      type: "load",
-      jobId,
-      revisionId: next.model.revisionId,
-      discipline: next.model.discipline,
-      fileUrl: next.model.fileUrl,
-      wasmBaseUrl: "/wasm/",
-    });
-  }
 
-  private installWorker(): void {
-    const worker = this.workerFactory();
-    worker.onmessage = (event) => this.handleWorkerMessage(event.data);
-    worker.onerror = (event) => {
-      event.preventDefault();
-      this.handleWorkerError(event.message || "IFC worker stopped unexpectedly");
+    const sink: GeometryLoadSink = {
+      workerCount: (count) => {
+        this.liveWorkers = count;
+      },
+      progress: (phase, loaded, total) => {
+        if (this.disposed || this.activeRevision !== next.model.revisionId) return;
+        if (next.state.status === "loading") {
+          this.progressRevisionIds.add(next.model.revisionId);
+          next.state = { ...next.state, phase, loaded, total };
+          this.emit();
+        }
+      },
+      header: (header) => {
+        if (this.disposed || this.activeRevision !== next.model.revisionId) return;
+        next.uploadedBatches = 0;
+        next.headerReceived = true;
+        next.headerBounds = header.bounds;
+        next.objectCount = header.objectCount;
+        this.renderer.uploadHeader(next.model.revisionId, header, next.model);
+        next.state = {
+          status: "uploading",
+          model: next.model,
+          uploadedBatches: 0,
+          totalBatches: header.batchCount,
+        };
+        this.emit();
+      },
+      batch: (geometries, instances) => {
+        if (this.disposed || this.activeRevision !== next.model.revisionId) return;
+        this.renderer.uploadBatch(next.model.revisionId, geometries, instances);
+        next.uploadedBatches += 1;
+        if (next.state.status === "uploading") {
+          next.state = { ...next.state, uploadedBatches: next.uploadedBatches };
+        }
+        this.emit();
+      },
     };
-    this.worker = worker;
-  }
 
-  private handleWorkerMessage(value: unknown): void {
-    if (this.disposed) return;
-    const response = parseWorkerResponse(value);
-    if (!response) {
-      this.handleWorkerError(`IFC worker returned an invalid ${workerMessageType(value)} message`);
-      return;
-    }
-    if (response.revisionId !== this.activeRevision) return;
-
-    const slot = this.slots.get(response.revisionId);
-    if (
-      !slot ||
-      !slot.jobId ||
-      response.jobId !== slot.jobId ||
-      response.sequence <= slot.lastSequence
-    ) {
-      return;
-    }
-
-    slot.lastSequence = response.sequence;
-    try {
-      this.applyResponse(slot, response);
-    } catch (error: unknown) {
-      this.worker?.terminate();
-      this.worker = null;
-      this.failSlot(slot, "upload", errorMessage(error), true);
-    }
-  }
-
-  private applyResponse(slot: RevisionSlot, response: WorkerResponse): void {
-    if (response.type === "progress") {
-      this.progressRevisionIds.add(response.revisionId);
-      if (slot.state.status === "loading") {
-        slot.state = {
-          ...slot.state,
-          phase: response.phase,
-          loaded: response.loaded,
-          total: response.total,
+    this.geometryLoader(next.model, sink, this.abort.signal)
+      .then(() => {
+        if (this.disposed || this.activeRevision !== next.model.revisionId) return;
+        if (!next.headerReceived) {
+          this.failSlot(next, "worker", "geometry loader completed without a geometry header", true);
+          return;
+        }
+        next.state = {
+          status: "ready",
+          model: next.model,
+          objectCount: next.objectCount,
+          bounds: next.headerBounds,
         };
-      }
-      this.emit();
-      return;
-    }
-
-    if (response.type === "header") {
-      slot.uploadedBatches = 0;
-      slot.headerReceived = true;
-      slot.headerBounds = response.header.bounds;
-      slot.objectCount = response.header.objectCount;
-      this.renderer.uploadHeader(response.revisionId, response.header, slot.model);
-      slot.state = {
-        status: "uploading",
-        model: slot.model,
-        uploadedBatches: 0,
-        totalBatches: response.header.batchCount,
-      };
-      this.emit();
-      return;
-    }
-
-    if (response.type === "batch") {
-      this.renderer.uploadBatch(
-        response.revisionId,
-        response.geometries,
-        response.instances,
-      );
-      slot.uploadedBatches += 1;
-      if (slot.state.status === "uploading") {
-        slot.state = {
-          ...slot.state,
-          uploadedBatches: slot.uploadedBatches,
-        };
-      }
-      this.worker?.postMessage({
-        type: "ack",
-        jobId: response.jobId,
-        batchNumber: response.batchNumber,
+        this.finishActive(next.model.revisionId);
+      })
+      .catch((error) => {
+        if (this.disposed || this.activeRevision !== next.model.revisionId) return;
+        const known = error instanceof GeometryLoadError ? error : null;
+        this.failSlot(next, known?.stage ?? "worker", known?.message ?? errorMessage(error), known?.retryable ?? true);
       });
-      this.emit();
-      return;
-    }
-
-    if (response.type === "failed") {
-      this.failSlot(slot, response.stage, response.message, response.retryable);
-      return;
-    }
-
-    if (!slot.headerReceived) {
-      this.failSlot(slot, "worker", "IFC worker completed without a geometry header", true);
-      return;
-    }
-    slot.state = {
-      status: "ready",
-      model: slot.model,
-      objectCount: slot.objectCount,
-      bounds: slot.headerBounds,
-    };
-    this.finishActive(slot.model.revisionId);
   }
 
   private failSlot(
@@ -402,29 +337,6 @@ class DeliveryViewerControllerImpl implements DeliveryViewerController {
       retryable,
     };
     this.finishActive(slot.model.revisionId);
-  }
-
-  private handleWorkerError(message: string): void {
-    if (this.disposed) return;
-    const revisionId = this.activeRevision;
-    if (revisionId) {
-      const slot = this.slots.get(revisionId);
-      if (slot) {
-        this.renderer.removeRevision(revisionId);
-        this.removeSelectionForRevision(revisionId);
-        slot.state = {
-          status: "failed",
-          model: slot.model,
-          stage: "worker",
-          message,
-          retryable: true,
-        };
-      }
-    }
-
-    this.worker?.terminate();
-    this.worker = null;
-    if (revisionId) this.finishActive(revisionId);
   }
 
   private finishActive(revisionId: RevisionId): void {
@@ -496,11 +408,6 @@ function commonOrigin(bounds: readonly Bounds3[]): [number, number, number] | nu
     Math.round((min[1] + max[1]) / 2),
     Math.round((min[2] + max[2]) / 2),
   ];
-}
-
-function workerMessageType(value: unknown): string {
-  if (typeof value !== "object" || value === null || !("type" in value)) return "unknown";
-  return typeof value.type === "string" ? value.type : "unknown";
 }
 
 function errorMessage(error: unknown): string {

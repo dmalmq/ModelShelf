@@ -1,21 +1,21 @@
-import type { Discipline } from "@/lib/types";
 import { parseObjectId, parseRevisionId } from "./object-ref";
 import type {
   Bounds3,
   FailureStage,
   LoadPhase,
+  ModelDiscipline,
   RevisionId,
   TransferGeometry,
   TransferInstance,
   WorkerHeader,
-} from "./types";
+} from "./viewer-types";
 
 export type WorkerRequest =
   | Readonly<{
       type: "load";
       jobId: string;
       revisionId: RevisionId;
-      discipline: Discipline;
+      discipline: ModelDiscipline;
       fileUrl: string;
       wasmBaseUrl: string;
     }>
@@ -252,10 +252,8 @@ function parseFailureStage(value: unknown): FailureStage | null {
     : null;
 }
 
-function parseDiscipline(value: unknown): Discipline | null {
-  return value === "ARCH" || value === "STRUCT" || value === "MEP" || value === "OTHER"
-    ? value
-    : null;
+function parseDiscipline(value: unknown): ModelDiscipline | null {
+  return nonEmptyString(value);
 }
 
 function safeRevisionId(value: unknown): RevisionId | null {

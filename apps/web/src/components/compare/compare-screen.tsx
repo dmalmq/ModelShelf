@@ -20,9 +20,9 @@ import type {
   DiffSummary,
   RunDetail,
 } from "@/lib/types";
-import { fetchDelivery } from "../viewer/delivery-api";
-import type { DeliverySnapshot, DeliveryViewerController } from "../viewer/types";
-import { CombinedDeliveryViewer } from "../viewer/combined-delivery-viewer";
+import { fetchDelivery, viewerFileUrl } from "@/lib/viewer-adapter";
+import type { DeliverySnapshot, DeliveryViewerController } from "model-viewer/core";
+import { CombinedDeliveryViewer } from "model-viewer";
 import {
   fetchCompleteModelDiff,
   fetchFindingDiff,
@@ -442,7 +442,10 @@ export function CompareScreen({
       </div>
       <CombinedDeliveryViewer
         deliveryId={activeDeliveryId}
+        loadDelivery={fetchDelivery}
+        resolveModelFileUrl={viewerFileUrl}
         onController={handleController}
+        locale={locale}
         inspector={
           state.lifecycle === "loading" ? (
             <p className="text-xs text-muted-foreground" role="status">
