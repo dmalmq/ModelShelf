@@ -70,7 +70,6 @@ export function overlayForFinding(
 
 export function clearFindingFromViewer(viewer: ModelViewer): void {
   viewer.applyOverlay(NO_OVERLAY);
-  viewer.setSectionZ(null);
 }
 
 export { refKey };

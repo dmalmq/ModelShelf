@@ -3,7 +3,7 @@ import { createIfcGeometryDriver } from "model-viewer/ifc";
 import type { DeliveryDetail } from "@/lib/types";
 import { readResponseBytes } from "./read-response-bytes";
 
-export function viewerSceneFor(delivery: DeliveryDetail): ViewerScene {
+export function viewerSceneFor(delivery: Pick<DeliveryDetail, "models">): ViewerScene {
   return parseViewerScene({
     sources: delivery.models.map((model) => ({
       revisionId: model.id,
@@ -12,7 +12,7 @@ export function viewerSceneFor(delivery: DeliveryDetail): ViewerScene {
   });
 }
 
-export function ifcGeometryFor(_delivery: DeliveryDetail): GeometryDriver {
+export function ifcGeometryFor(): GeometryDriver {
   return createIfcGeometryDriver({
     wasmBaseUrl: "/wasm/",
     loadBytes: async (source, signal, report) => {

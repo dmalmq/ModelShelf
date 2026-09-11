@@ -53,8 +53,9 @@ export function ReviewScreen({
     setViewer(next);
   }, []);
 
-  const scene = useMemo(() => (delivery ? viewerSceneFor(delivery) : null), [delivery]);
-  const geometry = useMemo(() => (delivery ? ifcGeometryFor(delivery) : null), [delivery]);
+  const models = delivery?.models;
+  const scene = useMemo(() => (models ? viewerSceneFor({ models }) : null), [models]);
+  const geometry = useMemo(() => (models ? ifcGeometryFor() : null), [models]);
 
   useEffect(() => {
     const abort = new AbortController();

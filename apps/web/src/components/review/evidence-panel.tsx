@@ -107,6 +107,21 @@ export function EvidencePanel({
     setPropertyError(null);
   }, [finding.id]);
 
+  useEffect(() => {
+    try {
+      viewer?.setSectionZ(null);
+    } catch {
+      // Viewer already disposed; the panel is gone with it.
+    }
+    return () => {
+      try {
+        viewer?.setSectionZ(null);
+      } catch {
+        // Viewer already disposed; nothing to clear.
+      }
+    };
+  }, [finding.id, viewer]);
+
   function applySection(): void {
     if (!viewer) return;
     const trimmed = sectionInput.trim();

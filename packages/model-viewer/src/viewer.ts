@@ -126,20 +126,11 @@ class ModelViewerImpl implements ModelViewer {
     this.isolatedRequested = overlay.isolate === null ? null : overlay.isolate.length;
     this.scene.isolate(overlay.isolate);
     if (overlay.frame !== null) this.scene.frame(overlay.frame);
-
-    const missing: ObjectRef[] = [];
-    const seen = new Set<string>();
-    const requested = [
+    const missing = this.collectMissing([
       ...overlay.highlights.flatMap((group) => group.refs),
       ...(overlay.isolate ?? []),
       ...(overlay.frame ?? []),
-    ];
-    for (const ref of requested) {
-      const key = refKey(ref);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      if (!this.scene.hasObject(ref)) missing.push(ref);
-    }
+    ]);
     this.emit();
     return {
       groups,
@@ -147,6 +138,11 @@ class ModelViewerImpl implements ModelViewer {
       missing,
       selectionHidden: this.scene.selectedHidden(),
     };
+  }
+
+  missing(refs: readonly ObjectRef[]): readonly ObjectRef[] {
+    if (this.disposed) return [...refs];
+    return this.collectMissing(refs);
   }
 
   setHidden(attribute: string, values: readonly string[]): void {
@@ -322,6 +318,18 @@ class ModelViewerImpl implements ModelViewer {
     this.emit();
   }
 
+  private collectMissing(refs: readonly ObjectRef[]): ObjectRef[] {
+    const missing: ObjectRef[] = [];
+    const seen = new Set<string>();
+    for (const ref of refs) {
+      const key = refKey(ref);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (!this.scene.hasObject(ref)) missing.push(ref);
+    }
+    return missing;
+  }
+
   private resolveSettledDelivery(): void {
     const unsettled = [...this.slots.values()].some(({ state }) =>
       state.status === "queued" || state.status === "loading" || state.status === "uploading");
@@ -333,8 +341,10 @@ class ModelViewerImpl implements ModelViewer {
       const readyBounds = [...this.slots.values()].flatMap(({ state }) =>
         state.status === "ready" && state.bounds ? [state.bounds] : []);
       const offset = commonOrigin(readyBounds);
-      this.origin = { frozen: true, offset };
-      fitCamera = offset !== null;
+      if (offset !== null) {
+        this.origin = { frozen: true, offset };
+        fitCamera = true;
+      }
     }
     if (this.origin.frozen && this.origin.offset) this.scene.setOrigin(this.origin.offset);
     this.applySection();

@@ -43,6 +43,21 @@ export interface OverlayForChanges {
   unparseable: number;
 }
 
+export function missingKeysForChanges(
+  entries: readonly CompareChangeEntry[],
+  side: CompareSide,
+  absentKeys: ReadonlySet<string>,
+): Set<string> {
+  const missing = new Set<string>();
+  for (const entry of entries) {
+    const ref = activeRefOf(entry.change, side);
+    if (!ref) continue;
+    const key = compareRefKey(ref.revisionId, ref.objectId);
+    if (!toViewerRefPlain(ref) || absentKeys.has(key)) missing.add(key);
+  }
+  return missing;
+}
+
 export function overlayForChanges(
   entries: readonly CompareChangeEntry[],
   side: CompareSide,

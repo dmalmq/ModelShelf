@@ -15,7 +15,7 @@ import { formatDate } from "@/lib/format";
 import { fetchProject } from "@/lib/shelf-api";
 import { fetchDelivery } from "@/lib/delivery-api";
 import { ifcGeometryFor, viewerSceneFor } from "@/lib/viewer-sources";
-import type { ModelViewer } from "model-viewer";
+import type { ModelViewer, ObjectRef } from "model-viewer";
 import { DeliveryViewer } from "../domain/delivery-viewer";
 import type {
   ChangeKind,
@@ -33,12 +33,14 @@ import {
 import {
   overlayForChanges,
   clearCompareOverlay,
+  missingKeysForChanges,
   toViewerRefPlain,
   activeRefOf,
 } from "./compare-bridge";
 import { CompareInspector } from "./compare-inspector";
 import {
   ALL_SOURCES,
+  compareRefKey,
   compareReducer,
   filterCompareEntries,
   initialCompareState,
@@ -276,11 +278,21 @@ export function CompareScreen({
       return;
     }
     const drawn = controller.applyOverlay(painted.overlay);
+    const parsed: ObjectRef[] = [];
+    for (const entry of filtered) {
+      const ref = activeRefOf(entry.change, state.side);
+      if (!ref) continue;
+      const parsedRef = toViewerRefPlain(ref);
+      if (parsedRef) parsed.push(parsedRef);
+    }
+    const absent = new Set(
+      controller.missing(parsed).map((ref) => compareRefKey(ref.revisionId, ref.objectId)),
+    );
     setReadback({
       matched: drawn.groups.reduce((sum, group) => sum + group.matched, 0),
-      missing: new Set(drawn.missing.map((ref) => `${ref.revisionId}\0${ref.objectId}`)),
+      missing: missingKeysForChanges(filtered, state.side, absent),
     });
-  }, [viewer, readyModels, painted, filtered.length, state.modelDiffStatus, state.side]);
+  }, [viewer, readyModels, painted, filtered, state.modelDiffStatus, state.side]);
 
   useEffect(() => {
     const controller = viewerRef.current;
@@ -307,14 +319,9 @@ export function CompareScreen({
   }
 
   const activeDelivery = state.side === "base" ? state.baseDelivery : state.headDelivery;
-  const scene = useMemo(
-    () => (activeDelivery ? viewerSceneFor(activeDelivery) : null),
-    [activeDelivery],
-  );
-  const geometry = useMemo(
-    () => (activeDelivery ? ifcGeometryFor(activeDelivery) : null),
-    [activeDelivery],
-  );
+  const models = activeDelivery?.models;
+  const scene = useMemo(() => (models ? viewerSceneFor({ models }) : null), [models]);
+  const geometry = useMemo(() => (models ? ifcGeometryFor() : null), [models]);
   const sources = state.modelDiff?.pairs ?? [];
 
   if (state.lifecycle === "failed") {

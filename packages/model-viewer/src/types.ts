@@ -210,6 +210,7 @@ export interface ModelViewer {
   retry(revisionId: RevisionId): void;
   select(ref: ObjectRef | null, options?: { readonly frame?: boolean }): void;
   applyOverlay(overlay: Overlay): OverlayResult;
+  missing(refs: readonly ObjectRef[]): readonly ObjectRef[];
   setHidden(attribute: string, values: readonly string[]): void;
   setSectionZ(z: number | null): void;
   fitAll(): void;
