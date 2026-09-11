@@ -52,7 +52,7 @@ Tickets 01–18 are GitHub issues 3–20 (`id + 2`). Tickets 19–34 are issues 
 - Ticket identity is the two-digit local ID in the issue title, for example `[17]`.
 - `wayfinder:task` and `ready-for-agent` labels identify execution tickets.
 - GitHub issue state is authoritative (`open` or `closed`). When a local working copy exists, keep its `Status:` in line with that state (`open` or `resolved`).
-- GitHub issue bodies carry an HTML comment `<!-- modelshelf-local-ticket:N -->` used by `node scripts/sync-tickets.ts --check`.
+- GitHub issue bodies carry an HTML comment `<!-- modelshelf-local-ticket:N -->` used by `node scripts/sync-tickets.ts`.
 - Record progress as GitHub comments. On completion, append an evidence-backed Answer, close the issue, and update the parent map.
 - The frontier is open, unassigned tickets with all dependencies resolved, sorted by local ID.
 - Dependencies alone do not authorize concurrent edits to shared modules. Consult each ticket's ownership area before starting.

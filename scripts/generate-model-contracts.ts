@@ -2,7 +2,7 @@
 // Regenerates the Rust, Python, and TypeScript bindings for schemas/model/v1 from
 // the canonical JSON Schema files. `--check` regenerates into temporary locations
 // and diffs against the committed files instead of overwriting them (used in CI and
-// by scripts/verify-model-contracts.mjs).
+// by scripts/verify-model-contracts.ts).
 //
 // Prerequisites (one-time local setup, not installed by this script):
 //   cargo install cargo-typify --version 0.7.0 --locked

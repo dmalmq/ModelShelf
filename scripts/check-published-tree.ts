@@ -1,7 +1,4 @@
 #!/usr/bin/env node
-// Fails if GitHub-bound paths include agent working dirs or extra JavaScript
-// entrypoints. Allowlisted .mjs files are configs or browser pages that Node
-// type-stripping cannot load.
 
 import { spawnSync } from "node:child_process";
 import { dirname } from "node:path";
@@ -25,10 +22,12 @@ const BANNED_PREFIXES = [
   "design/claude-design/",
 ];
 
-const ALLOWED_JS = new Set([
-  "apps/web/postcss.config.mjs",
-  "packages/model-viewer/example/app.mjs",
-]);
+const POSTCSS_CONFIG = "apps/web/postcss.config.mjs";
+const VIEWER_EXAMPLE = "packages/model-viewer/example/app.mjs";
+
+function publishedJsAllowed(path: string): boolean {
+  return path === POSTCSS_CONFIG || path === VIEWER_EXAMPLE;
+}
 
 function gitLsFiles(): string[] {
   const result = spawnSync("git", ["ls-files", "-z"], {
@@ -62,7 +61,7 @@ for (const path of tracked) {
       failures.push(`unpublished dot path: ${path}`);
     }
   }
-  if (/\.(?:js|mjs|cjs|jsx)$/.test(path) && !ALLOWED_JS.has(path)) {
+  if (/\.(?:js|mjs|cjs|jsx)$/.test(path) && !publishedJsAllowed(path)) {
     failures.push(`javascript not on the allowlist: ${path}`);
   }
 }
@@ -76,4 +75,5 @@ if (failures.length > 0) {
 }
 
 console.log(`ok - published tree (${tracked.length} files)`);
-console.log(`ok - javascript allowlist ${[...ALLOWED_JS].join(", ")}`);
+console.log(`ok - postcss config ${POSTCSS_CONFIG}`);
+console.log(`ok - viewer example ${VIEWER_EXAMPLE}`);

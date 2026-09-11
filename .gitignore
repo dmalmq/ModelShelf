@@ -11,7 +11,6 @@ __pycache__
 codex-session-*.md
 omp-session-*.html
 
-# Local agent / review working directories. Tickets live on GitHub issues.
 .audit/
 .design/
 .lavish/
@@ -23,7 +22,6 @@ omp-session-*.html
 .agents/
 .codegraph/
 
-# Claude design dump; product UI lives in apps/web.
 /design/claude-design/
 
 # Local tool cache (symlink to an absolute path outside the repo)

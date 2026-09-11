@@ -1,7 +1,4 @@
 #!/usr/bin/env node
-// Compare local Wayfinder tickets with GitHub issues. GitHub issue state is
-// authoritative. `node scripts/sync-tickets.ts` prints the diff. `--apply`
-// writes Status (and a missing Answer) into the local working copies.
 
 import { readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -29,12 +26,6 @@ type GithubIssue = {
   state: "OPEN" | "CLOSED";
   body: string;
 };
-
-function githubNumber(localId: number): number {
-  if (localId >= 1 && localId <= 18) return localId + 2;
-  if (localId >= 19 && localId <= 34) return localId + 21;
-  throw new Error(`no GitHub mapping for local ticket ${localId}`);
-}
 
 function parseLocal(file: string): LocalTicket | undefined {
   const text = readFileSync(join(ISSUES_DIR, file), "utf8");
@@ -119,7 +110,7 @@ const mismatches: string[] = [];
 for (const local of locals) {
   const remote = githubById.get(local.id);
   if (!remote) {
-    mismatches.push(`local ${local.id} has no GitHub issue (expected #${githubNumber(Number(local.id))})`);
+    mismatches.push(`local ${local.id} has no GitHub issue`);
     continue;
   }
   const expectedStatus = localStatusFor(remote.state);

@@ -4,7 +4,7 @@
 // src/app/globals.css, so it always checks what is committed rather than a
 // copy that can drift. Exits nonzero on a hard failure.
 //
-//   node scripts/verify-palette.mjs
+//   node scripts/verify-palette.mts
 
 import fs from "node:fs";
 import path from "node:path";

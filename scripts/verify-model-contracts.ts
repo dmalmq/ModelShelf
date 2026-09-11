@@ -7,7 +7,7 @@
 //   4. none of the three packages import application/database/checking-engine code
 //
 // Everything Python/Rust write lands in one isolated temp directory, removed when
-// this script exits. Usage: node scripts/verify-model-contracts.mjs
+// this script exits. Usage: node scripts/verify-model-contracts.ts
 
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readdirSync, readFileSync } from "node:fs";

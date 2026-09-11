@@ -2,7 +2,7 @@
 // Design-system-agnostic palette checker: OKLCH lightness band, chroma floor,
 // OKLab dE under simulated protan/deutan/tritan, and WCAG contrast vs surface.
 //
-// Vendored rather than referenced so `verify-palette.mjs` runs in CI without
+// Vendored rather than referenced so `verify-palette.mts` runs in CI without
 // the skill installed. Recopy from upstream if the checks change; do not edit
 // the maths here.
 
