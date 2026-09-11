@@ -17,8 +17,16 @@ import type { ChangeKind, DecisionOutcome, Severity, SpecOutcome } from "@/lib/t
 
 export type Locale = "ja" | "en";
 
+export const LOCALES: readonly Locale[] = ["ja", "en"] as const;
+
 /** Japanese is the default UI language. */
 export const DEFAULT_LOCALE: Locale = "ja";
+
+/** BCP 47 tag for <html lang> and Intl formatters. */
+export const LOCALE_TAG: Record<Locale, string> = { ja: "ja-JP", en: "en-GB" };
+
+/** Compact switcher labels, each in its own language. */
+export const LOCALE_NATIVE_LABEL: Record<Locale, string> = { ja: "日本語", en: "EN" };
 
 /**
  * Not a `Severity`. The API models review-incomplete as an outcome, not a
@@ -845,3 +853,46 @@ export const SPEC_TABLE_COPY = {
     incomplete: "Incomplete",
   },
 } as const;
+
+type Pair = readonly [ja: string, en: string];
+
+const SHELL_STRINGS = {
+  brand: ["ModelShelf", "ModelShelf"],
+  skipToContent: ["本文へスキップ", "Skip to content"],
+  mainNav: ["メインナビゲーション", "Main navigation"],
+  switchProject: ["プロジェクトを切り替え", "Switch project"],
+  sectionReview: ["レビュー", "Review"],
+  sectionModels: ["モデル", "Models"],
+  sectionSettings: ["設定", "Settings"],
+  navDashboard: ["ダッシュボード", "Dashboard"],
+  navDeliveries: ["納品", "Deliveries"],
+  navRunCheck: ["チェック実行", "Run check"],
+  navFindings: ["指摘事項", "Findings"],
+  navSourceModels: ["ソースモデル", "Source models"],
+  navDiff: ["変更差分", "Change diff"],
+  navSavedViews: ["保存ビュー", "Saved views"],
+  navCheckPacks: ["チェックパック", "Check packs"],
+  navMembers: ["メンバー", "Members"],
+  navProjectSettings: ["プロジェクト設定", "Project settings"],
+  collapseSidebar: ["サイドバーを閉じる", "Collapse sidebar"],
+  expandSidebar: ["サイドバーを開く", "Expand sidebar"],
+  help: ["ヘルプ", "Help"],
+  notAvailableYet: ["準備中", "Not available yet"],
+  projectHome: ["プロジェクトホーム", "Project home"],
+  language: ["言語", "Language"],
+  theme: ["テーマ", "Theme"],
+  themeLight: ["ライト", "Light"],
+  themeDark: ["ダーク", "Dark"],
+  useLightTheme: ["ライトテーマに切り替え", "Switch to light theme"],
+  useDarkTheme: ["ダークテーマに切り替え", "Switch to dark theme"],
+} satisfies Record<string, Pair>;
+
+export type StringKey = keyof typeof SHELL_STRINGS;
+
+export function t(key: StringKey, locale: Locale): string {
+  return SHELL_STRINGS[key][locale === "ja" ? 0 : 1];
+}
+
+export function translator(locale: Locale): (key: StringKey) => string {
+  return (key) => t(key, locale);
+}
