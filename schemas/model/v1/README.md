@@ -8,7 +8,7 @@ for why this exists and what each module may and may not depend on.
 Generated language bindings live in `packages/model-contracts-py/`,
 `crates/model-contracts/`, and `packages/model-contracts-ts/`. None of them import
 application, database, Next.js, React, Three.js, or general-purpose validation-engine
-code; `scripts/verify-model-contracts.mjs` checks that boundary.
+code; `scripts/verify-model-contracts.ts` checks that boundary.
 
 ## Files
 
@@ -67,9 +67,9 @@ predates the worker/job integration and will eventually be replaced by it).
 ## Fixtures
 
 `fixtures/valid/` and `fixtures/invalid/` hold the golden payloads every language
-consumer validates against (see `scripts/verify-model-contracts.mjs`).
+consumer validates against (see `scripts/verify-model-contracts.ts`).
 `fixtures/valid/prepared-scene-non-ifc/` is the format-neutral demonstration fixture:
 a descriptor, semantic model, and render manifest built entirely from synthetic
 non-IFC `ObjectRef`s, proving the contract does not require IFC metadata to exist.
-`fixtures/invalid/*.json` each violate exactly one rule; `scripts/verify-model-contracts.mjs`
+`fixtures/invalid/*.json` each violate exactly one rule; `scripts/verify-model-contracts.ts`
 records which rule and the rejection message from each language.

@@ -1,2 +1,0 @@
-[2m2026-09-06T09:39:49.058525Z[0m [32m INFO[0m [2mmodelshelf_checker[0m[2m:[0m modelshelf-checker listening [3maddr[0m[2m=[0m127.0.0.1:36613
-[2m2026-09-06T09:39:49.289705Z[0m [33m WARN[0m [2mmodelshelf_checker::jobs[0m[2m:[0m ingestion job failed [3mjob_id[0m[2m=[0m"acc7eb55-7e7c-4405-b094-12d71071c739" [3merror[0m[2m=[0mobjects artifact path escapes the job's own output directory

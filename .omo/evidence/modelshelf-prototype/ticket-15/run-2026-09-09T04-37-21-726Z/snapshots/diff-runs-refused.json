@@ -1,6 +1,0 @@
-{
-  "error": {
-    "code": "pack_version_mismatch",
-    "message": "runs used different pack versions; findings cannot be compared"
-  }
-}

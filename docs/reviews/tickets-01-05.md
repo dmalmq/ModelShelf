@@ -61,8 +61,8 @@ The generator uses fresh UUIDs and changes the generated oracle each run. Add a 
 ## Verification
 
 - `cargo test --workspace` passed.
-- `node scripts/verify-api.mjs --scenario revisions` passed.
-- `node scripts/verify-api.mjs --scenario worker-failure` passed despite the uncovered descendant-lifetime gap.
+- `node scripts/verify-api.ts --scenario revisions` passed.
+- `node scripts/verify-api.ts --scenario worker-failure` passed despite the uncovered descendant-lifetime gap.
 - Worker test results and lifecycle probe evidence are retained under `.omo/evidence/modelshelf-prototype/tickets-1-5-review/`.
 - The demo reviewer validated all three IDS files with IfcTester, confirmed the documented numeric check counts, and verified all six pinned archive/IFC hashes. The failures concern oracle completeness and explanation, not those checksums or IDS syntax.
 

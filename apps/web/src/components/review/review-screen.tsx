@@ -15,7 +15,7 @@ import type { DeliveryDetail, Finding, RunDetail, Severity } from "@/lib/types";
 import { fetchDelivery } from "@/lib/delivery-api";
 import { fetchRunDetail } from "@/lib/findings-api";
 import type { ModelViewer } from "model-viewer";
-import { DeliveryViewer } from "../viewer/delivery-viewer";
+import { DeliveryViewer } from "../domain/delivery-viewer";
 import { ifcGeometryFor, viewerSceneFor } from "@/lib/viewer-sources";
 import { useLocale } from "../locale-provider";
 import { DecisionPanel } from "./decision-panel";

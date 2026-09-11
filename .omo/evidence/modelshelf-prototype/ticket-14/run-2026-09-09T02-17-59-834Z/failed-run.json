@@ -1,4 +1,0 @@
-{
-  "status": "failed",
-  "error": "bad.ifc: worker exited with exit status: 1: model hash mismatch: expected 28621297716286e655c2ed6ad3e3c937326b07a608d046b4a77f6f30be0709bd, got a4ad2e0378023d313d3aedeefa4b72b9d034de3ce7042d6ec796a462ae68cad3"
-}

@@ -6,9 +6,9 @@
     "dev": "next dev -p 3210",
     "build": "next build",
     "start": "next start -p 3210",
-    "lint": "node scripts/check-design-rules.mjs",
+    "lint": "node scripts/check-design-rules.mts",
     "typecheck": "tsc --noEmit",
-    "postinstall": "node scripts/copy-wasm.mjs"
+    "postinstall": "node scripts/copy-wasm.mts"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",

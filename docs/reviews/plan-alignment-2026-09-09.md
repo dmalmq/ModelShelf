@@ -1,8 +1,8 @@
 # Plan alignment review, 2026-09-09
 
 Scope: the code delivered by tickets 01-11 and 18, compared against
-[the approved plan](../../.omo/plans/modelshelf-prototype.md),
-[the ticket specification](../../.scratch/modelshelf-prototype/spec.md), and
+[the prototype map](https://github.com/dmalmq/ModelShelf/issues/21),
+[the ticket set](../agents/issue-tracker.md), and
 [the reusable-module decision](../adr/0001-reusable-model-modules.md).
 Tickets 12-17 are not started; gaps that those tickets already own are recorded
 as inherited gaps in their Comments rather than duplicated as new tickets.
@@ -50,18 +50,18 @@ already-resolved scope.
 
 | Severity | Divergence | Evidence | Ticket |
 | --- | --- | --- | --- |
-| Blocker | Reusable viewer package never extracted; viewer core imports `Discipline`, `DeliveryDetail`, `ModelInfo`, `Finding`, `Severity` | no `packages/model-viewer`; `apps/web/src/components/viewer/types.ts:1-6,24` | [19](../../.scratch/modelshelf-prototype/issues/19-reusable-viewer-package.md) |
-| Blocker | Generated TypeScript contracts have zero importers; `ObjectRef` and the express-ID mapping exist twice | `apps/web/src/lib/types.ts:65-69`; `components/viewer/object-ref.ts:22-27` vs `packages/model-contracts-ts/src/express-id-mapping.ts` | [20](../../.scratch/modelshelf-prototype/issues/20-consume-shared-contracts.md) |
-| Major | Mock fixtures and design routes ship in the production build; seven production modules import `@/lib/mock` | `apps/web/src/lib/mock.ts`, `apps/web/src/app/design/**` | [21](../../.scratch/modelshelf-prototype/issues/21-remove-mock-scaffolding.md) |
-| Major | Concurrent runs bypass the one-heavy-job rule; interrupted runs strand as `running` forever | `run.rs` `create_run` inline `execute`; `db.rs:111-122` recovers jobs only | [22](../../.scratch/modelshelf-prototype/issues/22-serialize-heavy-jobs.md) |
-| Major | Engine profile hardcoded, worker versions never persisted, complete runs fall back to live membership | `run.rs:68-74`, `run.rs:749-770`, `jobs.rs` `publish_revision` | [23](../../.scratch/modelshelf-prototype/issues/23-measured-run-inputs.md) |
-| Major | Band and category object totals double-count multi-rule objects; spec table re-sorts backend order | `run.rs:652-653`; `scorecard.tsx:135-143` | [24](../../.scratch/modelshelf-prototype/issues/24-distinct-counts-and-order.md) |
-| Major | No worker envelope schema; protocol version says 2 in code and doc, 1 in plan, `v1` in the filename | `schemas/` has only `model/v1/`; `protocol.py:40-46`; `jobs.rs:433-481` | [25](../../.scratch/modelshelf-prototype/issues/25-worker-envelope-schema.md) |
-| Major | Manifest symlink escape not canonicalized; worker never enforces absolute paths; pydantic and typer float | `jobs.rs:512-522` vs `jobs.rs:718-735`; `protocol.py:24-50`; `pyproject.toml:8` | [26](../../.scratch/modelshelf-prototype/issues/26-worker-boundary-hardening.md) |
-| Major | Mixed model units, end-to-end unsupported rules, and empty-directory boot have no coverage | `packs/demo/fixtures/base.ifc:8-12`; `test_demo_packs.py:256-270`; `qa-harness.mjs:37-45` | [27](../../.scratch/modelshelf-prototype/issues/27-edge-case-coverage.md) |
-| Major | Perf thresholds pass silently without `--assert-perf`; four checks cannot fail; no CPU or GPU in the artifact | `verify-viewer-inspection.mjs:408,415,423,430,492` | [28](../../.scratch/modelshelf-prototype/issues/28-honest-verification-harness.md) |
-| Major | Orbit FPS 2.5 against a 30 target and the longtask verdict remain undrawn; no hardware-GL measurement exists | ticket 09 Answer; `docs/reviews/wave-1-report.md` | [29](../../.scratch/modelshelf-prototype/issues/29-hardware-gl-performance.md) |
-| Minor | `README.md` denies browser tests exist; reference library claims nothing is built; v2 IDS comment contradicts its own correction; no per-todo evidence summaries | `README.md`; `references/bim-checking/README.md:3`; `packs/demo/blcj-s1000-v2.ids:170-183` | [30](../../.scratch/modelshelf-prototype/issues/30-documentation-and-evidence.md) |
+| Blocker | Reusable viewer package never extracted; viewer core imports `Discipline`, `DeliveryDetail`, `ModelInfo`, `Finding`, `Severity` | no `packages/model-viewer`; `apps/web/src/components/viewer/types.ts:1-6,24` | [19](https://github.com/dmalmq/ModelShelf/issues/40) |
+| Blocker | Generated TypeScript contracts have zero importers; `ObjectRef` and the express-ID mapping exist twice | `apps/web/src/lib/types.ts:65-69`; `components/viewer/object-ref.ts:22-27` vs `packages/model-contracts-ts/src/express-id-mapping.ts` | [20](https://github.com/dmalmq/ModelShelf/issues/41) |
+| Major | Mock fixtures and design routes ship in the production build; seven production modules import `@/lib/mock` | `apps/web/src/lib/mock.ts`, `apps/web/src/app/design/**` | [21](https://github.com/dmalmq/ModelShelf/issues/42) |
+| Major | Concurrent runs bypass the one-heavy-job rule; interrupted runs strand as `running` forever | `run.rs` `create_run` inline `execute`; `db.rs:111-122` recovers jobs only | [22](https://github.com/dmalmq/ModelShelf/issues/43) |
+| Major | Engine profile hardcoded, worker versions never persisted, complete runs fall back to live membership | `run.rs:68-74`, `run.rs:749-770`, `jobs.rs` `publish_revision` | [23](https://github.com/dmalmq/ModelShelf/issues/44) |
+| Major | Band and category object totals double-count multi-rule objects; spec table re-sorts backend order | `run.rs:652-653`; `scorecard.tsx:135-143` | [24](https://github.com/dmalmq/ModelShelf/issues/45) |
+| Major | No worker envelope schema; protocol version says 2 in code and doc, 1 in plan, `v1` in the filename | `schemas/` has only `model/v1/`; `protocol.py:40-46`; `jobs.rs:433-481` | [25](https://github.com/dmalmq/ModelShelf/issues/46) |
+| Major | Manifest symlink escape not canonicalized; worker never enforces absolute paths; pydantic and typer float | `jobs.rs:512-522` vs `jobs.rs:718-735`; `protocol.py:24-50`; `pyproject.toml:8` | [26](https://github.com/dmalmq/ModelShelf/issues/47) |
+| Major | Mixed model units, end-to-end unsupported rules, and empty-directory boot have no coverage | `packs/demo/fixtures/base.ifc:8-12`; `test_demo_packs.py:256-270`; `qa-harness.ts:37-45` | [27](https://github.com/dmalmq/ModelShelf/issues/48) |
+| Major | Perf thresholds pass silently without `--assert-perf`; four checks cannot fail; no CPU or GPU in the artifact | `verify-viewer-inspection.ts:408,415,423,430,492` | [28](https://github.com/dmalmq/ModelShelf/issues/49) |
+| Major | Orbit FPS 2.5 against a 30 target and the longtask verdict remain undrawn; no hardware-GL measurement exists | ticket 09 Answer; `docs/reviews/wave-1-report.md` | [29](https://github.com/dmalmq/ModelShelf/issues/50) |
+| Minor | `README.md` denies browser tests exist; reference library claims nothing is built; v2 IDS comment contradicts its own correction; no per-todo evidence summaries | `README.md`; `references/bim-checking/README.md:3`; `packs/demo/blcj-s1000-v2.ids:170-183` | [30](https://github.com/dmalmq/ModelShelf/issues/51) |
 
 ## Inherited gaps recorded on unstarted tickets
 
@@ -78,7 +78,7 @@ work. Each was appended to the owning ticket's Comments rather than duplicated.
 - Ticket 14: `diff.rs` `diff_runs` gates only on `pack_version_id`. It ignores
   `input_provenance`, `scope_json` and `engine_profile_json`, so legacy runs and
   engine-version changes compare as trusted like-for-like.
-- Ticket 16: neither `verify-api.mjs` nor `verify-ui.mjs` accepts
+- Ticket 16: neither `verify-api.ts` nor `verify-ui.ts` accepts
   `--scenario all`, so the plan's final acceptance command exits 2; the
   `comparisons` scenario does not exist; `docs/limitations.md` does not exist.
 

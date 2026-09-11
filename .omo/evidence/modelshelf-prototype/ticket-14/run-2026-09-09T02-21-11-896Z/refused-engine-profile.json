@@ -1,6 +1,0 @@
-{
-  "error": {
-    "code": "engine_profile_mismatch",
-    "message": "engine profile mismatch between base run 40ba14a2-6602-44ac-a8fc-d126410abd3d and head run 190c0ebb-0d2d-4517-addc-f261e2336f4e; rerun one or both sides under identical settings before comparing"
-  }
-}

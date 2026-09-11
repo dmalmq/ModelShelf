@@ -25,19 +25,14 @@ export interface UseModelViewerResult {
 export function useModelViewer(options: UseModelViewerOptions): UseModelViewerResult {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const viewerRef = useRef<ModelViewer | null>(null);
-  const geometryRef = useRef(options.geometry);
   const [viewer, setViewer] = useState<ModelViewer | null>(null);
   const [snapshot, setSnapshot] = useState<ViewerSnapshot | null>(null);
   const sceneKey = sceneSignature(options.scene);
 
   useEffect(() => {
-    geometryRef.current = options.geometry;
-  }, [options.geometry]);
-
-  useEffect(() => {
     const canvas = canvasRef.current;
     const scene = options.scene;
-    const geometry = geometryRef.current;
+    const geometry = options.geometry;
     if (!canvas || !scene || !geometry) {
       setViewer(null);
       setSnapshot(null);
@@ -60,9 +55,8 @@ export function useModelViewer(options: UseModelViewerOptions): UseModelViewerRe
       setViewer(null);
       setSnapshot(null);
     };
-    // geometry is captured at create time; scene contents (sceneKey) own recreation.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sceneKey, options.selectionColor]);
+  }, [sceneKey, options.selectionColor, options.geometry]);
 
   const canvasProps = useMemo<ViewerCanvasProps>(
     () => ({

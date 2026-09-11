@@ -1,2 +1,0 @@
-2026-09-06T22:13:10.868069Z  INFO modelshelf_checker: modelshelf-checker listening addr=127.0.0.1:35385
-2026-09-06T22:13:11.101105Z  WARN modelshelf_checker::jobs: ingestion job failed job_id="09b3333d-e0c8-452b-a3f0-de1f85e40011" error=worker emitted more than one terminal result event

@@ -1,9 +1,18 @@
 {
   "name": "modelshelf-scripts",
   "private": true,
-  "description": "Dependencies for repo-root orchestration scripts (scripts/*.mjs). Not published, not a workspace member of apps/web or any package.",
+  "description": "Dependencies for repo-root orchestration scripts (scripts/*.ts). Not published, not a workspace member of apps/web or any package.",
   "type": "module",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "check-published-tree": "node check-published-tree.ts",
+    "sync-tickets": "node sync-tickets.ts"
+  },
   "dependencies": {
     "@apidevtools/json-schema-ref-parser": "16.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.1",
+    "typescript": "5.9.3"
   }
 }

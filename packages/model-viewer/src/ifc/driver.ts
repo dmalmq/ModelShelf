@@ -15,6 +15,7 @@ export interface IfcGeometryDriverOptions {
   readonly loadBytes: (
     source: ViewerSource,
     signal: AbortSignal,
+    report?: (loaded: number, total: number | null) => void,
   ) => Promise<ArrayBuffer>;
 }
 
@@ -134,7 +135,9 @@ export function createIfcGeometryDriver(options: IfcGeometryDriverOptions): Geom
         };
 
         sink.progress("download", 0, null);
-        void options.loadBytes(source, signal).then(
+        void options.loadBytes(source, signal, (loaded, total) => {
+          if (!settled) sink.progress("download", loaded, total);
+        }).then(
           (bytes) => {
             if (settled || signal.aborted) {
               if (signal.aborted && !settled) {

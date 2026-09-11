@@ -1,7 +1,0 @@
-{
-  "exit": 1,
-  "stdout": "building modelshelf-checker...\nok - cargo build succeeds\nok - unknown command exits nonzero\nok - unknown command prints usage\nok - --help exits zero\nok - --help prints usage\nok - first seed exits zero\nok - second seed exits zero\nok - first seed adds one pack version, second seed adds none (idempotent)\n",
-  "stderr": "Error: server process exited before becoming healthy (code=1, signal=null)\n    at waitForHealth (file:///tmp/modelshelf-review-JFHkY6/scripts/lib/checker-harness.mjs:51:13)\n    at async main (file:///tmp/modelshelf-review-JFHkY6/scripts/qa-harness.mjs:79:20)\n",
-  "leftoverTempDirs": [],
-  "serveLogCaptured": true
-}

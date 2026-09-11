@@ -16,7 +16,7 @@ import { fetchProject } from "@/lib/shelf-api";
 import { fetchDelivery } from "@/lib/delivery-api";
 import { ifcGeometryFor, viewerSceneFor } from "@/lib/viewer-sources";
 import type { ModelViewer } from "model-viewer";
-import { DeliveryViewer } from "../viewer/delivery-viewer";
+import { DeliveryViewer } from "../domain/delivery-viewer";
 import type {
   ChangeKind,
   DeliveryDetail,

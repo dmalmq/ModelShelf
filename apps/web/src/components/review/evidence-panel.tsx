@@ -7,7 +7,7 @@
 // valid prefix still renders; nothing here throws on API data.
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../ui/button";
 import { SEVERITY_COLOR } from "@/lib/palette";
 import { EVIDENCE_COPY, UI, type Locale } from "@/lib/i18n";
@@ -95,10 +95,17 @@ export function EvidencePanel({
   const [propertyError, setPropertyError] = useState<string | null>(null);
   /** True after "Reset view": the finding stays coloured, nothing stays hidden. */
   const [isolationOff, setIsolationOff] = useState(false);
+  const inspectAbort = useRef<AbortController | null>(null);
 
   // A new finding is a new question: it isolates again.
   useEffect(() => {
+    inspectAbort.current?.abort();
+    inspectAbort.current = null;
     setIsolationOff(false);
+    setSectionInput("");
+    setSectionActive(false);
+    setProperty(null);
+    setPropertyError(null);
   }, [finding.id]);
 
   function applySection(): void {
@@ -132,6 +139,9 @@ export function EvidencePanel({
 
   async function inspectSelection(): Promise<void> {
     if (!viewer) return;
+    inspectAbort.current?.abort();
+    const abort = new AbortController();
+    inspectAbort.current = abort;
     setProperty(null);
     setPropertyError(null);
     const selected = viewer.snapshot().selected;
@@ -146,8 +156,11 @@ export function EvidencePanel({
       return;
     }
     try {
-      setProperty(await fetchObjectDetail(match.objectId));
+      const detail = await fetchObjectDetail(match.objectId, abort.signal);
+      if (abort.signal.aborted) return;
+      setProperty(detail);
     } catch (reason: unknown) {
+      if (abort.signal.aborted) return;
       setPropertyError(reason instanceof Error ? reason.message : copy.propertyFailed);
     }
   }
@@ -226,7 +239,21 @@ export function EvidencePanel({
   // appears the moment the selection leaves the isolated set.
   useEffect(() => {
     if (!viewer) return;
-    return viewer.subscribe((snapshot) => setSelectedHidden(snapshot.selectionHidden));
+    let lastKey: string | null | undefined;
+    return viewer.subscribe((snapshot) => {
+      setSelectedHidden(snapshot.selectionHidden);
+      const key = snapshot.selected ? refKey(snapshot.selected.ref) : null;
+      if (lastKey === undefined) {
+        lastKey = key;
+        return;
+      }
+      if (key === lastKey) return;
+      lastKey = key;
+      inspectAbort.current?.abort();
+      inspectAbort.current = null;
+      setProperty(null);
+      setPropertyError(null);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewer]);
 
