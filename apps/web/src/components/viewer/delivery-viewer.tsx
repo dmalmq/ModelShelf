@@ -1,169 +1,60 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { Eye, EyeOff, Focus, RotateCcw } from "lucide-react";
-import type { Discipline, DeliveryDetail } from "@/lib/types";
+import { revisionIdFrom, type GeometryDriver, type ModelViewer, type SourceState, type ViewerScene } from "model-viewer";
+import { useModelViewer } from "model-viewer/react";
+import type { Discipline, DeliveryDetail, ModelInfo } from "@/lib/types";
 import { VIEWER_COPY, type Locale } from "@/lib/i18n";
+import { VIEWER_HIGHLIGHT } from "@/lib/palette";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/components/locale-provider";
-import { fetchDelivery, modelForDelivery } from "./delivery-api";
-import { createDeliveryViewer } from "./delivery-controller";
-import { parseObjectRef } from "./object-ref";
-import type {
-  DeliverySnapshot,
-  DeliveryViewerController,
-  ModelLoadState,
-  ObjectRef,
-  ViewerDiagnostics,
-  ViewerHighlight,
-  ViewerResourceStats,
-} from "./types";
+import { useVerificationHandle } from "./verification-handle";
 
-interface CombinedDeliveryViewerProps {
-  readonly deliveryId: string;
-  /**
-   * Controller seam for the host review panel: the viewer publishes its
-   * controller here on start and null on dispose. The panel drives highlights
-   * through the generic controller only — no finding types cross this seam.
-   */
-  readonly onController?: (controller: DeliveryViewerController | null) => void;
-  /**
-   * Host-provided inspector for the Findings tab. Every surface supplies one
-   * (review loop on delivery pages, comparison panel on compare); the viewer
-   * itself never decides what "findings" means.
-   */
+interface DeliveryViewerProps {
+  readonly delivery: DeliveryDetail | null;
+  readonly scene: ViewerScene | null;
+  readonly geometry: GeometryDriver | null;
+  readonly onViewer?: (viewer: ModelViewer | null) => void;
   readonly inspector: React.ReactNode;
   readonly presentation?: "desk" | "meeting";
 }
 
-interface ViewerVerificationHandle {
-  inspect(): ViewerDiagnostics;
-  select(ref: ObjectRef | null): void;
-  highlight(groups: ViewerHighlight[]): void;
-  isolate(refs: ObjectRef[] | null): void;
-  section(z: number | null): void;
-  dim(opacity: number): void;
-  fitAll(): void;
-  nudgeCamera(horizontal: number, vertical: number): void;
-  zoomCamera(factor: number): void;
-  dispose(): ViewerResourceStats;
-}
-
-declare global {
-  interface Window {
-    __modelshelfViewerVerify?: boolean;
-    __modelshelfViewer?: ViewerVerificationHandle;
-  }
-}
-
 const DISCIPLINES: readonly Discipline[] = ["ARCH", "STRUCT", "MEP", "OTHER"];
-const DEFAULT_VISIBILITY: Readonly<Record<Discipline, boolean>> = {
-  ARCH: true,
-  STRUCT: true,
-  MEP: true,
-  OTHER: true,
-};
 
-export function CombinedDeliveryViewer({
-  deliveryId,
-  onController,
+export function DeliveryViewer({
+  delivery,
+  scene,
+  geometry,
+  onViewer,
   inspector,
   presentation = "desk",
-}: CombinedDeliveryViewerProps): React.JSX.Element {
+}: DeliveryViewerProps): React.JSX.Element {
   const { locale } = useLocale();
   const copy = VIEWER_COPY[locale];
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const controllerRef = useRef<DeliveryViewerController | null>(null);
-  const [delivery, setDelivery] = useState<DeliveryDetail | null>(null);
-  const [latestSnapshot, setSnapshot] = useState<DeliverySnapshot | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [visible, setVisible] = useState<Record<Discipline, boolean>>({
-    ...DEFAULT_VISIBILITY,
+  const { viewer, snapshot, canvasProps } = useModelViewer({
+    scene,
+    geometry,
+    selectionColor: VIEWER_HIGHLIGHT.selection,
   });
+  useVerificationHandle(viewer);
+  const [hidden, setHidden] = useState<string[]>([]);
   const [panelTab, setPanelTab] = useState<"selection" | "findings">("findings");
   const keyboardHelpId = useId();
 
-  function handleCanvasKeyDown(event: React.KeyboardEvent<HTMLCanvasElement>): void {
-    const controller = controllerRef.current;
-    if (!controller) return;
-    if (event.key === "ArrowLeft") controller.nudgeCamera(-1, 0);
-    else if (event.key === "ArrowRight") controller.nudgeCamera(1, 0);
-    else if (event.key === "ArrowUp") controller.nudgeCamera(0, 1);
-    else if (event.key === "ArrowDown") controller.nudgeCamera(0, -1);
-    else if (event.key === "+" || event.key === "=") controller.zoomCamera(0.85);
-    else if (event.key === "-" || event.key === "_") controller.zoomCamera(1.15);
-    else if (event.key === "Home") controller.fitAll();
-    else return;
-    event.preventDefault();
-  }
+  useEffect(() => {
+    onViewer?.(viewer);
+    return () => onViewer?.(null);
+  }, [viewer, onViewer]);
 
   useEffect(() => {
-    const abortController = new AbortController();
-    setDelivery(null);
-    setSnapshot(null);
-    setError(null);
-    setVisible({ ...DEFAULT_VISIBILITY });
-    void fetchDelivery(deliveryId, abortController.signal)
-      .then(setDelivery)
-      .catch((reason: unknown) => {
-        if (abortController.signal.aborted) return;
-        setError(reason instanceof Error ? reason.message : "Delivery could not be loaded");
-      });
-    return () => abortController.abort();
-  }, [deliveryId]);
+    viewer?.setHidden("discipline", hidden);
+  }, [viewer, hidden]);
 
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!delivery || !canvas) return;
-
-    const controller = createDeliveryViewer({ delivery, canvas });
-    controllerRef.current = controller;
-    onController?.(controller);
-    const unsubscribe = controller.subscribe(setSnapshot);
-    if (window.__modelshelfViewerVerify) {
-      window.__modelshelfViewer = {
-        inspect: () => controller.diagnostics(),
-        select: (ref) => controller.select(ref === null ? null : parseObjectRef(ref)),
-        highlight: (groups) => controller.setHighlights(groups),
-        isolate: (refs) => controller.isolate(refs),
-        section: (z) => controller.setSectionZ(z),
-        dim: (opacity) => controller.setDimOpacity(opacity),
-        fitAll: () => controller.fitAll(),
-        nudgeCamera: (horizontal, vertical) => controller.nudgeCamera(horizontal, vertical),
-        zoomCamera: (factor) => controller.zoomCamera(factor),
-        dispose: () => {
-          controller.dispose();
-          return controller.resourceStats();
-        },
-      };
-    }
-    controller.start();
-
-    return () => {
-      unsubscribe();
-      controller.dispose();
-      controllerRef.current = null;
-      onController?.(null);
-      if (window.__modelshelfViewerVerify) {
-        delete window.__modelshelfViewer;
-      }
-    };
-  }, [delivery, onController]);
-
-  if (error) {
-    return (
-      <main className="grid min-h-screen place-items-center bg-background p-6">
-        <div className="max-w-lg border border-border bg-card p-6">
-          <h1 className="text-xl font-semibold">{copy.deliveryUnavailable}</h1>
-          <p className="mt-2 text-sm text-destructive">{error}</p>
-          <Button className="mt-5" onClick={() => window.location.reload()}>
-            <RotateCcw />
-            {copy.retry}
-          </Button>
-        </div>
-      </main>
-    );
-  }
+  const stateOf = useMemo(
+    () => new Map<string, SourceState>(snapshot?.sources.map((source) => [source.revisionId, source]) ?? []),
+    [snapshot],
+  );
 
   if (!delivery) {
     return (
@@ -175,15 +66,11 @@ export function CombinedDeliveryViewer({
     );
   }
 
-  const snapshot: DeliverySnapshot = latestSnapshot ?? {
-    delivery,
-    models: delivery.models.map((model) => ({ status: "queued", model: modelForDelivery(model) })),
-    selected: null,
-    origin: null,
-    initialReady: false,
-    disposed: false,
-  };
-  const selected = snapshot.selected;
+  const selected = snapshot?.selected ?? null;
+  const origin = snapshot?.origin;
+  const originText =
+    origin?.frozen && origin.offset ? `${origin.offset.join(", ")} m` : copy.pending;
+
   return (
     <main
       className={
@@ -204,14 +91,14 @@ export function CombinedDeliveryViewer({
         </div>
         <div className="ml-auto flex items-center gap-2">
           <span className="hidden text-xs text-muted-foreground sm:inline">
-            {snapshot.initialReady ? copy.combinedView : copy.preparingOrigin}
+            {snapshot?.initialReady ? copy.combinedView : copy.preparingOrigin}
           </span>
           <Button
             variant="outline"
             size="sm"
             className="min-h-11 sm:min-h-8"
             data-viewer-fit
-            onClick={() => controllerRef.current?.fitAll()}
+            onClick={() => viewer?.fitAll()}
           >
             <Focus />
             {copy.fitAll}
@@ -236,7 +123,7 @@ export function CombinedDeliveryViewer({
           <div className="border-b px-4 py-3">
             <h2 className="text-sm font-semibold">{copy.sources}</h2>
             <p className="mt-0.5 text-xs text-muted-foreground" aria-live="polite">
-              {copy.readyCount(readyCount(snapshot.models), snapshot.models.length)}
+              {copy.readyCount(readyCount(snapshot?.sources ?? []), delivery.models.length)}
             </p>
           </div>
           <div
@@ -246,11 +133,12 @@ export function CombinedDeliveryViewer({
                 : "grid gap-2 p-3 sm:grid-cols-2 xl:block xl:max-h-[calc(100vh-7rem)] xl:space-y-2 xl:overflow-y-auto"
             }
           >
-            {snapshot.models.map((model) => (
+            {delivery.models.map((model) => (
               <SourceRow
-                key={model.model.id}
-                state={model}
-                onRetry={() => controllerRef.current?.retry(model.model.revisionId)}
+                key={model.id}
+                model={model}
+                state={stateOf.get(model.id)}
+                onRetry={() => viewer?.retry(revisionIdFrom(model.id))}
                 locale={locale}
               />
             ))}
@@ -268,28 +156,28 @@ export function CombinedDeliveryViewer({
               <button
                 key={discipline}
                 type="button"
-                aria-pressed={visible[discipline]}
+                aria-pressed={!hidden.includes(discipline)}
                 className="inline-flex min-h-11 items-center gap-1.5 border border-border bg-card px-2 text-xs font-medium text-foreground transition-colors hover:bg-muted aria-pressed:border-primary aria-pressed:bg-accent aria-pressed:text-accent-foreground sm:min-h-8"
                 data-discipline-toggle={discipline}
                 onClick={() => {
-                  const next = !visible[discipline];
-                  setVisible((current) => ({ ...current, [discipline]: next }));
-                  controllerRef.current?.setDisciplineVisibility(discipline, next);
+                  const next = hidden.includes(discipline)
+                    ? hidden.filter((value) => value !== discipline)
+                    : [...hidden, discipline];
+                  setHidden(next);
+                  viewer?.setHidden("discipline", next);
                 }}
               >
-                {visible[discipline] ? <Eye className="size-3" /> : <EyeOff className="size-3" />}
+                {hidden.includes(discipline) ? <EyeOff className="size-3" /> : <Eye className="size-3" />}
                 {discipline}
               </button>
             ))}
           </div>
           <div className="viewer-plate relative min-h-0 flex-1">
             <canvas
-              ref={canvasRef}
+              {...canvasProps}
               className="absolute inset-0 size-full touch-none"
               aria-label={copy.canvasLabel}
               aria-describedby={keyboardHelpId}
-              tabIndex={0}
-              onKeyDown={handleCanvasKeyDown}
             />
             <div
               id={keyboardHelpId}
@@ -301,9 +189,7 @@ export function CombinedDeliveryViewer({
           </div>
           <div className="flex min-h-8 shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-t bg-card px-3 py-1 text-xs text-muted-foreground">
             <span>{copy.origin}</span>
-            <span className="font-mono text-xs tabular-nums text-foreground">
-              {snapshot.origin ? `${snapshot.origin.join(", ")} m` : copy.pending}
-            </span>
+            <span className="font-mono text-xs tabular-nums text-foreground">{originText}</span>
           </div>
         </section>
 
@@ -351,15 +237,15 @@ export function CombinedDeliveryViewer({
               <dl className="space-y-3 text-xs">
                 <Info label={copy.revisionId} value={selected.ref.revisionId} />
                 <Info label={copy.objectId} value={selected.ref.objectId} />
-                <Info label={copy.globalId} value={selected.globalId ?? copy.notProvided} />
-                <Info label={copy.ifcType} value={selected.ifcType} />
+                <Info label={copy.globalId} value={selected.attributes.globalId ?? copy.notProvided} />
+                <Info label={copy.ifcType} value={selected.attributes.ifcType ?? copy.notProvided} />
                 <Info label={copy.name} value={selected.name ?? copy.unnamed} />
-                <Info label={copy.placedGeometry} value={`${selected.targets.length}`} />
+                <Info label={copy.placedGeometry} value={`${selected.placements}`} />
                 <Button
                   className="mt-2 w-full"
                   variant="outline"
                   size="sm"
-                  onClick={() => controllerRef.current?.frame([selected.ref])}
+                  onClick={() => viewer?.select(selected.ref, { frame: true })}
                 >
                   <Focus />
                   {copy.frameSelection}
@@ -377,32 +263,35 @@ export function CombinedDeliveryViewer({
 }
 
 function SourceRow({
+  model,
   state,
   onRetry,
   locale,
 }: {
-  readonly state: ModelLoadState;
+  readonly model: ModelInfo;
+  readonly state: SourceState | undefined;
   readonly onRetry: () => void;
   readonly locale: Locale;
 }): React.JSX.Element {
+  const status = state?.status ?? "queued";
   const progress = progressPercent(state);
   return (
     <article
       className="border border-border bg-card p-3 xl:mb-2"
-      data-model-id={state.model.id}
-      data-status={state.status}
+      data-model-id={model.id}
+      data-status={status}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="truncate text-sm font-medium">{state.model.sourceModelName}</h3>
-          <p className="mt-0.5 truncate text-xs text-muted-foreground">{state.model.filename}</p>
+          <h3 className="truncate text-sm font-medium">{model.sourceModelName}</h3>
+          <p className="mt-0.5 truncate text-xs text-muted-foreground">{model.filename}</p>
         </div>
         <span className="shrink-0 bg-secondary px-2 py-0.5 text-xs font-semibold text-secondary-foreground">
-          {state.model.discipline}
+          {model.discipline}
         </span>
       </div>
       <div className="mt-3 flex items-center justify-between gap-3 text-xs">
-        <span className={state.status === "failed" ? "text-destructive" : "text-muted-foreground"}>
+        <span className={status === "failed" ? "text-destructive" : "text-muted-foreground"}>
           {statusLabel(state, locale)}
         </span>
         {progress !== null ? <span className="tabular-nums">{progress}%</span> : null}
@@ -415,7 +304,7 @@ function SourceRow({
           />
         </div>
       ) : null}
-      {state.status === "failed" ? (
+      {state?.status === "failed" ? (
         <div className="mt-3 border-t pt-3">
           <p className="text-xs text-destructive">{state.message}</p>
           {state.retryable ? (
@@ -436,18 +325,20 @@ function SourceRow({
   );
 }
 
-function progressPercent(state: ModelLoadState): number | null {
+function progressPercent(state: SourceState | undefined): number | null {
+  if (!state) return null;
   if (state.status === "ready") return 100;
   if (state.status === "uploading") {
-    if (state.totalBatches === 0) return 100;
-    return Math.round((state.uploadedBatches / state.totalBatches) * 100);
+    if (state.totalChunks === 0) return 100;
+    return Math.round((state.uploadedChunks / state.totalChunks) * 100);
   }
   if (state.status !== "loading" || state.total === null || state.total === 0) return null;
   return Math.min(100, Math.round((state.loaded / state.total) * 100));
 }
 
-function statusLabel(state: ModelLoadState, locale: Locale): string {
+function statusLabel(state: SourceState | undefined, locale: Locale): string {
   const copy = VIEWER_COPY[locale];
+  if (!state) return copy.queued;
   if (state.status === "loading") {
     if (state.phase === "download") return copy.downloading;
     if (state.phase === "parse") return copy.parsing;
@@ -460,7 +351,7 @@ function statusLabel(state: ModelLoadState, locale: Locale): string {
   return copy.queued;
 }
 
-function readyCount(states: readonly ModelLoadState[]): number {
+function readyCount(states: readonly SourceState[]): number {
   return states.filter(({ status }) => status === "ready").length;
 }
 

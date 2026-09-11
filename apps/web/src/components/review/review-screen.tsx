@@ -8,14 +8,15 @@
 // filters + members so finding and run switches clear dependents atomically.
 "use client";
 
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { REVIEW_COPY, VIEWER_COPY } from "@/lib/i18n";
 import { ProvenanceNotice } from "../domain/provenance-notice";
 import type { DeliveryDetail, Finding, RunDetail, Severity } from "@/lib/types";
-import { fetchDelivery } from "../viewer/delivery-api";
-import { fetchRunDetail } from "../viewer/findings-api";
-import type { DeliveryViewerController } from "../viewer/types";
-import { CombinedDeliveryViewer } from "../viewer/combined-delivery-viewer";
+import { fetchDelivery } from "@/lib/delivery-api";
+import { fetchRunDetail } from "@/lib/findings-api";
+import type { ModelViewer } from "model-viewer";
+import { DeliveryViewer } from "../viewer/delivery-viewer";
+import { ifcGeometryFor, viewerSceneFor } from "@/lib/viewer-sources";
 import { useLocale } from "../locale-provider";
 import { DecisionPanel } from "./decision-panel";
 import { EvidencePanel } from "./evidence-panel";
@@ -42,15 +43,18 @@ export function ReviewScreen({
   const [delivery, setDelivery] = useState<DeliveryDetail | null>(null);
   const [deliveryError, setDeliveryError] = useState<string | null>(null);
   const [state, dispatch] = useReducer(reviewReducer, initialReviewState);
-  const [viewer, setViewer] = useState<DeliveryViewerController | null>(null);
-  const viewerRef = useRef<DeliveryViewerController | null>(null);
+  const [viewer, setViewer] = useState<ModelViewer | null>(null);
+  const viewerRef = useRef<ModelViewer | null>(null);
   const runAbort = useRef<AbortController | null>(null);
   const [creating, setCreating] = useState(false);
 
-  const handleController = useCallback((controller: DeliveryViewerController | null) => {
-    viewerRef.current = controller;
-    setViewer(controller);
+  const handleViewer = useCallback((next: ModelViewer | null) => {
+    viewerRef.current = next;
+    setViewer(next);
   }, []);
+
+  const scene = useMemo(() => (delivery ? viewerSceneFor(delivery) : null), [delivery]);
+  const geometry = useMemo(() => (delivery ? ifcGeometryFor(delivery) : null), [delivery]);
 
   useEffect(() => {
     const abort = new AbortController();
@@ -147,9 +151,11 @@ export function ReviewScreen({
 
   return (
     <div data-review-screen>
-      <CombinedDeliveryViewer
-        deliveryId={deliveryId}
-        onController={handleController}
+      <DeliveryViewer
+        delivery={delivery}
+        scene={scene}
+        geometry={geometry}
+        onViewer={handleViewer}
         presentation={presentation}
         inspector={
           !delivery ? (

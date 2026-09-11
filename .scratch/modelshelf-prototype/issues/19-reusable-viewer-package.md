@@ -5,8 +5,8 @@ Parent: ../map.md
 Type: task
 Mode: AFK
 Labels: wayfinder:task, ready-for-agent, plan-alignment
-Status: open
-Assignee: unassigned
+Status: claimed
+Assignee: cursor-grok-ticket-19-2026-09-11
 Blocked by: 09, 11
 Wave: 2
 Original plan coverage: 5, reusable-package portion; ADR 0001
@@ -66,3 +66,29 @@ Append an Answer with changes, exact commands/results, evidence links, remaining
 ## Comments
 
 Raised on 2026-09-09 by the plan-alignment review of tickets 01-11 and 18. Every claim below cites the file and line observed in that review. No implementation is claimed by ticket creation.
+
+2026-09-11, claimed by `cursor-grok-ticket-19-2026-09-11` in worktree `C:/Users/Daniel/orca/workspaces/ModelShelf/19-extract-viewer` at `6092235` (origin/main after design-review). Ticket 16 PR 39 already contains a `packages/model-viewer` extraction that is not on main; this session will treat that as a prior candidate against current main rather than merging PR 39. Ticket 20 owns generated-contract wiring of the same viewer modules; this session will not consume `model-contracts-ts`. Ticket 21 owns mock/design/domain files and will not be edited here. `finding-inspector.tsx` is absent on current main.
+
+## Answer
+
+Extraction is implemented in the worktree. It is not resolved until `--scenario inspection` passes.
+
+`packages/model-viewer` exports `.` / `./ifc` / `./react`. `apps/web` imports only those specifiers. Overlay paint is `applyOverlay`. Geometry is an opaque driver. Fetch, chrome, and `window.__modelshelfViewer` stay in the app. Old `components/viewer` internals are deleted. No commit.
+
+Parent verification after the implementer report:
+
+| Command | Result |
+|---|---|
+| `node scripts/check-viewer-imports.mjs` | pass; four invalid fixtures rejected |
+| `npm --prefix apps/web run typecheck` | pass |
+| `node scripts/verify-viewer-standalone.mjs` | pass (opaque `wall-01` / `slab-01`) |
+| `node scripts/verify-viewer.mjs` | pass, including `one browser Worker remains active after StrictMode remount` |
+| `node scripts/verify-viewer.mjs --scenario inspection` | not demonstrated |
+
+Combined first failed because `installWorker` hid `new Worker(new URL("./loader.worker.ts", import.meta.url))` behind a helper. Webpack did not emit the worker. The constructor is now a single expression, and `web-ifc` is a package dependency so the worker compile can resolve it.
+
+Inspection: Windows `cargo build -p modelshelf-checker` fails on unix `flock` in `services/checker/src/state.rs`. WSL built the checker and seeded, then the first BLCJ upload hit Node's 300s fetch headers timeout. That harness still needs a Linux-capable ingest run. Do not treat this ticket as closed.
+
+Evidence: `.scratch/modelshelf-prototype/evidence/19-extract-viewer/combined/` and `.../standalone/`.
+
+Downstream: Review and Compare take `ModelViewer` from `model-viewer`. Bridges return `Overlay` values. Ticket 20 can still collapse ObjectRef copies. Ticket 21 is untouched.

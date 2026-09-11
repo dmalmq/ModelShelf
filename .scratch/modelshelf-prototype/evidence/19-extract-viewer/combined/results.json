@@ -1,0 +1,611 @@
+{
+  "passed": true,
+  "checks": [
+    "the delivery route mounts one authoritative viewer and requests each revision once",
+    "two successful real models remain ready when a sibling fails",
+    "the failed source has its own model state",
+    "successful model roots remain visible after a sibling failure",
+    "successful models establish the shared origin before retry",
+    "retry keeps the established common origin frozen",
+    "the combined delivery contains three model revisions",
+    "download and parse progress identifies every source revision",
+    "three batched model resources are active",
+    "IFC parsing uses one dedicated browser Worker",
+    "the browser loaded a dedicated Worker bundle (http://127.0.0.1:57713/_next/static/chunks/801.f796656e7a520066.js)",
+    "one renderer owns the combined scene",
+    "one render loop drives the combined scene",
+    "model revisions share one material",
+    "one browser Worker remains active after StrictMode remount",
+    "Three.js observes uploaded GPU geometry",
+    "Three.js observes BatchedMesh GPU textures",
+    "Three.js observes compiled shader programs",
+    "Three.js observes rendered frames",
+    "thousands of selectable objects remain behind revision-level BatchedMesh resources",
+    "combined delivery establishes a shared origin",
+    "the delivery resolves one common origin",
+    "every model root receives the same common-origin offset",
+    "ARCH exposes drawable bounds",
+    "ARCH geometry remains at building-scale metres",
+    "ARCH geometry avoids a second unit expansion",
+    "STRUCT exposes drawable bounds",
+    "STRUCT geometry remains at building-scale metres",
+    "STRUCT geometry avoids a second unit expansion",
+    "MEP exposes drawable bounds",
+    "MEP geometry remains at building-scale metres",
+    "MEP geometry avoids a second unit expansion",
+    "discipline bounds occupy one shared project frame",
+    "discipline bounds occupy one shared project frame",
+    "discipline bounds occupy one shared project frame",
+    "left drag orbits the camera",
+    "right drag pans the camera",
+    "wheel input zooms the camera",
+    "the model canvas is keyboard focusable",
+    "the model canvas references keyboard instructions",
+    "keyboard instructions describe pan, zoom, and fit-all controls",
+    "arrow-key input pans the camera target",
+    "plus-key input zooms the camera",
+    "Home-key input fits the complete delivery",
+    "canvas raycasting selects a revision-qualified ObjectRef",
+    "390px viewer has no horizontal overflow (390px): [{\"tag\":\"aside\",\"marker\":\"class=order-2 border-b bg-card xl:order-1 xl:min-h-0 xl:border-b-0 xl:border-r\",\"left\":13,\"right\":664,\"width\":651,\"text\":\"ソース3件中3件を読み込み済みArchitectureC:\\\\Users\\\\Daniel\\\\orca\\\\workspaces\\\\ModelShelf\\\\19-extract\"},{\"tag\":\"div\",\"marker\":\"class=border-b px-4 py-3\",\"left\":13,\"right\":664,\"width\":651,\"text\":\"ソース3件中3件を読み込み済み\"},{\"tag\":\"h2\",\"marker\":\"class=text-sm font-semibold\",\"left\":29,\"right\":648,\"width\":619,\"text\":\"ソース\"},{\"tag\":\"p\",\"marker\":\"class=mt-0.5 text-xs text-muted-foreground\",\"left\":29,\"right\":648,\"width\":619,\"text\":\"3件中3件を読み込み済み\"},{\"tag\":\"div\",\"marker\":\"class=grid gap-2 p-3 sm:grid-cols-2 xl:block xl:max-h-[calc(100vh-7rem)] xl:space-y-2 xl:overflow-y-auto\",\"left\":13,\"right\":664,\"width\":651,\"text\":\"ArchitectureC:\\\\Users\\\\Daniel\\\\orca\\\\workspaces\\\\ModelShelf\\\\19-extract-viewer\\\\samples\"},{\"tag\":\"article\",\"marker\":\"class=border border-border bg-card p-3 xl:mb-2 data-model-id=combined-arch data-status=ready\",\"left\":25,\"right\":652,\"width\":627,\"text\":\"ArchitectureC:\\\\Users\\\\Daniel\\\\orca\\\\workspaces\\\\ModelShelf\\\\19-extract-viewer\\\\samples\"},{\"tag\":\"div\",\"marker\":\"class=flex items-start justify-between gap-3\",\"left\":38,\"right\":639,\"width\":601,\"text\":\"ArchitectureC:\\\\Users\\\\Daniel\\\\orca\\\\workspaces\\\\ModelShelf\\\\19-extract-viewer\\\\samples\"},{\"tag\":\"div\",\"marker\":\"class=min-w-0\",\"left\":38,\"right\":579,\"width\":541,\"text\":\"ArchitectureC:\\\\Users\\\\Daniel\\\\orca\\\\workspaces\\\\ModelShelf\\\\19-extract-viewer\\\\samples\"},{\"tag\":\"h3\",\"marker\":\"class=truncate text-sm font-medium\",\"left\":38,\"right\":579,\"width\":541,\"text\":\"Architecture\"},{\"tag\":\"p\",\"marker\":\"class=mt-0.5 truncate text-xs text-muted-foreground\",\"left\":38,\"right\":579,\"width\":541,\"text\":\"C:\\\\Users\\\\Daniel\\\\orca\\\\workspaces\\\\ModelShelf\\\\19-extract-viewer\\\\samples\\\\ifc\\\\blcj-s1\"},{\"tag\":\"span\",\"marker\":\"class=shrink-0 bg-secondary px-2 py-0.5 text-xs font-semibold text-secondary-foreground\",\"left\":591,\"right\":639,\"width\":48,\"text\":\"ARCH\"},{\"tag\":\"div\",\"marker\":\"class=mt-3 flex items-center justify-between gap-3 text-xs\",\"left\":38,\"right\":639,\"width\":601,\"text\":\"読み込み済み100%\"}]",
+    "visible mobile viewer buttons meet the 44px target floor: []",
+    "combined first unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":301,\"triangles\":0}",
+    "combined first unload releases uploaded GPU geometry and shader programs",
+    "combined first unload releases every BatchedMesh GPU texture",
+    "combined first unload closes the observed browser Worker",
+    "combined first unload stops the observed render loop",
+    "combined repeated unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":301,\"triangles\":0}",
+    "combined repeated unload releases uploaded GPU geometry and shader programs",
+    "combined repeated unload releases every BatchedMesh GPU texture",
+    "combined repeated unload closes the observed browser Worker",
+    "combined repeated unload stops the observed render loop",
+    "duplicate GlobalId rows retain different revisions",
+    "duplicate GlobalId rows receive different opaque object IDs",
+    "ObjectRef mapping matches the contract for duplicate-a",
+    "ObjectRef mapping matches the contract for duplicate-b",
+    "one ObjectRef can address several placed geometry instances",
+    "the first duplicate GlobalId revision selects independently",
+    "the second duplicate GlobalId revision selects independently",
+    "duplicate unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":44,\"triangles\":0}",
+    "duplicate unload releases uploaded GPU geometry and shader programs",
+    "duplicate unload releases every BatchedMesh GPU texture",
+    "duplicate unload closes the observed browser Worker",
+    "duplicate unload stops the observed render loop",
+    "remount reacquires one Worker and batched GPU resources",
+    "duplicate remount unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":41,\"triangles\":0}",
+    "duplicate remount unload releases uploaded GPU geometry and shader programs",
+    "duplicate remount unload releases every BatchedMesh GPU texture",
+    "duplicate remount unload closes the observed browser Worker",
+    "duplicate remount unload stops the observed render loop",
+    "a valid revision with no drawable geometry reaches ready",
+    "an empty drawable revision exposes no selectable objects",
+    "empty revision unload releases Worker and renderer ownership: {\"workers\":0,\"renderLoops\":0,\"renderers\":0,\"batches\":0,\"geometries\":0,\"materials\":0,\"gpuGeometries\":0,\"gpuTextures\":1,\"shaderPrograms\":0,\"renderFrame\":20,\"triangles\":0}",
+    "empty revision unload releases uploaded GPU geometry and shader programs",
+    "empty revision unload releases every BatchedMesh GPU texture",
+    "empty revision unload closes the observed browser Worker",
+    "empty revision unload stops the observed render loop"
+  ],
+  "samples": {
+    "ARCH": {
+      "path": "C:\\Users\\Daniel\\orca\\workspaces\\ModelShelf\\19-extract-viewer\\samples\\ifc\\blcj-s1000-architecture.ifc",
+      "sha256": "0f674223f596c483c5abea0b58fe6c05ef3c68692409c977782040ffa501cca4",
+      "size": 36232021
+    },
+    "STRUCT": {
+      "path": "C:\\Users\\Daniel\\orca\\workspaces\\ModelShelf\\19-extract-viewer\\samples\\ifc\\blcj-s1000-structure.ifc",
+      "sha256": "64084908b3eda8f2a34cb0e5d51532b98882d62aa42839b9fa9b27e1ca1e75d5",
+      "size": 836678
+    },
+    "MEP": {
+      "path": "C:\\Users\\Daniel\\orca\\workspaces\\ModelShelf\\19-extract-viewer\\samples\\ifc\\blcj-s1000-mep.ifc",
+      "sha256": "46eae66e578211012ee8c6d3d03eb3876670852cc62d452f40bc98c5215c08c2",
+      "size": 48736361
+    }
+  },
+  "fixtureRequests": [
+    "/api/deliveries/failure-probe",
+    "/api/deliveries/failure-probe",
+    "/api/projects/viewer-verifier/source-models",
+    "/api/packs",
+    "/api/models/probe-arch/file",
+    "/api/models/probe-struct/file",
+    "/api/models/probe-failure/file",
+    "/api/models/probe-failure/file",
+    "/api/deliveries/combined",
+    "/api/deliveries/combined",
+    "/api/projects/viewer-verifier/source-models",
+    "/api/packs",
+    "/api/models/combined-arch/file",
+    "/api/models/combined-struct/file",
+    "/api/models/combined-mep/file",
+    "/api/deliveries/duplicate",
+    "/api/deliveries/duplicate",
+    "/api/projects/viewer-verifier/source-models",
+    "/api/packs",
+    "/api/models/duplicate-a/file",
+    "/api/models/duplicate-b/file",
+    "/api/deliveries/duplicate",
+    "/api/deliveries/duplicate",
+    "/api/projects/viewer-verifier/source-models",
+    "/api/packs",
+    "/api/models/duplicate-a/file",
+    "/api/models/duplicate-b/file",
+    "/api/deliveries/empty",
+    "/api/deliveries/empty",
+    "/api/projects/viewer-verifier/source-models",
+    "/api/packs",
+    "/api/models/empty-model/file"
+  ],
+  "workerUrls": [
+    "http://127.0.0.1:57713/_next/static/chunks/801.f796656e7a520066.js",
+    "http://127.0.0.1:57713/_next/static/chunks/801.f796656e7a520066.js",
+    "http://127.0.0.1:57713/_next/static/chunks/801.f796656e7a520066.js",
+    "http://127.0.0.1:57713/_next/static/chunks/801.f796656e7a520066.js",
+    "http://127.0.0.1:57713/_next/static/chunks/801.f796656e7a520066.js",
+    "http://127.0.0.1:57713/_next/static/chunks/801.f796656e7a520066.js"
+  ],
+  "partial": {
+    "snapshot": {
+      "sources": [
+        {
+          "status": "ready",
+          "revisionId": "probe-arch",
+          "attributes": {
+            "discipline": "ARCH"
+          },
+          "objectCount": 308,
+          "bounds": {
+            "min": [
+              -0.4500000000000558,
+              -2.0600000000000027,
+              -19.65000000000009
+            ],
+            "max": [
+              13.45,
+              16.5,
+              0.4500000000000055
+            ]
+          }
+        },
+        {
+          "status": "ready",
+          "revisionId": "probe-struct",
+          "attributes": {
+            "discipline": "STRUCT"
+          },
+          "objectCount": 308,
+          "bounds": {
+            "min": [
+              -0.4500000000000558,
+              -2.0600000000000027,
+              -19.65000000000009
+            ],
+            "max": [
+              13.45,
+              16.5,
+              0.4500000000000055
+            ]
+          }
+        },
+        {
+          "status": "failed",
+          "revisionId": "probe-failure",
+          "attributes": {
+            "discipline": "MEP"
+          },
+          "stage": "download",
+          "message": "IFC download failed with HTTP 503",
+          "retryable": true
+        }
+      ],
+      "selected": null,
+      "selectionHidden": false,
+      "origin": {
+        "frozen": true,
+        "offset": [
+          6,
+          7,
+          -10
+        ]
+      },
+      "initialReady": true,
+      "disposed": false
+    },
+    "resources": {
+      "workers": 0,
+      "renderLoops": 1,
+      "renderers": 1,
+      "batches": 2,
+      "geometries": 902,
+      "materials": 1,
+      "gpuGeometries": 2,
+      "gpuTextures": 7,
+      "shaderPrograms": 1,
+      "renderFrame": 26,
+      "triangles": 39776
+    },
+    "renderer": {
+      "cameraPosition": [
+        17.377865100024103,
+        12.878398943500937,
+        17.277864870185336
+      ],
+      "cameraTarget": [
+        0.499999966705218,
+        0.2200000935117714,
+        0.3999997368664481
+      ],
+      "roots": [
+        {
+          "revisionId": "probe-arch",
+          "offset": [
+            -6,
+            -7,
+            10
+          ],
+          "visible": true
+        },
+        {
+          "revisionId": "probe-struct",
+          "offset": [
+            -6,
+            -7,
+            10
+          ],
+          "visible": true
+        }
+      ],
+      "highlightGroups": [],
+      "isolatedMatched": null,
+      "clipping": false
+    }
+  },
+  "combined": {
+    "origin": {
+      "frozen": true,
+      "offset": [
+        13,
+        11,
+        -4
+      ]
+    },
+    "activeWorkers": 1,
+    "resources": {
+      "workers": 1,
+      "renderLoops": 1,
+      "renderers": 1,
+      "batches": 3,
+      "geometries": 9881,
+      "materials": 1,
+      "gpuGeometries": 3,
+      "gpuTextures": 10,
+      "shaderPrograms": 1,
+      "renderFrame": 193,
+      "triangles": 692230
+    },
+    "modelBounds": [
+      {
+        "revisionId": "combined-arch",
+        "status": "ready",
+        "attributes": {
+          "discipline": "ARCH"
+        },
+        "objectCount": 1968,
+        "bounds": {
+          "min": [
+            -2.3536347673649995,
+            -2.55,
+            -21.200929258404997
+          ],
+          "max": [
+            28.979123654299997,
+            25.82,
+            12.78088434445
+          ]
+        }
+      },
+      {
+        "revisionId": "combined-struct",
+        "status": "ready",
+        "attributes": {
+          "discipline": "STRUCT"
+        },
+        "objectCount": 308,
+        "bounds": {
+          "min": [
+            -0.4500000000000558,
+            -2.0600000000000027,
+            -19.65000000000009
+          ],
+          "max": [
+            13.45,
+            16.5,
+            0.4500000000000055
+          ]
+        }
+      },
+      {
+        "revisionId": "combined-mep",
+        "status": "ready",
+        "attributes": {
+          "discipline": "MEP"
+        },
+        "objectCount": 2999,
+        "bounds": {
+          "min": [
+            -3.630796533515625,
+            -3.6665500023049953,
+            -18.644309671000002
+          ],
+          "max": [
+            14.653727541218752,
+            21.26,
+            6.154728570304993
+          ]
+        }
+      }
+    ],
+    "cameraAfterInput": {
+      "cameraPosition": [
+        3.7969359282945843,
+        27.995665949664385,
+        25.266214506400313
+      ],
+      "cameraTarget": [
+        -1.9414043028707488,
+        1.0972776871958712,
+        -0.7445775764031126
+      ],
+      "roots": [
+        {
+          "revisionId": "combined-arch",
+          "offset": [
+            -13,
+            -11,
+            4
+          ],
+          "visible": true
+        },
+        {
+          "revisionId": "combined-struct",
+          "offset": [
+            -13,
+            -11,
+            4
+          ],
+          "visible": true
+        },
+        {
+          "revisionId": "combined-mep",
+          "offset": [
+            -13,
+            -11,
+            4
+          ],
+          "visible": true
+        }
+      ],
+      "highlightGroups": [],
+      "isolatedMatched": null,
+      "clipping": false
+    },
+    "pickedRef": {
+      "revisionId": "combined-arch",
+      "objectId": "occ_29c720a574b0ae62"
+    }
+  },
+  "duplicate": {
+    "globalId": "24L2xt4x166hln6nV88hpI",
+    "refs": [
+      {
+        "ref": {
+          "revisionId": "duplicate-a",
+          "objectId": "occ_46b2bc3c90e92e21"
+        },
+        "expressId": "143",
+        "targetCount": 1
+      },
+      {
+        "ref": {
+          "revisionId": "duplicate-b",
+          "objectId": "occ_10bdfc77e8028735"
+        },
+        "expressId": "143",
+        "targetCount": 1
+      }
+    ]
+  },
+  "empty": {
+    "model": {
+      "status": "ready",
+      "revisionId": "empty-model",
+      "attributes": {
+        "discipline": "OTHER"
+      },
+      "objectCount": 0,
+      "bounds": null
+    },
+    "resources": {
+      "workers": 1,
+      "renderLoops": 1,
+      "renderers": 1,
+      "batches": 1,
+      "geometries": 0,
+      "materials": 1,
+      "gpuGeometries": 1,
+      "gpuTextures": 2,
+      "shaderPrograms": 1,
+      "renderFrame": 19,
+      "triangles": 0
+    }
+  },
+  "disposalRuns": [
+    {
+      "workers": 0,
+      "renderLoops": 0,
+      "renderers": 0,
+      "batches": 0,
+      "geometries": 0,
+      "materials": 0,
+      "gpuGeometries": 0,
+      "gpuTextures": 1,
+      "shaderPrograms": 0,
+      "renderFrame": 301,
+      "triangles": 0
+    },
+    {
+      "workers": 0,
+      "renderLoops": 0,
+      "renderers": 0,
+      "batches": 0,
+      "geometries": 0,
+      "materials": 0,
+      "gpuGeometries": 0,
+      "gpuTextures": 1,
+      "shaderPrograms": 0,
+      "renderFrame": 301,
+      "triangles": 0
+    },
+    {
+      "workers": 0,
+      "renderLoops": 0,
+      "renderers": 0,
+      "batches": 0,
+      "geometries": 0,
+      "materials": 0,
+      "gpuGeometries": 0,
+      "gpuTextures": 1,
+      "shaderPrograms": 0,
+      "renderFrame": 44,
+      "triangles": 0
+    },
+    {
+      "workers": 0,
+      "renderLoops": 0,
+      "renderers": 0,
+      "batches": 0,
+      "geometries": 0,
+      "materials": 0,
+      "gpuGeometries": 0,
+      "gpuTextures": 1,
+      "shaderPrograms": 0,
+      "renderFrame": 41,
+      "triangles": 0
+    },
+    {
+      "workers": 0,
+      "renderLoops": 0,
+      "renderers": 0,
+      "batches": 0,
+      "geometries": 0,
+      "materials": 0,
+      "gpuGeometries": 0,
+      "gpuTextures": 1,
+      "shaderPrograms": 0,
+      "renderFrame": 20,
+      "triangles": 0
+    }
+  ],
+  "mobileLayout": {
+    "viewportWidth": 390,
+    "scrollWidth": 390,
+    "undersizedButtons": [],
+    "overflowingElements": [
+      {
+        "tag": "aside",
+        "marker": "class=order-2 border-b bg-card xl:order-1 xl:min-h-0 xl:border-b-0 xl:border-r",
+        "left": 13,
+        "right": 664,
+        "width": 651,
+        "text": "ソース3件中3件を読み込み済みArchitectureC:\\Users\\Daniel\\orca\\workspaces\\ModelShelf\\19-extract"
+      },
+      {
+        "tag": "div",
+        "marker": "class=border-b px-4 py-3",
+        "left": 13,
+        "right": 664,
+        "width": 651,
+        "text": "ソース3件中3件を読み込み済み"
+      },
+      {
+        "tag": "h2",
+        "marker": "class=text-sm font-semibold",
+        "left": 29,
+        "right": 648,
+        "width": 619,
+        "text": "ソース"
+      },
+      {
+        "tag": "p",
+        "marker": "class=mt-0.5 text-xs text-muted-foreground",
+        "left": 29,
+        "right": 648,
+        "width": 619,
+        "text": "3件中3件を読み込み済み"
+      },
+      {
+        "tag": "div",
+        "marker": "class=grid gap-2 p-3 sm:grid-cols-2 xl:block xl:max-h-[calc(100vh-7rem)] xl:space-y-2 xl:overflow-y-auto",
+        "left": 13,
+        "right": 664,
+        "width": 651,
+        "text": "ArchitectureC:\\Users\\Daniel\\orca\\workspaces\\ModelShelf\\19-extract-viewer\\samples"
+      },
+      {
+        "tag": "article",
+        "marker": "class=border border-border bg-card p-3 xl:mb-2 data-model-id=combined-arch data-status=ready",
+        "left": 25,
+        "right": 652,
+        "width": 627,
+        "text": "ArchitectureC:\\Users\\Daniel\\orca\\workspaces\\ModelShelf\\19-extract-viewer\\samples"
+      },
+      {
+        "tag": "div",
+        "marker": "class=flex items-start justify-between gap-3",
+        "left": 38,
+        "right": 639,
+        "width": 601,
+        "text": "ArchitectureC:\\Users\\Daniel\\orca\\workspaces\\ModelShelf\\19-extract-viewer\\samples"
+      },
+      {
+        "tag": "div",
+        "marker": "class=min-w-0",
+        "left": 38,
+        "right": 579,
+        "width": 541,
+        "text": "ArchitectureC:\\Users\\Daniel\\orca\\workspaces\\ModelShelf\\19-extract-viewer\\samples"
+      },
+      {
+        "tag": "h3",
+        "marker": "class=truncate text-sm font-medium",
+        "left": 38,
+        "right": 579,
+        "width": 541,
+        "text": "Architecture"
+      },
+      {
+        "tag": "p",
+        "marker": "class=mt-0.5 truncate text-xs text-muted-foreground",
+        "left": 38,
+        "right": 579,
+        "width": 541,
+        "text": "C:\\Users\\Daniel\\orca\\workspaces\\ModelShelf\\19-extract-viewer\\samples\\ifc\\blcj-s1"
+      },
+      {
+        "tag": "span",
+        "marker": "class=shrink-0 bg-secondary px-2 py-0.5 text-xs font-semibold text-secondary-foreground",
+        "left": 591,
+        "right": 639,
+        "width": 48,
+        "text": "ARCH"
+      },
+      {
+        "tag": "div",
+        "marker": "class=mt-3 flex items-center justify-between gap-3 text-xs",
+        "left": 38,
+        "right": 639,
+        "width": 601,
+        "text": "読み込み済み100%"
+      }
+    ]
+  }
+}

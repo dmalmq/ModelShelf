@@ -45,6 +45,7 @@ A runnable local ModelShelf prototype that combines architectural, structural, a
 - [Compare revisions with explicit match confidence](issues/13-model-diff.md) — resolved: normalized `DiffObject` comparison with SourceModel pairing, explicit confidence, profile-gated 409, and a 37-check comparisons scenario.
 - [Compare findings only under compatible checking settings](issues/14-finding-diff.md) — resolved: `diff_runs` refuses with a per-dimension 409 unless both runs share provenance, completion, pack digests, scope plus pinned membership, and engine profile; confirmed GlobalIds only with uncertain identity held persisting; 42-check finding-comparisons scenario.
 - [Review model and finding changes visually](issues/15-comparison-screen.md) — resolved: `/deliveries/compare` drives one persistent viewer through the frozen controller port with base/head toggle, active-side-only kind overlay, revision-qualified selection, before/after property and identity tables, finding deltas with a rerun CTA for an incomparable pair, and a 38-check comparisons scenario asserting a per-object oracle.
+- [Extract the reusable viewer package behind public exports](issues/19-reusable-viewer-package.md) — claimed, not resolved: `packages/model-viewer` is extracted and combined/standalone/import-boundary/typecheck passed. Inspection scenario is still outstanding on this Windows worktree (`modelshelf-checker` uses unix `flock`).
 
 ## Not yet specified
 

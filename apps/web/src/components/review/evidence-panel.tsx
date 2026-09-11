@@ -12,17 +12,17 @@ import { Button } from "../ui/button";
 import { SEVERITY_COLOR } from "@/lib/palette";
 import { EVIDENCE_COPY, UI, type Locale } from "@/lib/i18n";
 import type { Finding, FindingObject, ModelInfo, ObjectDetail, RunSummary, SpecResultRow } from "@/lib/types";
-import { fetchAllFindingObjects, fetchObjectDetail } from "../viewer/findings-api";
-import type { DeliveryViewerController } from "../viewer/types";
+import { fetchAllFindingObjects, fetchObjectDetail } from "@/lib/findings-api";
+import type { ModelViewer } from "model-viewer";
+import { refKey } from "model-viewer";
 import { ObjectFilters, type FilterOptions } from "./object-filters";
 import type { LoadedMembers, ObjectFilterSet } from "./review-state";
 import {
-  applyFindingToViewer,
+  overlayForFinding,
   clearFindingFromViewer,
   filterMembers,
-  findingToHighlights,
   MISSING_STOREY,
-  toViewerRefPlain,
+  toViewerRef,
 } from "./viewer-bridge";
 
 const PAGE_SIZE = 25;
@@ -42,7 +42,7 @@ interface EvidencePanelProps {
   readonly onMembersLoading: () => void;
   readonly onMembersReady: (findingId: string, objects: FindingObject[], total: number) => void;
   readonly onMembersFailed: () => void;
-  readonly viewer: DeliveryViewerController | null;
+  readonly viewer: ModelViewer | null;
   readonly lang?: Locale;
 }
 
@@ -134,7 +134,7 @@ export function EvidencePanel({
     if (!viewer) return;
     setProperty(null);
     setPropertyError(null);
-    const selected = viewer.diagnostics().snapshot.selected;
+    const selected = viewer.snapshot().selected;
     if (!selected) return;
     const match = membersForFinding.find(
       (object) =>
@@ -226,14 +226,17 @@ export function EvidencePanel({
   // appears the moment the selection leaves the isolated set.
   useEffect(() => {
     if (!viewer) return;
-    return viewer.subscribe(() => setSelectedHidden(viewer.diagnostics().selectedHidden));
+    return viewer.subscribe((snapshot) => setSelectedHidden(snapshot.selectionHidden));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewer]);
 
-  const { refs, undrawable: nullRefs } = useMemo(() => findingToHighlights(filtered), [filtered]);
+  const { refs } = useMemo(() => {
+    const parsed = filtered.flatMap((object) => toViewerRef(object.ref) ?? []);
+    return { refs: parsed };
+  }, [filtered]);
 
   const nullRefMembers = useMemo(
-    () => valid.filter((object) => toViewerRefPlain(object.ref) === null),
+    () => valid.filter((object) => toViewerRef(object.ref) === null),
     [valid],
   );
   const uniqueKeys = useMemo(() => {
@@ -246,7 +249,7 @@ export function EvidencePanel({
     const listed = [...nullRefMembers];
     for (const object of valid) {
       const key = `${object.ref.revisionId}\0${object.ref.objectId}`;
-      if (toViewerRefPlain(object.ref) !== null && notDrawn[key] && !listed.includes(object)) {
+      if (toViewerRef(object.ref) !== null && notDrawn[key] && !listed.includes(object)) {
         listed.push(object);
       }
     }
@@ -277,29 +280,21 @@ export function EvidencePanel({
     if (finding.objectCount === 0 || filtered.length === 0) {
       clearFindingFromViewer(viewer);
       setMatched(0);
-      setSelectedHidden(viewer.diagnostics().selectedHidden);
+      setSelectedHidden(viewer.snapshot().selectionHidden);
       setNotDrawn({});
       return;
     }
     try {
-      // "Reset view" keeps the finding highlighted but stops hiding the rest of
-      // the delivery: colour without isolation, full opacity, camera untouched.
-      const readback = applyFindingToViewer(
-        viewer,
-        { refs, color: SEVERITY_COLOR[finding.severity], label: finding.title },
-        isolationOff ? { isolate: false, dimOpacity: 1, frame: false } : undefined,
-      );
-      setMatched(readback.matched);
-      setSelectedHidden(readback.selectedHidden);
-      const drawn: Record<string, true> = {};
-      for (const key of readback.drawnKeys) drawn[key] = true;
+      const overlay = overlayForFinding(filtered, {
+        color: SEVERITY_COLOR[finding.severity],
+        label: finding.title,
+        mode: isolationOff ? "colour-only" : "isolate",
+      });
+      const drawn = viewer.applyOverlay(overlay);
+      setMatched(drawn.groups[0]?.matched ?? 0);
+      setSelectedHidden(drawn.selectionHidden);
       const missing: Record<string, true> = {};
-      for (const object of filtered) {
-        const ref = toViewerRefPlain(object.ref);
-        if (ref && !drawn[`${ref.revisionId}\0${ref.objectId}`]) {
-          missing[`${object.ref.revisionId}\0${object.ref.objectId}`] = true;
-        }
-      }
+      for (const object of drawn.missing) missing[refKey(object)] = true;
       setNotDrawn(missing);
     } catch {
       setMatched(null);

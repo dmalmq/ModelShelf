@@ -1,23 +1,16 @@
-import type { Discipline } from "@/lib/types";
-import { parseObjectId, parseRevisionId } from "./object-ref";
-import type {
-  Bounds3,
-  FailureStage,
-  LoadPhase,
-  RevisionId,
-  TransferGeometry,
-  TransferInstance,
-  WorkerHeader,
-} from "./types";
+import { objectIdFrom, type RevisionId } from "../object-ref";
+import { parseRevisionId } from "./object-id";
+import type { Bounds3, FailureStage, LoadPhase } from "../types";
+import type { GeometryHeader, TransferGeometry, TransferInstance } from "../geometry-driver.internal";
 
 export type WorkerRequest =
   | Readonly<{
       type: "load";
       jobId: string;
       revisionId: RevisionId;
-      discipline: Discipline;
-      fileUrl: string;
+      attributes: Readonly<Record<string, string>>;
       wasmBaseUrl: string;
+      bytes: ArrayBuffer;
     }>
   | Readonly<{ type: "ack"; jobId: string; batchNumber: number }>
   | Readonly<{ type: "cancel"; jobId: string }>;
@@ -36,7 +29,7 @@ export type WorkerResponse =
       type: "header";
       jobId: string;
       revisionId: RevisionId;
-      header: WorkerHeader;
+      header: GeometryHeader;
       sequence: number;
     }>
   | Readonly<{
@@ -92,14 +85,14 @@ export function parseWorkerResponse(value: unknown): WorkerResponse | null {
       return null;
     }
     const geometries: TransferGeometry[] = [];
-    for (const value of record.geometries) {
-      const geometry = parseGeometry(value);
+    for (const entry of record.geometries) {
+      const geometry = parseGeometry(entry);
       if (!geometry) return null;
       geometries.push(geometry);
     }
     const instances: TransferInstance[] = [];
-    for (const value of record.instances) {
-      const instance = parseInstance(value);
+    for (const entry of record.instances) {
+      const instance = parseInstance(entry);
       if (!instance) return null;
       instances.push(instance);
     }
@@ -137,7 +130,7 @@ export function parseWorkerResponse(value: unknown): WorkerResponse | null {
   return null;
 }
 
-function parseHeader(value: unknown): WorkerHeader | null {
+function parseHeader(value: unknown): GeometryHeader | null {
   const record = asRecord(value);
   if (!record) return null;
   const bounds = record.bounds === null ? null : parseBounds(record.bounds);
@@ -172,10 +165,10 @@ function parseHeader(value: unknown): WorkerHeader | null {
 function parseGeometry(value: unknown): TransferGeometry | null {
   const record = asRecord(value);
   if (!record) return null;
-  const geometryExpressId = nonNegativeInteger(record.geometryExpressId);
+  const geometryId = typeof record.geometryId === "string" ? record.geometryId : null;
   const bounds = parseBounds(record.bounds);
   if (
-    geometryExpressId === null ||
+    !geometryId ||
     !(record.positions instanceof Float32Array) ||
     !(record.normals instanceof Float32Array) ||
     !(record.indices instanceof Uint32Array) ||
@@ -186,7 +179,7 @@ function parseGeometry(value: unknown): TransferGeometry | null {
     return null;
   }
   return {
-    geometryExpressId,
+    geometryId,
     positions: record.positions,
     normals: record.normals,
     indices: record.indices,
@@ -197,36 +190,39 @@ function parseGeometry(value: unknown): TransferGeometry | null {
 function parseInstance(value: unknown): TransferInstance | null {
   const record = asRecord(value);
   if (!record) return null;
-  const expressId = nonNegativeInteger(record.expressId);
-  const geometryExpressId = nonNegativeInteger(record.geometryExpressId);
+  const geometryId = typeof record.geometryId === "string" ? record.geometryId : null;
   const objectId = safeObjectId(record.objectId);
-  const discipline = parseDiscipline(record.discipline);
   const matrix = numberTuple(record.matrix, 16);
   const color = numberTuple(record.color, 4);
+  const attributes = parseAttributes(record.attributes);
   if (
-    expressId === null ||
-    geometryExpressId === null ||
+    !geometryId ||
     !objectId ||
-    !discipline ||
     !matrix ||
     !color ||
-    !nullableString(record.globalId) ||
-    !nullableString(record.name) ||
-    typeof record.ifcType !== "string"
+    !attributes ||
+    !nullableString(record.name)
   ) {
     return null;
   }
   return {
-    expressId,
     objectId,
-    globalId: record.globalId,
-    ifcType: record.ifcType,
-    name: record.name,
-    discipline,
-    geometryExpressId,
+    geometryId,
     matrix,
     color: [color[0], color[1], color[2], color[3]],
+    name: record.name,
+    attributes,
   };
+}
+
+function parseAttributes(value: unknown): Readonly<Record<string, string>> | null {
+  if (!isRecord(value)) return null;
+  const attributes: Record<string, string> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (typeof entry !== "string") return null;
+    attributes[key] = entry;
+  }
+  return attributes;
 }
 
 function parseBounds(value: unknown): Bounds3 | null {
@@ -252,12 +248,6 @@ function parseFailureStage(value: unknown): FailureStage | null {
     : null;
 }
 
-function parseDiscipline(value: unknown): Discipline | null {
-  return value === "ARCH" || value === "STRUCT" || value === "MEP" || value === "OTHER"
-    ? value
-    : null;
-}
-
 function safeRevisionId(value: unknown): RevisionId | null {
   try {
     return parseRevisionId(value);
@@ -268,7 +258,8 @@ function safeRevisionId(value: unknown): RevisionId | null {
 
 function safeObjectId(value: unknown): TransferInstance["objectId"] | null {
   try {
-    return parseObjectId(value);
+    if (typeof value !== "string") return null;
+    return objectIdFrom(value);
   } catch {
     return null;
   }
@@ -297,7 +288,10 @@ function nonNegativeNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : null;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
-  return value as Record<string, unknown>;
+  return isRecord(value) ? value : null;
 }

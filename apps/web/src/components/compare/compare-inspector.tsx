@@ -67,7 +67,7 @@ export interface CompareInspectorProps {
   readonly selection: CompareSelection;
   readonly onSelect: (key: CompareSelection) => void;
   readonly onJumpSide: (side: CompareSide) => void;
-  readonly drawnKeys: readonly string[];
+  readonly missingKeys: readonly string[];
   readonly undrawable: number;
   readonly overflow: ReadonlyArray<{ kind: ChangeKind; count: number }>;
   readonly modelStatus: ModelDiffStatus;
@@ -113,7 +113,7 @@ export function CompareInspector(props: CompareInspectorProps): React.JSX.Elemen
                 const activeKey = activeKeyOf(entry.change, props.side);
                 const key = activeKey ?? fallbackKey(entry);
                 const isSelected = props.selection !== null && entryKeyMatches(entry, props.selection);
-                const drawn = activeKey !== null && props.drawnKeys.includes(activeKey);
+                const drawn = activeKey !== null && !props.missingKeys.includes(activeKey);
                 return (
                   <li key={`${entry.sourceModelId}:${entry.index}`}>
                     <ChangeRow
@@ -130,7 +130,7 @@ export function CompareInspector(props: CompareInspectorProps): React.JSX.Elemen
               <SelectedDetail
                 entry={selected}
                 side={props.side}
-                drawnKeys={props.drawnKeys}
+                missingKeys={props.missingKeys}
                 onJumpSide={props.onJumpSide}
               />
             )}
@@ -332,19 +332,19 @@ function ChangeRow({
 function SelectedDetail({
   entry,
   side,
-  drawnKeys,
+  missingKeys,
   onJumpSide,
 }: {
   entry: CompareChangeEntry;
   side: CompareSide;
-  drawnKeys: readonly string[];
+  missingKeys: readonly string[];
   onJumpSide: (side: CompareSide) => void;
 }): React.JSX.Element {
   const { locale } = useLocale();
   const { change } = entry;
   const banner = sideBannerFor(change, side);
   const activeKey = activeKeyOf(change, side);
-  const framed = activeKey !== null && drawnKeys.includes(activeKey);
+  const framed = activeKey !== null && !missingKeys.includes(activeKey);
   return (
     <div className="mt-2 border border-border p-3 text-xs" data-change-detail data-change-kind={change.kind}>
       <p className="font-medium">

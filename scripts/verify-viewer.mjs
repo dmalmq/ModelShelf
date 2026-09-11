@@ -225,9 +225,9 @@ try {
   await page.goto(`${appOrigin}/deliveries/failure-probe`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(
     () => {
-      const models = window.__modelshelfViewer?.inspect().snapshot.models ?? [];
-      return models.filter(({ status }) => status === "ready").length === 2
-        && models.filter(({ status }) => status === "failed").length === 1;
+      const sources = window.__modelshelfViewer?.inspect().snapshot.sources ?? [];
+      return sources.filter(({ status }) => status === "ready").length === 2
+        && sources.filter(({ status }) => status === "failed").length === 1;
     },
     undefined,
     { timeout: 60_000 },
@@ -244,41 +244,41 @@ try {
     "the delivery route mounts one authoritative viewer and requests each revision once",
   );
   check(
-    partial.snapshot.models.filter(({ status }) => status === "ready").length === 2,
+    partial.snapshot.sources.filter(({ status }) => status === "ready").length === 2,
     "two successful real models remain ready when a sibling fails",
   );
   check(
-    partial.snapshot.models.filter(({ status }) => status === "failed").length === 1,
+    partial.snapshot.sources.filter(({ status }) => status === "failed").length === 1,
     "the failed source has its own model state",
   );
   check(
     partial.renderer.roots.length === 2 && partial.renderer.roots.every(({ visible }) => visible),
     "successful model roots remain visible after a sibling failure",
   );
-  check(Array.isArray(partial.snapshot.origin), "successful models establish the shared origin before retry");
+  check(partial.snapshot.origin.frozen && Array.isArray(partial.snapshot.origin.offset), "successful models establish the shared origin before retry");
   await page.screenshot({ path: join(EVIDENCE_DIR, "partial-failure-desktop.png"), fullPage: true });
 
   await page.locator('[data-model-id="probe-failure"] [data-viewer-retry]').click();
   await page.waitForFunction(
-    () => window.__modelshelfViewer?.inspect().snapshot.models.every(({ status }) => status === "ready"),
+    () => window.__modelshelfViewer?.inspect().snapshot.sources.every(({ status }) => status === "ready"),
     undefined,
     { timeout: 60_000 },
   );
   const recoveredProbe = await inspect(page);
   check(
-    JSON.stringify(recoveredProbe.snapshot.origin) === JSON.stringify(partial.snapshot.origin),
+    JSON.stringify(recoveredProbe.snapshot.origin.offset) === JSON.stringify(partial.snapshot.origin.offset),
     "retry keeps the established common origin frozen",
   );
 
   await page.goto(`${appOrigin}/deliveries/combined`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(
-    () => window.__modelshelfViewer?.inspect().snapshot.models.every(({ status }) => status === "ready"),
+    () => window.__modelshelfViewer?.inspect().snapshot.sources.every(({ status }) => status === "ready"),
     undefined,
     { timeout: 360_000 },
   );
 
   const combined = await inspect(page);
-  check(combined.snapshot.models.length === 3, "the combined delivery contains three model revisions");
+  check(combined.snapshot.sources.length === 3, "the combined delivery contains three model revisions");
   check(
     combined.progressRevisionIds.length === 3,
     "download and parse progress identifies every source revision",
@@ -298,9 +298,9 @@ try {
     combined.objects.length > combined.resources.batches * 100,
     "thousands of selectable objects remain behind revision-level BatchedMesh resources",
   );
-  check(Array.isArray(combined.snapshot.origin), "combined delivery establishes a shared origin");
+  check(combined.snapshot.origin.frozen && Array.isArray(combined.snapshot.origin.offset), "combined delivery establishes a shared origin");
   verifyCommonOrigin(combined);
-  verifyMetreScaleAndAlignment(combined.snapshot.models);
+  verifyMetreScaleAndAlignment(combined.snapshot.sources);
 
   const canvas = page.locator("canvas");
   const canvasBox = await canvas.boundingBox();
@@ -428,8 +428,8 @@ try {
     origin: combined.snapshot.origin,
     activeWorkers: activeWorkerCount,
     resources: combined.resources,
-    modelBounds: combined.snapshot.models.map(({ model, status, ...state }) => ({
-      revisionId: model.revisionId,
+    modelBounds: combined.snapshot.sources.map(({ revisionId, status, ...state }) => ({
+      revisionId,
       status,
       ...state,
     })),
@@ -445,7 +445,7 @@ try {
 
   await page.goto(`${appOrigin}/deliveries/duplicate`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(
-    () => window.__modelshelfViewer?.inspect().snapshot.models.every(({ status }) => status === "ready"),
+    () => window.__modelshelfViewer?.inspect().snapshot.sources.every(({ status }) => status === "ready"),
     undefined,
     { timeout: 180_000 },
   );
@@ -456,7 +456,7 @@ try {
   check(matching[0].ref.objectId !== matching[1].ref.objectId, "duplicate GlobalId rows receive different opaque object IDs");
   for (const object of matching) {
     check(
-      object.ref.objectId === expectedObjectId(object.ref.revisionId, object.expressId),
+      object.ref.objectId === expectedObjectId(object.ref.revisionId, Number(object.attributes.expressId)),
       `ObjectRef mapping matches the contract for ${object.ref.revisionId}`,
     );
   }
@@ -474,8 +474,8 @@ try {
   await page.screenshot({ path: join(EVIDENCE_DIR, "duplicate-object-selection.png"), fullPage: true });
 
   results.duplicate = {
-    globalId: matching[0].globalId,
-    refs: matching.map(({ ref, expressId, targetCount }) => ({ ref, expressId, targetCount })),
+    globalId: matching[0].attributes.globalId,
+    refs: matching.map(({ ref, attributes, targetCount }) => ({ ref, expressId: attributes.expressId, targetCount })),
   };
 
   const duplicateDispose = await page.evaluate(() => window.__modelshelfViewer?.dispose());
@@ -484,7 +484,7 @@ try {
 
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForFunction(
-    () => window.__modelshelfViewer?.inspect().snapshot.models.every(({ status }) => status === "ready"),
+    () => window.__modelshelfViewer?.inspect().snapshot.sources.every(({ status }) => status === "ready"),
     undefined,
     { timeout: 180_000 },
   );
@@ -502,12 +502,12 @@ try {
 
   await page.goto(`${appOrigin}/deliveries/empty`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(
-    () => window.__modelshelfViewer?.inspect().snapshot.models.every(({ status }) => status === "ready"),
+    () => window.__modelshelfViewer?.inspect().snapshot.sources.every(({ status }) => status === "ready"),
     undefined,
     { timeout: 30_000 },
   );
   const empty = await inspect(page);
-  const emptyModel = empty.snapshot.models[0];
+  const emptyModel = empty.snapshot.sources[0];
   check(
     emptyModel?.status === "ready" && emptyModel.bounds === null,
     "a valid revision with no drawable geometry reaches ready",
@@ -614,8 +614,8 @@ async function inspect(page) {
 
 function verifyCommonOrigin(diagnostics) {
   const origin = diagnostics.snapshot.origin;
-  check(Array.isArray(origin) && origin.length === 3, "the delivery resolves one common origin");
-  const expectedOffset = origin.map((coordinate) => -coordinate);
+  check(origin.frozen && Array.isArray(origin.offset) && origin.offset.length === 3, "the delivery resolves one common origin");
+  const expectedOffset = origin.offset.map((coordinate) => -coordinate);
   check(
     diagnostics.renderer.roots.every(({ offset }) => distance(offset, expectedOffset) < 1e-6),
     "every model root receives the same common-origin offset",
@@ -626,10 +626,10 @@ function verifyMetreScaleAndAlignment(states) {
   const ready = states.filter(({ status }) => status === "ready");
   const centers = [];
   for (const state of ready) {
-    check(state.bounds !== null, `${state.model.discipline} exposes drawable bounds`);
+    check(state.bounds !== null, `${state.attributes.discipline} exposes drawable bounds`);
     const span = state.bounds.max.map((value, axis) => value - state.bounds.min[axis]);
-    check(Math.max(...span) > 5, `${state.model.discipline} geometry remains at building-scale metres`);
-    check(Math.max(...span) < 1_000, `${state.model.discipline} geometry avoids a second unit expansion`);
+    check(Math.max(...span) > 5, `${state.attributes.discipline} geometry remains at building-scale metres`);
+    check(Math.max(...span) < 1_000, `${state.attributes.discipline} geometry avoids a second unit expansion`);
     centers.push(state.bounds.min.map((value, axis) => (value + state.bounds.max[axis]) / 2));
   }
   for (let left = 0; left < centers.length; left += 1) {
@@ -658,10 +658,10 @@ async function pickVisibleObject(page, canvasBox) {
 function findDuplicateGlobalId(objects) {
   const firstByGlobalId = new Map();
   for (const object of objects) {
-    if (!object.globalId) continue;
-    const previous = firstByGlobalId.get(object.globalId);
+    if (!object.attributes.globalId) continue;
+    const previous = firstByGlobalId.get(object.attributes.globalId);
     if (previous && previous.ref.revisionId !== object.ref.revisionId) return [previous, object];
-    firstByGlobalId.set(object.globalId, object);
+    firstByGlobalId.set(object.attributes.globalId, object);
   }
   throw new Error("No GlobalId appeared in both duplicate revisions");
 }

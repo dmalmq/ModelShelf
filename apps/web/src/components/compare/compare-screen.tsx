@@ -1,9 +1,9 @@
-// Complete comparison screen. One CombinedDeliveryViewer persists across the
-// base/head toggle: side is state, the toggle swaps the loaded delivery and
-// never remounts the viewer, so the shared camera survives. The change overlay
-// is app-supplied generic highlight groups through the frozen
-// DeliveryViewerController port. The panel below is hosted inside the viewer's
-// Findings tab via the generic `inspector` seam: one list, never two.
+// Complete comparison screen. One DeliveryViewer persists across the
+// base/head toggle: side is state, the toggle swaps the loaded delivery.
+// Scene contents change with the active side, so the hook recreates the
+// viewer. The change overlay is one applyOverlay value from overlayForChanges.
+// The panel below is hosted inside the viewer's Findings tab via the generic
+// `inspector` seam: one list, never two.
 "use client";
 
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
@@ -13,6 +13,10 @@ import { useLocale } from "../locale-provider";
 import { CHANGE_LABEL, COMPARE_COPY } from "@/lib/i18n";
 import { formatDate } from "@/lib/format";
 import { fetchProject } from "@/lib/shelf-api";
+import { fetchDelivery } from "@/lib/delivery-api";
+import { ifcGeometryFor, viewerSceneFor } from "@/lib/viewer-sources";
+import type { ModelViewer } from "model-viewer";
+import { DeliveryViewer } from "../viewer/delivery-viewer";
 import type {
   ChangeKind,
   DeliveryDetail,
@@ -20,9 +24,6 @@ import type {
   DiffSummary,
   RunDetail,
 } from "@/lib/types";
-import { fetchDelivery } from "../viewer/delivery-api";
-import type { DeliverySnapshot, DeliveryViewerController } from "../viewer/types";
-import { CombinedDeliveryViewer } from "../viewer/combined-delivery-viewer";
 import {
   fetchCompleteModelDiff,
   fetchFindingDiff,
@@ -30,13 +31,10 @@ import {
   ModelDiffProfileMismatchError,
 } from "./compare-api";
 import {
-  activeRefOf,
-  changeToHighlights,
+  overlayForChanges,
   clearCompareOverlay,
-  compareReadback,
-  pushCompareOverlay,
   toViewerRefPlain,
-  type CompareOverlayReadback,
+  activeRefOf,
 } from "./compare-bridge";
 import { CompareInspector } from "./compare-inspector";
 import {
@@ -63,7 +61,7 @@ function latestCompletedRunId(delivery: DeliveryDetail): string | null {
   return runs.find((run) => run.status === "completed")?.id ?? runs[0]?.id ?? null;
 }
 
-const EMPTY_READBACK: CompareOverlayReadback = { matched: 0, selectedHidden: false, drawnKeys: [] };
+const EMPTY_READBACK = { matched: 0, missing: new Set<string>() };
 
 /** A picker option always includes the pair in the URL, loaded or not. */
 interface DeliveryOption {
@@ -106,19 +104,19 @@ export function CompareScreen({
   const copy = COMPARE_COPY[locale];
   const router = useRouter();
   const [state, dispatch] = useReducer(compareReducer, initialCompareState);
-  const [viewer, setViewer] = useState<DeliveryViewerController | null>(null);
-  const [readback, setReadback] = useState<CompareOverlayReadback>(EMPTY_READBACK);
+  const [viewer, setViewer] = useState<ModelViewer | null>(null);
+  const [readback, setReadback] = useState(EMPTY_READBACK);
   const [readyModels, setReadyModels] = useState(0);
   const [basePicker, setBasePicker] = useState(baseDeliveryId);
   const [headPicker, setHeadPicker] = useState(headDeliveryId);
   const [projectDeliveries, setProjectDeliveries] = useState<readonly DeliverySummary[]>([]);
-  const viewerRef = useRef<DeliveryViewerController | null>(null);
+  const viewerRef = useRef<ModelViewer | null>(null);
   const pairAbort = useRef<AbortController | null>(null);
   const findingAbort = useRef<AbortController | null>(null);
 
-  const handleController = useCallback((controller: DeliveryViewerController | null) => {
-    viewerRef.current = controller;
-    setViewer(controller);
+  const handleViewer = useCallback((next: ModelViewer | null) => {
+    viewerRef.current = next;
+    setViewer(next);
   }, []);
 
   // Swapping side swaps the delivery, and the viewer answers that by disposing
@@ -130,8 +128,8 @@ export function CompareScreen({
       setReadyModels(0);
       return;
     }
-    const countReady = (snapshot: DeliverySnapshot): number =>
-      snapshot.models.filter((model) => model.status === "ready").length;
+    const countReady = (snapshot: { sources: readonly { status: string }[] }): number =>
+      snapshot.sources.filter((source) => source.status === "ready").length;
     setReadyModels(countReady(viewer.snapshot()));
     return viewer.subscribe((snapshot) => setReadyModels(countReady(snapshot)));
   }, [viewer]);
@@ -241,8 +239,8 @@ export function CompareScreen({
   );
 
   // Filters and diff loads repaint through the overlay without remounting.
-  const highlights = useMemo(
-    () => changeToHighlights(filtered, state.side),
+  const painted = useMemo(
+    () => overlayForChanges(filtered, state.side),
     [filtered, state.side],
   );
   const combinedSummary = useMemo(() => {
@@ -277,8 +275,12 @@ export function CompareScreen({
       setReadback(EMPTY_READBACK);
       return;
     }
-    setReadback(pushCompareOverlay(controller, highlights));
-  }, [viewer, readyModels, highlights, filtered.length, state.modelDiffStatus, state.side]);
+    const drawn = controller.applyOverlay(painted.overlay);
+    setReadback({
+      matched: drawn.groups.reduce((sum, group) => sum + group.matched, 0),
+      missing: new Set(drawn.missing.map((ref) => `${ref.revisionId}\0${ref.objectId}`)),
+    });
+  }, [viewer, readyModels, painted, filtered.length, state.modelDiffStatus, state.side]);
 
   useEffect(() => {
     const controller = viewerRef.current;
@@ -290,9 +292,7 @@ export function CompareScreen({
     if (!ref) return;
     const parsed = toViewerRefPlain(ref);
     if (!parsed) return;
-    controller.select(parsed);
-    controller.frame([parsed]);
-    setReadback(compareReadback(controller));
+    controller.select(parsed, { frame: true });
   }, [viewer, readyModels, state.selection, state.side, state.changeIndex]);
 
   function handleRunCreated(detail: RunDetail): void {
@@ -306,7 +306,15 @@ export function CompareScreen({
     );
   }
 
-  const activeDeliveryId = state.side === "base" ? baseDeliveryId : headDeliveryId;
+  const activeDelivery = state.side === "base" ? state.baseDelivery : state.headDelivery;
+  const scene = useMemo(
+    () => (activeDelivery ? viewerSceneFor(activeDelivery) : null),
+    [activeDelivery],
+  );
+  const geometry = useMemo(
+    () => (activeDelivery ? ifcGeometryFor(activeDelivery) : null),
+    [activeDelivery],
+  );
   const sources = state.modelDiff?.pairs ?? [];
 
   if (state.lifecycle === "failed") {
@@ -440,9 +448,11 @@ export function CompareScreen({
           <LocaleSwitcher />
         </div>
       </div>
-      <CombinedDeliveryViewer
-        deliveryId={activeDeliveryId}
-        onController={handleController}
+      <DeliveryViewer
+        delivery={activeDelivery}
+        scene={scene}
+        geometry={geometry}
+        onViewer={handleViewer}
         inspector={
           state.lifecycle === "loading" ? (
             <p className="text-xs text-muted-foreground" role="status">
@@ -458,9 +468,9 @@ export function CompareScreen({
                 selection={state.selection}
                 onSelect={(key) => dispatch({ type: "SELECT_CHANGE", key })}
                 onJumpSide={(side: CompareSide) => dispatch({ type: "SET_SIDE", side })}
-                drawnKeys={readback.drawnKeys}
-                undrawable={highlights.undrawable}
-                overflow={highlights.overflow}
+                missingKeys={[...readback.missing]}
+                undrawable={painted.unparseable}
+                overflow={painted.overflow}
                 modelStatus={state.modelDiffStatus}
                 modelError={state.modelDiffError}
                 baseDeliveryId={state.baseDeliveryId}

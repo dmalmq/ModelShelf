@@ -6,8 +6,6 @@ import type {
   RunStatus,
   RunSummary,
 } from "@/lib/types";
-import { parseRevisionId } from "./object-ref";
-import type { DeliveryModel } from "./types";
 
 export async function fetchDelivery(deliveryId: string, signal?: AbortSignal): Promise<DeliveryDetail> {
   if (deliveryId.trim().length === 0) throw new Error("deliveryId must not be empty");
@@ -15,15 +13,6 @@ export async function fetchDelivery(deliveryId: string, signal?: AbortSignal): P
   const response = await fetch(`/api/deliveries/${encodeURIComponent(deliveryId)}`, { signal });
   if (!response.ok) throw new Error(`Delivery request failed with HTTP ${response.status}`);
   return parseDeliveryDetail(await response.json());
-}
-
-export function modelForDelivery(model: ModelInfo): DeliveryModel {
-  const revisionId = parseRevisionId(model.id);
-  return {
-    ...model,
-    revisionId,
-    fileUrl: `/api/models/${encodeURIComponent(revisionId)}/file`,
-  };
 }
 
 export function parseDeliveryDetail(value: unknown): DeliveryDetail {
