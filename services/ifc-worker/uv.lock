@@ -375,8 +375,8 @@ requires-dist = [
     { name = "ifcopenshell", specifier = "==0.8.5" },
     { name = "ifctester", specifier = "==0.8.5" },
     { name = "modelshelf-model-contracts", directory = "../../packages/model-contracts-py" },
-    { name = "pydantic", specifier = ">=2.11,<3" },
-    { name = "typer", specifier = ">=0.16,<1" },
+    { name = "pydantic", specifier = "==2.13.5" },
+    { name = "typer", specifier = "==0.27.2" },
 ]
 
 [package.metadata.requires-dev]
@@ -395,7 +395,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pydantic", specifier = ">=2.11,<3" }]
+requires-dist = [{ name = "pydantic", specifier = "==2.13.5" }]
 
 [package.metadata.requires-dev]
 dev = [
