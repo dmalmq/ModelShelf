@@ -38,6 +38,10 @@ Per-run machine/browser/inputs land locally in `.omo/evidence/modelshelf-prototy
 
 Rerun path: `node scripts/verify-viewer.ts --scenario inspection` asserts every threshold on any host, including hardware GL, and exits non-zero on a miss. Recorded SwiftShader misses remain documented misses. They now fail the process as well.
 
-## Remaining Wave 2
+## Remaining Wave 2 (as of 2026-09-07)
 
 GitHub issues #12–#19: reviewer delivery shelf, findings and pack selection, versioned fingerprints, match confidence, findings comparison across settings, visual review, demo packaging, independent audit. Plus the deferred `packages/model-viewer` extraction with standalone example and import-boundary checks (VISION.md sequences it after Wave 1 with a second consumer).
+
+## Addendum (2026-09-14)
+
+Tickets 10–16 and 18–28 have shipped since the 2026-09-07 remaining list. Tickets 17 (independent audit) and 29 (hardware GL re-measure) remain. This addendum does not replace the recorded setup, proven, or recorded-miss numbers above.

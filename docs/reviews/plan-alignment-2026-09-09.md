@@ -112,6 +112,8 @@ Two consequences for the ticket set:
   among what comparison must include, so that limitation needs an owner decision
   rather than a default.
 
+Ticket 30 chose the alternative evidence unit of gitignored run directories plus `docs/reviews/wave-1-report.md`, not per-todo `task-N.md` files.
+
 ## Method
 
 Four read-only audits covered the Rust backend, the worker and shared contracts,

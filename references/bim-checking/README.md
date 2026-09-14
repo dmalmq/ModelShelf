@@ -1,6 +1,6 @@
 # BIM checking reference library
 
-Saved locally on 2026-09-05 for planning the BIM inspection shelf. No checker or application has been built. The sources below are reference inputs, not an approved national architectural validation pack.
+Saved locally on 2026-09-05 as reference inputs for planning the BIM inspection shelf. This folder is reference-only. The sources below are reference inputs, not an approved national architectural validation pack. The checker, IfcOpenShell/IfcTester worker, demo packs, and delivery viewer exist in the application. They do not live in this folder.
 
 ## Initial sources
 
@@ -12,7 +12,7 @@ Use these three sources first to select and explain a small architectural check 
 | [02-mlit-attributes](downloads/02-mlit-attributes/) | 標準属性項目リスト 統合 Ver2.0 (XLSX/PDF), overview, glossary, common/architecture/structure/MEP explanations | Define vocabulary and property meaning. Explicitly select requirements for the intended use; listing a property does not make it mandatory. |
 | [03-blcj-mapping](downloads/03-blcj-mapping/) | BLCJ architectural/MEP terminology tables and sample-model parameter explanations | Interpret the sample models and investigate export mappings. Some concepts are represented through objects rather than parameters. Confirm mappings in actual IFC data. |
 
-Working checklist shape: source reference → intended requirement → applicable elements → IFC field → expected value → automated/manual status. The proposed 8–12 checks remain provisional until source interpretation and model inspection are complete.
+Working checklist shape: source reference → intended requirement → applicable elements → IFC field → expected value → automated/manual status. The 8–12 checks are authored in `packs/demo/`.
 
 ## Available for future use
 
@@ -38,4 +38,4 @@ Downloaded now, but not selected as initial product requirements:
 
 ## Scope
 
-This collection covers all six checking-list/example sources discussed immediately before the save request. Large BLCJ/MLIT model archives discussed earlier are separate test-data candidates and are not part of this checklist download. No source has yet been validated against those sample models.
+This collection covers all six checking-list/example sources discussed immediately before the save request. Large BLCJ/MLIT model archives discussed earlier are separate test-data candidates and are not part of this checklist download. Sources were validated against BLCJ samples in `packs/demo/checks.md`.

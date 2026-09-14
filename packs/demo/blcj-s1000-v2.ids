@@ -2,7 +2,7 @@
 <ids xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://standards.buildingsmart.org/IDS http://standards.buildingsmart.org/IDS/1.0/ids.xsd" xmlns="http://standards.buildingsmart.org/IDS">
   <info>
     <title>BLCJ S1000 demo pack v2</title>
-    <description>v1 plus one explained rule change: "MEP flow segment records its outer diameter" narrowed to exclude cable-tray-family segments, which structurally have no diameter (see packs/demo/checks.md). See packs/demo/checks.md for full source-to-property traceability and rationale.</description>
+    <description>v1 plus one explained rule change on check 11: v2 drops only the 43 cable trays, which have no diameter. The remaining 107 v1 failures are ducts and pipes. See packs/demo/checks.md for source-to-property traceability.</description>
   </info>
   <specifications>
     <specification name="Room has a reference code" ifcVersion="IFC2X3">
@@ -167,14 +167,11 @@
       </requirements>
     </specification>
 
-    <!-- v1 -> v2 change: v1 required outer diameter on every IFCFLOWSEGMENT and
-         failed on 150/1337 real instances. Inspecting those failures (real data,
-         not assumption) showed every one was a cable-tray-family segment
-         (Description "電気.ケーブルラック") — a rectangular cable tray has no
-         diameter by design, so v1 was measuring a structural impossibility, not
-         a real data gap. v2 narrows applicability to the entity families that
-         genuinely have a diameter (pipe/duct/conduit), matching real inspected
-         data rather than an unconditional assumption. See packs/demo/checks.md. -->
+    <!-- v1 required outer diameter on every IFCFLOWSEGMENT and failed on
+         150 of 1337 real instances. Those 150 were 62 ducts, 45 pipes, and 43 cable trays.
+         Cable trays have no diameter. v2 drops only the 43 trays.
+         The remaining 107 failures are ducts and pipes that still lack a
+         single outer-diameter value. See packs/demo/checks.md. -->
     <specification name="MEP flow segment records its outer diameter" ifcVersion="IFC2X3">
       <applicability minOccurs="0" maxOccurs="unbounded">
         <entity>
