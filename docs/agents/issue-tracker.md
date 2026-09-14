@@ -56,3 +56,7 @@ Tickets 01–18 are GitHub issues 3–20 (`id + 2`). Tickets 19–34 are issues 
 - Record progress as GitHub comments. On completion, append an evidence-backed Answer, close the issue, and update the parent map.
 - The frontier is open, unassigned tickets with all dependencies resolved, sorted by local ID.
 - Dependencies alone do not authorize concurrent edits to shared modules. Consult each ticket's ownership area before starting.
+
+## Evidence unit
+
+Published proof is gitignored run directories under `.omo/evidence/modelshelf-prototype/` plus [`docs/reviews/wave-1-report.md`](../reviews/wave-1-report.md) and the leaf index in [`docs/demo-launch.md`](../demo-launch.md). The plan's `task-N.md` files are not the unit, because `.omo/` cannot be tracked. Folder names mix plan-todo numbers, ticket ids, and slugs (`task-5` is pack evaluation, viewer evidence is `07-combined-viewer`; `task-9` is first-loop; `task-11` is contracts / ticket 18).

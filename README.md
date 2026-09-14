@@ -1,6 +1,6 @@
 # ModelShelf
 
-A local BIM delivery checker: Rust/Axum service, SQLite storage, a Next.js frontend, and (later) an IfcOpenShell/IfcTester worker. See [`VISION.md`](VISION.md) for the accept/resist policy. See [`CONTEXT.md`](CONTEXT.md) for domain terms and [the GitHub ticket set](docs/agents/issue-tracker.md) for prototype work.
+A local BIM delivery checker: Rust/Axum service, SQLite storage, a Next.js frontend, and an IfcOpenShell/IfcTester worker. See [`VISION.md`](VISION.md) for the accept/resist policy. See [`CONTEXT.md`](CONTEXT.md) for domain terms and [the GitHub ticket set](docs/agents/issue-tracker.md) for prototype work.
 
 ## Backend service (`modelshelf-checker`)
 
@@ -54,7 +54,7 @@ npm run typecheck
 npm run build
 ```
 
-Browser tests will use Playwright (`@playwright/test`, pinned in `apps/web/package.json`); no test specs exist yet, since there is no viewer page to test until a later ticket builds one.
+The delivery viewer is at `/deliveries/[deliveryId]`. Browser proof is listed under Verification.
 
 ## Shared model contract (`schemas/model/v1`)
 
@@ -81,6 +81,40 @@ node scripts/generate-model-contracts.ts --check   # fail if committed bindings 
 node scripts/verify-model-contracts.ts             # cross-language fixture + round-trip + import-boundary proof
 node scripts/verify-worker-envelope.ts --check     # worker job envelope dump-lock against schemas/worker/v2
 ```
+
+## Verification
+
+Node 24 runs these `.ts` scripts directly from the repository root. Playwright is used via `scripts/verify-*.ts` importing Chromium from `apps/web`. There are no `apps/web` Playwright spec files.
+
+| Command | Purpose |
+| --- | --- |
+| `node scripts/qa-harness.ts` | Build, idempotent seed, health/projects/packs, unknown CLI, temp data dir |
+| `node scripts/verify-api.ts --scenario revisions` | Source-model / revision / delivery data model |
+| `node scripts/verify-api.ts --scenario worker-failure` | Job queue contract |
+| `node scripts/verify-api.ts --scenario checks` | Scoped IfcTester on pinned inputs |
+| `node scripts/verify-api.ts --scenario first-loop` | Full review loop |
+| `node scripts/verify-api.ts --scenario comparisons` | Revision comparison match confidence |
+| `node scripts/verify-api.ts --scenario finding-comparisons` | Finding diffs gated on compatible settings |
+| `node scripts/verify-api.ts --scenario restart` | Restart durability |
+| `node scripts/verify-api.ts --scenario all` | The seven SCENARIOS in order. Not decisions. |
+| `node scripts/verify-api.ts --scenario decisions` | Extra name accepted by requireScenario. Not in SCENARIOS. |
+| `node scripts/verify-viewer.ts` | Combined delivery viewer |
+| `node scripts/verify-viewer.ts --scenario inspection` | Finding inspection plus Wave-1 gates |
+| `node scripts/verify-viewer.ts --scenario standalone` | Extracted viewer package example |
+| `node scripts/verify-ui.ts --scenario deliveries` | Delivery shelf |
+| `node scripts/verify-ui.ts --scenario findings` | Prioritized findings |
+| `node scripts/verify-ui.ts --scenario comparisons` | Delivery comparison screen |
+| `node scripts/verify-ui.ts --scenario all` | deliveries then findings then comparisons |
+| `uv run --project services/ifc-worker python scripts/check-demo-oracle.py` | Oracle vs IfcTester |
+| `node scripts/verify-named-proof.ts` | NamedProof fail labels |
+| `node scripts/generate-model-contracts.ts --check` | Fail if committed bindings have drifted |
+| `node scripts/verify-model-contracts.ts` | Cross-language fixture, round-trip, and import-boundary proof |
+| `node scripts/verify-worker-envelope.ts --check` | Worker job envelope dump-lock |
+| `node scripts/check-published-tree.ts` | Tracked-tree bans; currently red on pre-existing apps/web/scripts/check-routes.mjs |
+| `node scripts/check-published-claims.ts` | Join README verifier rows to live dispatchers |
+| `cargo test --workspace` | Workspace unit and integration tests |
+
+`qa-harness`, `verify-api`, `verify-ui`, `verify-viewer`, and `verify-model-contracts` write run directories under `.omo/evidence/modelshelf-prototype/` (gitignored). The other table commands print to stdout. `node scripts/check-published-tree.ts` bans tracking that directory. Published summaries are [`docs/reviews/wave-1-report.md`](docs/reviews/wave-1-report.md) and the leaf index in [`docs/demo-launch.md`](docs/demo-launch.md).
 
 ## Tests
 
