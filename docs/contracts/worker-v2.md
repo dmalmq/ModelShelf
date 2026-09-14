@@ -18,7 +18,7 @@ Stdout contains only NDJSON. Each record carries `protocolVersion:2` and `jobId`
 ```
 One terminal result, last, and exit 0 signify transport success. Logs go to stderr. Request/input/engine failures exit nonzero without a terminal result. IDS violations are successful jobs with failed outcomes; unsupported evaluation produces incomplete outcomes, never passes.
 
-Manifest has `protocolVersion`, `jobId`, `operation`, `revisionId`, `modelSha256`, `idsSha256` (nullable), `versions` (`worker`, `ifcOpenShell`, `ifcTester`, `extraction`, `scopeSemantics`), `artifacts`, and `diagnostics` (string array). Artifact keys are `descriptor`, `semantic`, `renderManifest` (nullable), `geometry` (nullable), and `outcomes`. Each artifact has `path`, `sha256`, `size`, and optional `recordCount`. Caller verifies paths remain in its job directory, sizes, hashes, version, job identity, nonzero exit, stream completeness, and exactly one terminal record.
+Manifest has `protocolVersion`, `jobId`, `operation`, `revisionId`, `modelSha256`, `idsSha256` (nullable), `versions` (`worker`, `ifcOpenShell`, `ifcTester`, `extraction`, `scopeSemantics`), `artifacts`, and `diagnostics` (string array). Artifact keys are `descriptor`, `semantic`, `renderManifest` (nullable), `geometry` (nullable), and `outcomes`. Each artifact has `path`, `sha256`, `size`, and `recordCount` (an integer, or null when the worker does not count records). Caller verifies paths remain in its job directory, sizes, hashes, version, job identity, nonzero exit, stream completeness, and exactly one terminal record.
 
 Shared model payloads follow `schemas/model/v1` and are independently loadable:
 

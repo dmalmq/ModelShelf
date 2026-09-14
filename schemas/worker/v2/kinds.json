@@ -60,7 +60,8 @@
       "invalid": [
         "fixtures/invalid/schema/manifest-missing-operation.json",
         "fixtures/invalid/schema/manifest-empty-version.json",
-        "fixtures/invalid/schema/manifest-operation-renamed.json"
+        "fixtures/invalid/schema/manifest-operation-renamed.json",
+        "fixtures/invalid/schema/manifest-omitted-record-count.json"
       ]
     }
   ],

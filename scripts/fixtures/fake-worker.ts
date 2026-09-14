@@ -118,13 +118,18 @@ function writeValidManifestAndResult({ tamperObjectsHash = false, escapeArtifact
     writeArtifact(artifacts.semantic.path, fakeSemanticJson());
   }
 
+  const operation = request.operation === "validate" ? "validate" : "inspect";
+  const idsSha256 =
+    operation === "validate" && request.ids && typeof request.ids.sha256 === "string"
+      ? request.ids.sha256
+      : null;
   const manifest = {
     protocolVersion: PROTOCOL_VERSION,
     jobId,
-    operation: "inspect",
+    operation,
     revisionId,
     modelSha256: model.sha256,
-    idsSha256: null,
+    idsSha256,
     versions: {
       worker: "fake", ifcOpenShell: "fake", ifcTester: "fake",
       extraction: "fake", scopeSemantics: "fake",

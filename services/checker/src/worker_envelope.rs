@@ -6,6 +6,14 @@ use crate::worker_slot::{WorkerInvocation, WorkerOperation};
 
 pub(crate) const PROTOCOL_VERSION: i64 = 2;
 
+fn deserialize_required_option<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+    T: Deserialize<'de>,
+    D: Deserializer<'de>,
+{
+    Option::<T>::deserialize(deserializer)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct ProtocolV2;
 
@@ -145,6 +153,7 @@ pub(crate) struct ArtifactRef {
     pub path: String,
     pub sha256: String,
     pub size: u64,
+    #[serde(deserialize_with = "deserialize_required_option")]
     pub record_count: Option<u64>,
 }
 
@@ -177,6 +186,7 @@ pub(crate) struct Manifest {
     pub operation: WireOperation,
     pub revision_id: String,
     pub model_sha256: String,
+    #[serde(deserialize_with = "deserialize_required_option")]
     pub ids_sha256: Option<String>,
     pub versions: WorkerVersions,
     pub artifacts: JobArtifacts,
@@ -207,14 +217,18 @@ impl Manifest {
         if self.operation != expected {
             return Err("manifest operation does not match this job".to_owned());
         }
-        match spec.operation {
-            WorkerOperation::Validate(_) if self.ids_sha256.is_none() => {
-                Err("manifest idsSha256 is required for validate".to_owned())
-            }
+        match &spec.operation {
+            WorkerOperation::Validate(ids) => match &self.ids_sha256 {
+                None => Err("manifest idsSha256 is required for validate".to_owned()),
+                Some(got) if got != &ids.sha256 => {
+                    Err("manifest ids hash does not match the IDS this job requested".to_owned())
+                }
+                Some(_) => Ok(()),
+            },
             WorkerOperation::Inspect if self.ids_sha256.is_some() => {
                 Err("manifest idsSha256 must be null for inspect".to_owned())
             }
-            _ => Ok(()),
+            WorkerOperation::Inspect => Ok(()),
         }
     }
 }
@@ -506,5 +520,32 @@ mod goldens {
             err.contains("more than one terminal result"),
             "{err}"
         );
+    }
+
+    #[test]
+    fn omitted_record_count_is_rejected() {
+        let payload = read_json("invalid/schema/manifest-omitted-record-count.json");
+        assert!(serde_json::from_value::<Manifest>(payload).is_err());
+    }
+
+    #[test]
+    fn validate_manifest_must_repeat_ids_hash() {
+        let spec = WorkerInvocation {
+            job_id: crate::worker_slot::WorkerJobId::ingest("job-1"),
+            revision_id: "revision-1".to_owned(),
+            content_sha256: "0".repeat(64),
+            output_dir: std::path::PathBuf::from("/data/jobs/job-1"),
+            operation: WorkerOperation::Validate(crate::worker_slot::IdsInput {
+                path: std::path::PathBuf::from("/data/a.ids"),
+                sha256: "1".repeat(64),
+                specification_ids: vec!["spec-a".to_owned()],
+            }),
+        };
+        let mut manifest: Manifest =
+            serde_json::from_value(read_json("valid/manifest-validate.json")).unwrap();
+        manifest.check_identity(&spec).unwrap();
+        manifest.ids_sha256 = Some("2".repeat(64));
+        let err = manifest.check_identity(&spec).unwrap_err();
+        assert!(err.contains("ids hash"), "{err}");
     }
 }

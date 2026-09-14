@@ -36,6 +36,7 @@ INVALID_TYPES: dict[str, type[BaseModel]] = {
     "manifest-missing-operation.json": Manifest,
     "manifest-empty-version.json": Manifest,
     "manifest-operation-renamed.json": Manifest,
+    "manifest-omitted-record-count.json": Manifest,
 }
 
 
