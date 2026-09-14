@@ -10,7 +10,7 @@ import { SeverityBadge } from "../domain/severity-badge";
 import { SeverityLadder } from "../domain/severity-ladder";
 import { OUTCOME_COLOR } from "@/lib/palette";
 import { OUTCOME_LABEL, SEVERITY_LABEL, UI, SPEC_TABLE_COPY } from "@/lib/i18n";
-import type { Finding, Severity, SeverityBand, SpecOutcome, SpecResultRow } from "@/lib/types";
+import type { Finding, Severity, SeverityBand, SpecResultRow } from "@/lib/types";
 import type { FindingSelection } from "./review-state";
 import { useLocale } from "../locale-provider";
 
@@ -59,7 +59,7 @@ function BandSection({
           className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-left sm:min-h-8"
         >
           <SeverityBadge severity={band.severity as Severity} />
-          <span className="tnum truncate text-xs text-muted-foreground" data-band-counts>
+          <span className="tnum truncate text-xs text-muted-foreground" data-band-counts data-band-object-count={band.objectCount}>
             {band.findingCount}件 · {band.objectCount}オブジェクト
           </span>
         </button>
@@ -147,17 +147,10 @@ export function IncompleteSection({
   );
 }
 
-const OUTCOME_ORDER: SpecOutcome[] = ["fail", "review_incomplete", "not_applicable", "pass"];
-
 export function SpecTable({ specs }: { specs: readonly SpecResultRow[] }): React.JSX.Element {
   const { locale } = useLocale();
   const copy = SPEC_TABLE_COPY[locale];
   if (specs.length === 0) return <p className="text-xs text-muted-foreground">{UI[locale].nothingEvaluated}</p>;
-  // Backend order is stable (spec_name); group display by severity of outcome
-  // without hiding any row — not_applicable stays visible as its own outcome.
-  const ordered = [...specs].sort(
-    (a, b) => OUTCOME_ORDER.indexOf(a.outcome) - OUTCOME_ORDER.indexOf(b.outcome),
-  );
   return (
     <section aria-label={copy.heading} data-spec-table>
       <h2 className="text-sm font-semibold">{copy.heading}</h2>
@@ -174,7 +167,7 @@ export function SpecTable({ specs }: { specs: readonly SpecResultRow[] }): React
           </tr>
         </thead>
         <tbody>
-          {ordered.map((spec) => (
+          {specs.map((spec) => (
             <tr key={spec.id} data-spec-row={spec.id} className="border-t border-border">
               <td className="max-w-44 truncate py-1 pr-2" title={spec.specName}>
                 {spec.specIdentifier ? `${spec.specIdentifier} · ` : ""}

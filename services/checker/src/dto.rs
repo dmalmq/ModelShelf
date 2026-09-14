@@ -15,6 +15,17 @@ pub fn severity_rank(severity: &str) -> usize {
         .unwrap_or(SEVERITY_ORDER.len())
 }
 
+pub const OUTCOME_ORDER: [&str; 4] = ["fail", "review_incomplete", "not_applicable", "pass"];
+
+pub fn spec_outcome_rank(outcome: &str) -> usize {
+    OUTCOME_ORDER
+        .iter()
+        .position(|o| *o == outcome)
+        .unwrap_or(OUTCOME_ORDER.len())
+}
+
+pub const OBJECT_IDENTITY_SQL: &str = "fo.model_id || ':' || fo.express_id";
+
 pub const DISCIPLINES: [&str; 4] = ["ARCH", "STRUCT", "MEP", "OTHER"];
 
 pub fn valid_discipline(value: &str) -> bool {
@@ -1076,11 +1087,11 @@ pub async fn run_extras(pool: &sqlx::SqlitePool, run_id: &str) -> Result<(i64, i
         .bind(run_id)
         .fetch_one(pool)
         .await?;
-    let failing_object_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(DISTINCT fo.model_id || ':' || fo.express_id)
+    let failing_object_count: i64 = sqlx::query_scalar(&format!(
+        "SELECT COUNT(DISTINCT {OBJECT_IDENTITY_SQL})
            FROM finding_objects fo JOIN findings f ON f.id = fo.finding_id
-          WHERE f.run_id = ?1 AND f.incomplete = 0",
-    )
+          WHERE f.run_id = ?1 AND f.incomplete = 0"
+    ))
     .bind(run_id)
     .fetch_one(pool)
     .await?;

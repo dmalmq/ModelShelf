@@ -4,19 +4,6 @@
 // instead of scattering resets across effects.
 import type { FindingObject, RunDetail, Severity } from "@/lib/types";
 
-/** Band order as data, not branches: rank decides display order everywhere. */
-export const SEVERITY_REGISTRY: Record<Severity, { rank: number }> = {
-  critical: { rank: 0 },
-  high: { rank: 1 },
-  medium: { rank: 2 },
-  advisory: { rank: 3 },
-};
-
-export function severityRank(severity: string): number {
-  const entry = (SEVERITY_REGISTRY as Record<string, { rank: number } | undefined>)[severity];
-  return entry ? entry.rank : SEVERITY_REGISTRY.advisory.rank + 1;
-}
-
 /** Idle before any run loads; loading while fetching/creating; ready on data. */
 export type RunLifecycle = "idle" | "loading" | "ready" | "failed";
 
