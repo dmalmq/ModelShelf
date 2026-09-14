@@ -6,7 +6,10 @@ from typing import TYPE_CHECKING
 
 import ifcopenshell
 
+from model_contracts import Property
+
 from ifc_worker.properties import extract_properties
+from tests.conftest import REPO_ROOT
 from tests.ifc_fixtures import write_list_and_inherited_properties
 
 if TYPE_CHECKING:
@@ -49,3 +52,23 @@ def test_list_values_keep_authoring_order_and_type_properties_are_inherited(tmp_
     assert load.values[0].value is True
     assert load.origin.value == "type"
     assert not diagnostics
+
+
+def test_japanese_pset_and_property_names_round_trip_utf8() -> None:
+    import json
+
+    fixtures = REPO_ROOT / "packs" / "demo" / "fixtures"
+    row = json.loads((fixtures / "oracle.json").read_text(encoding="utf-8"))["proofs"]["japanese_names"]
+    ifc_file = ifcopenshell.open(str(fixtures / row["ifc"]))
+    door = next(product for product in ifc_file.by_type("IfcDoor") if product.Name == row["objectKey"])
+    diagnostics: list[str] = []
+    records = extract_properties(door, ifc_file, diagnostics)
+    prop = next(record for record in records if record.name == row["name"])
+    raw = prop.model_dump_json().encode("utf-8")
+    parsed = Property.model_validate_json(raw)
+    assert parsed.pset == row["pset"] == "Rebro_PartsData"
+    assert parsed.name == row["name"] == "用途"
+    assert parsed.pset.encode("utf-8") == row["pset"].encode("utf-8")
+    assert parsed.name.encode("utf-8") == row["name"].encode("utf-8")
+    assert row["name"].encode("utf-8") in raw
+    assert parsed.values[0].value == row["value"] == "給水"
