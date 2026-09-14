@@ -114,7 +114,7 @@ Node 24 runs these `.ts` scripts directly from the repository root. Playwright i
 | `node scripts/check-published-claims.ts` | Join README verifier rows to live dispatchers |
 | `cargo test --workspace` | Workspace unit and integration tests |
 
-Logs from these commands land locally under `.omo/evidence/modelshelf-prototype/` (gitignored). `node scripts/check-published-tree.ts` bans tracking that directory. Published summaries are [`docs/reviews/wave-1-report.md`](docs/reviews/wave-1-report.md) and the leaf index in [`docs/demo-launch.md`](docs/demo-launch.md).
+`qa-harness`, `verify-api`, `verify-ui`, `verify-viewer`, and `verify-model-contracts` write run directories under `.omo/evidence/modelshelf-prototype/` (gitignored). The other table commands print to stdout. `node scripts/check-published-tree.ts` bans tracking that directory. Published summaries are [`docs/reviews/wave-1-report.md`](docs/reviews/wave-1-report.md) and the leaf index in [`docs/demo-launch.md`](docs/demo-launch.md).
 
 ## Tests
 
