@@ -7,24 +7,25 @@
 //! is only used here to list specification names for discipline scope.
 
 use std::collections::HashMap;
+use std::time::{Duration, Instant};
 
-use axum::extract::{Path, State};
 use axum::Json;
+use axum::extract::{Path, State};
 use serde::Deserialize;
-use sqlx::SqlitePool;
+use sqlx::{Sqlite, SqlitePool, Transaction};
 
 use crate::db::{new_id, now_iso};
 use crate::dto::{
-    finding_object_json, model_json, run_summary, severity_rank, CategoryGroup, CreateRunBody,
-    DeliveryRow, Finding, FindingObject, FindingObjectRow, FindingRow, InputProvenance, ModelInfo,
-    ModelRow, PackVersionRow, RunDetail, RunRow, RunSpecRow, SeverityBand, SpecResultRowOut,
-    DELIVERY_SELECT, RUN_SUMMARY_SELECT, SEVERITY_ORDER,
+    CategoryGroup, CreateRunBody, DELIVERY_SELECT, DeliveryRow, Finding, FindingObject,
+    FindingObjectRow, FindingRow, InputProvenance, ModelInfo, ModelRow, PackVersionRow,
+    RUN_SUMMARY_SELECT, RunDetail, RunRow, RunSpecRow, SEVERITY_ORDER, SeverityBand,
+    SpecResultRowOut, finding_object_json, model_json, run_summary, severity_rank,
 };
 use crate::error::ApiError;
-use crate::ids_meta::{finding_key, PackMetadata, CHECK_ENGINE_VERSION, CHECK_PARSER_VERSION};
-use crate::jobs::{IdsInput, WorkerInvocation};
-use crate::state::AppState;
+use crate::ids_meta::{CHECK_ENGINE_VERSION, CHECK_PARSER_VERSION, PackMetadata, finding_key};
+use crate::state::{AppState, DataDirLock};
 use crate::upload::sha256_hex;
+use crate::worker_slot::{IdsInput, WorkerInvocation, WorkerJobId, WorkerOperation};
 
 /// Affected objects embedded directly in the scorecard; the rest are paged.
 const SAMPLE_OBJECTS: i64 = 25;
@@ -33,140 +34,215 @@ pub async fn create_run(
     State(state): State<AppState>,
     Json(body): Json<CreateRunBody>,
 ) -> Result<Json<RunDetail>, ApiError> {
-    let delivery: DeliveryRow = sqlx::query_as(&format!("{DELIVERY_SELECT} WHERE id = ?1"))
-        .bind(&body.delivery_id)
-        .fetch_optional(&state.pool)
-        .await?
-        .ok_or_else(|| ApiError::not_found("delivery"))?;
-
-    let pack_version: PackVersionRow = sqlx::query_as(
-        "SELECT pv.id, pv.pack_id, p.name AS pack_name, pv.version, pv.ids_xml, pv.ids_sha256,
-                pv.metadata_json, pv.notes, pv.spec_count, pv.created_at
-           FROM pack_versions pv JOIN packs p ON p.id = pv.pack_id
-          WHERE pv.id = ?1",
-    )
-    .bind(&body.pack_version_id)
-    .fetch_optional(&state.pool)
-    .await?
-    .ok_or_else(|| ApiError::not_found("pack version"))?;
-
-    let models: Vec<ModelRow> = crate::diff::load_models(&state.pool, &delivery.id).await?;
-    if models.is_empty() {
-        return Err(ApiError::bad_request("delivery has no models to check"));
-    }
-
-    let parsed_ids = ids::Ids::parse(&pack_version.ids_xml)
-        .map_err(|err| ApiError::parse_failed(format!("pack version is not valid IDS: {err}")))?;
-    let spec_names: Vec<String> = parsed_ids.specifications.iter().map(|spec| spec.name.clone()).collect();
-    let metadata = PackMetadata::parse(pack_version.metadata_json.as_deref());
-    let mut scope: HashMap<String, Vec<String>> = HashMap::new();
-    for model in &models {
-        scope
-            .entry(model.discipline.clone())
-            .or_insert_with(|| metadata.specification_ids_for(&spec_names, &model.discipline));
-    }
-    let pack_metadata_sha256 = pack_version.metadata_json.as_deref().map(|text| sha256_hex(text.as_bytes()));
-    let engine_profile = serde_json::json!({
-        "worker": "0.1.0",
-        "ifcTester": "0.8.5",
-        "ifcOpenShell": "0.8.5",
-        "operation": "validate",
-    })
-    .to_string();
-    let scope_json = serde_json::to_string(&scope).unwrap_or_else(|_| "{}".to_owned());
-
-    let run_id = new_id();
-    let started_at = now_iso();
-    let provenance = InputProvenance::Complete;
-    let mut tx = state.pool.begin().await?;
-    sqlx::query(
-        "INSERT INTO runs (id, project_id, delivery_id, pack_version_id, engine_version,
-             parser_version, status, started_at, input_provenance, input_provenance_reason,
-             ids_sha256, pack_metadata_sha256, scope_json, engine_profile_json)
-         VALUES (?1,?2,?3,?4,?5,?6,'running',?7,?8,?9,?10,?11,?12,?13)",
-    )
-    .bind(&run_id)
-    .bind(&delivery.project_id)
-    .bind(&delivery.id)
-    .bind(&pack_version.id)
-    .bind(CHECK_ENGINE_VERSION)
-    .bind(CHECK_PARSER_VERSION)
-    .bind(&started_at)
-    .bind(provenance.status())
-    .bind(provenance.reason())
-    .bind(&pack_version.ids_sha256)
-    .bind(&pack_metadata_sha256)
-    .bind(&scope_json)
-    .bind(&engine_profile)
-    .execute(&mut *tx)
-    .await?;
-    for (index, model) in models.iter().enumerate() {
-        sqlx::query(
-            "INSERT INTO run_models (run_id, model_revision_id, source_model_id, source_model_name,
-                 discipline, filename, content_sha256, byte_size, sort_index)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
-        )
-        .bind(&run_id)
-        .bind(&model.id)
-        .bind(&model.source_model_id)
-        .bind(&model.source_model_name)
-        .bind(&model.discipline)
-        .bind(&model.filename)
-        .bind(&model.content_sha256)
-        .bind(model.byte_size)
-        .bind(index as i64)
-        .execute(&mut *tx)
-        .await?;
-    }
-    tx.commit().await?;
-
-    let clock = std::time::Instant::now();
-    match execute(&state, &run_id, &pack_version, &models, &metadata, &scope).await {
-        Ok(()) => {
-            sqlx::query(
-                "UPDATE runs SET status = 'completed', finished_at = ?2, duration_ms = ?3
-                   WHERE id = ?1",
-            )
-            .bind(&run_id)
-            .bind(now_iso())
-            .bind(clock.elapsed().as_millis() as i64)
-            .execute(&state.pool)
-            .await?;
-        }
-        Err(err) => {
-            // A failed run stays visible with its reason: silence would read as "clean".
-            sqlx::query(
-                "UPDATE runs SET status = 'failed', error = ?2, finished_at = ?3, duration_ms = ?4
-                   WHERE id = ?1",
-            )
-            .bind(&run_id)
-            .bind(&err.message)
-            .bind(now_iso())
-            .bind(clock.elapsed().as_millis() as i64)
-            .execute(&state.pool)
-            .await?;
-        }
-    }
-
-    let detail = run_detail(&state.pool, &run_id).await?;
-    Ok(Json(detail))
+    let pinned = PinnedRun::pin(&state, body).await?;
+    let run_id = pinned.run_id().to_owned();
+    pinned.settle_detached(state.clone()).await?;
+    Ok(Json(run_detail(&state.pool, &run_id).await?.into()))
 }
 
-/// Invoke IfcTester per pinned model and persist grouped findings.
-async fn execute(
-    state: &AppState,
-    run_id: &str,
-    pack_version: &PackVersionRow,
-    models: &[ModelRow],
-    metadata: &PackMetadata,
-    scope: &HashMap<String, Vec<String>>,
-) -> Result<(), ApiError> {
-    let run_dir = state.data_dir.join("runs").join(run_id);
+pub(crate) struct PinnedRun {
+    run_id: String,
+    pack_version: PackVersionRow,
+    models: Vec<ModelRow>,
+    metadata: PackMetadata,
+    scope: HashMap<String, Vec<String>>,
+}
+
+impl PinnedRun {
+    async fn pin(state: &AppState, body: CreateRunBody) -> Result<PinnedRun, ApiError> {
+        let delivery: DeliveryRow = sqlx::query_as(&format!("{DELIVERY_SELECT} WHERE id = ?1"))
+            .bind(&body.delivery_id)
+            .fetch_optional(&state.pool)
+            .await?
+            .ok_or_else(|| ApiError::not_found("delivery"))?;
+
+        let pack_version: PackVersionRow = sqlx::query_as(
+            "SELECT pv.id, pv.pack_id, p.name AS pack_name, pv.version, pv.ids_xml, pv.ids_sha256,
+                    pv.metadata_json, pv.notes, pv.spec_count, pv.created_at
+               FROM pack_versions pv JOIN packs p ON p.id = pv.pack_id
+              WHERE pv.id = ?1",
+        )
+        .bind(&body.pack_version_id)
+        .fetch_optional(&state.pool)
+        .await?
+        .ok_or_else(|| ApiError::not_found("pack version"))?;
+
+        let models: Vec<ModelRow> = crate::diff::load_models(&state.pool, &delivery.id).await?;
+        if models.is_empty() {
+            return Err(ApiError::bad_request("delivery has no models to check"));
+        }
+
+        let parsed_ids = ids::Ids::parse(&pack_version.ids_xml).map_err(|err| {
+            ApiError::parse_failed(format!("pack version is not valid IDS: {err}"))
+        })?;
+        let spec_names: Vec<String> = parsed_ids
+            .specifications
+            .iter()
+            .map(|spec| spec.name.clone())
+            .collect();
+        let metadata = PackMetadata::parse(pack_version.metadata_json.as_deref());
+        let mut scope: HashMap<String, Vec<String>> = HashMap::new();
+        for model in &models {
+            scope
+                .entry(model.discipline.clone())
+                .or_insert_with(|| metadata.specification_ids_for(&spec_names, &model.discipline));
+        }
+        let pack_metadata_sha256 = pack_version
+            .metadata_json
+            .as_deref()
+            .map(|text| sha256_hex(text.as_bytes()));
+        let engine_profile = serde_json::json!({
+            "worker": "0.1.0",
+            "ifcTester": "0.8.5",
+            "ifcOpenShell": "0.8.5",
+            "operation": "validate",
+        })
+        .to_string();
+        let scope_json = serde_json::to_string(&scope).unwrap_or_else(|_| "{}".to_owned());
+
+        let run_id = new_id();
+        let started_at = now_iso();
+        let provenance = InputProvenance::Complete;
+        let mut tx = state.pool.begin().await?;
+        sqlx::query(
+            "INSERT INTO runs (id, project_id, delivery_id, pack_version_id, engine_version,
+                 parser_version, status, started_at, input_provenance, input_provenance_reason,
+                 ids_sha256, pack_metadata_sha256, scope_json, engine_profile_json)
+             VALUES (?1,?2,?3,?4,?5,?6,'running',?7,?8,?9,?10,?11,?12,?13)",
+        )
+        .bind(&run_id)
+        .bind(&delivery.project_id)
+        .bind(&delivery.id)
+        .bind(&pack_version.id)
+        .bind(CHECK_ENGINE_VERSION)
+        .bind(CHECK_PARSER_VERSION)
+        .bind(&started_at)
+        .bind(provenance.status())
+        .bind(provenance.reason())
+        .bind(&pack_version.ids_sha256)
+        .bind(&pack_metadata_sha256)
+        .bind(&scope_json)
+        .bind(&engine_profile)
+        .execute(&mut *tx)
+        .await?;
+        for (index, model) in models.iter().enumerate() {
+            sqlx::query(
+                "INSERT INTO run_models (run_id, model_revision_id, source_model_id, source_model_name,
+                     discipline, filename, content_sha256, byte_size, sort_index)
+                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)",
+            )
+            .bind(&run_id)
+            .bind(&model.id)
+            .bind(&model.source_model_id)
+            .bind(&model.source_model_name)
+            .bind(&model.discipline)
+            .bind(&model.filename)
+            .bind(&model.content_sha256)
+            .bind(model.byte_size)
+            .bind(index as i64)
+            .execute(&mut *tx)
+            .await?;
+        }
+        tx.commit().await?;
+
+        Ok(PinnedRun {
+            run_id,
+            pack_version,
+            models,
+            metadata,
+            scope,
+        })
+    }
+
+    pub fn run_id(&self) -> &str {
+        &self.run_id
+    }
+
+    /// Settle on a detached task and join it. Dropping a `JoinHandle` does not
+    /// cancel its task, so a client disconnect or proxy timeout cannot strand the
+    /// row as `running`. A task that dies without settling (panic, abort) is
+    /// recorded as a failure here so the handler never answers with a `running`
+    /// body. `Err` means the terminal write itself failed.
+    async fn settle_detached(self, state: AppState) -> Result<(), ApiError> {
+        let run_id = self.run_id.clone();
+        let clock = Instant::now();
+        match tokio::spawn(self.settle(state.clone())).await {
+            Ok(result) => result,
+            Err(join) => {
+                tracing::error!(%run_id, %join, "run settle task did not finish");
+                commit_outcome(
+                    &state.pool,
+                    &run_id,
+                    clock.elapsed(),
+                    RunOutcome::Failed(RunFailure::from_text(format!("run task aborted: {join}"))),
+                )
+                .await
+            }
+        }
+    }
+
+    async fn settle(self, state: AppState) -> Result<(), ApiError> {
+        let clock = Instant::now();
+        let outcome = match evaluate(&state, &self).await {
+            Ok(evaluated) => RunOutcome::Completed(evaluated),
+            Err(err) => RunOutcome::Failed(RunFailure::from_api(&err)),
+        };
+        commit_outcome(&state.pool, &self.run_id, clock.elapsed(), outcome).await
+    }
+}
+
+pub(crate) struct EvaluatedRun {
+    specs: Vec<SpecAccum>,
+    findings: HashMap<String, Accumulated>,
+    totals: Totals,
+}
+
+pub(crate) enum RunOutcome {
+    Completed(EvaluatedRun),
+    Failed(RunFailure),
+}
+
+pub(crate) struct RunFailure(String);
+
+impl RunFailure {
+    pub const INTERRUPTED: &'static str =
+        "interrupted: the service restarted while this run was evaluating";
+    const UNRECORDED: &'static str = "run failed without a recorded reason";
+
+    pub fn from_api(err: &ApiError) -> RunFailure {
+        if err.message.trim().is_empty() {
+            RunFailure(err.code.as_str().to_owned())
+        } else {
+            RunFailure(err.message.clone())
+        }
+    }
+
+    pub fn from_text(text: impl Into<String>) -> RunFailure {
+        let text = text.into();
+        if text.trim().is_empty() {
+            RunFailure(Self::UNRECORDED.to_owned())
+        } else {
+            RunFailure(text)
+        }
+    }
+
+    fn from_row(error: Option<&str>) -> RunFailure {
+        Self::from_text(error.unwrap_or_default())
+    }
+
+    fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+async fn evaluate(state: &AppState, pinned: &PinnedRun) -> Result<EvaluatedRun, ApiError> {
+    let slot = state.worker()?;
+    let run_dir = state.data_dir.join("runs").join(&pinned.run_id);
     tokio::fs::create_dir_all(&run_dir)
         .await
         .map_err(|err| ApiError::internal(format!("cannot create run directory: {err}")))?;
     let ids_path = run_dir.join("pack.ids");
-    tokio::fs::write(&ids_path, pack_version.ids_xml.as_bytes())
+    tokio::fs::write(&ids_path, pinned.pack_version.ids_xml.as_bytes())
         .await
         .map_err(|err| ApiError::internal(format!("cannot write pinned IDS: {err}")))?;
     let ids_path = ids_path
@@ -177,8 +253,12 @@ async fn execute(
     let mut findings: HashMap<String, Accumulated> = HashMap::new();
     let mut spec_rows: HashMap<String, SpecAccum> = HashMap::new();
 
-    for model_row in models {
-        let spec_ids = scope.get(&model_row.discipline).cloned().unwrap_or_default();
+    for model_row in &pinned.models {
+        let spec_ids = pinned
+            .scope
+            .get(&model_row.discipline)
+            .cloned()
+            .unwrap_or_default();
         if spec_ids.is_empty() {
             continue;
         }
@@ -186,25 +266,20 @@ async fn execute(
         tokio::fs::create_dir_all(&output_dir)
             .await
             .map_err(|err| ApiError::internal(format!("cannot create model output dir: {err}")))?;
-        let artifacts = crate::jobs::invoke_worker(
-            state,
-            WorkerInvocation {
-                job_id: format!("{run_id}-{}", model_row.id),
+        let artifacts = slot
+            .invoke(WorkerInvocation {
+                job_id: WorkerJobId::evaluate(&pinned.run_id, &model_row.id),
                 revision_id: model_row.id.clone(),
                 content_sha256: model_row.content_sha256.clone(),
-                blob_path: state.blob_path(&model_row.content_sha256),
                 output_dir,
-                operation: "validate",
-                ids: Some(IdsInput {
+                operation: WorkerOperation::Validate(IdsInput {
                     path: ids_path.clone(),
-                    sha256: pack_version.ids_sha256.clone(),
-                    specification_ids: Some(spec_ids),
+                    sha256: pinned.pack_version.ids_sha256.clone(),
+                    specification_ids: spec_ids,
                 }),
-                geometry: false,
-            },
-        )
-        .await
-        .map_err(|err| ApiError::parse_failed(format!("{}: {err}", model_row.filename)))?;
+            })
+            .await
+            .map_err(|err| ApiError::parse_failed(format!("{}: {err}", model_row.filename)))?;
 
         let outcomes = parse_outcomes(&artifacts.outcomes)
             .map_err(|err| ApiError::parse_failed(format!("{}: {err}", model_row.filename)))?;
@@ -213,47 +288,106 @@ async fn execute(
                 &mut totals,
                 &mut findings,
                 &mut spec_rows,
-                metadata,
+                &pinned.metadata,
                 model_row,
                 outcome,
             );
         }
     }
 
-    for spec in spec_rows.into_values() {
-        sqlx::query(
-            "INSERT INTO run_specs (id, run_id, spec_identifier, spec_name, outcome,
-                 applicable_count, pass_count, fail_count, incomplete_count, notes_json)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
-        )
-        .bind(new_id())
-        .bind(run_id)
-        .bind(spec.identifier)
-        .bind(&spec.name)
-        .bind(spec.outcome.as_str())
-        .bind(spec.applicable_count)
-        .bind(spec.pass_count)
-        .bind(spec.fail_count)
-        .bind(spec.incomplete_count)
-        .bind(serde_json::to_string(&spec.notes).unwrap_or_else(|_| "[]".to_owned()))
-        .execute(&state.pool)
-        .await?;
+    Ok(EvaluatedRun {
+        specs: spec_rows.into_values().collect(),
+        findings,
+        totals,
+    })
+}
+
+async fn commit_outcome(
+    pool: &SqlitePool,
+    run_id: &str,
+    elapsed: Duration,
+    outcome: RunOutcome,
+) -> Result<(), ApiError> {
+    let mut tx = pool.begin().await?;
+    let finished_at = now_iso();
+    let duration_ms = elapsed.as_millis() as i64;
+    let settled = match outcome {
+        RunOutcome::Completed(evaluated) => {
+            for spec in evaluated.specs {
+                sqlx::query(
+                    "INSERT INTO run_specs (id, run_id, spec_identifier, spec_name, outcome,
+                         applicable_count, pass_count, fail_count, incomplete_count, notes_json)
+                     VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
+                )
+                .bind(new_id())
+                .bind(run_id)
+                .bind(spec.identifier)
+                .bind(&spec.name)
+                .bind(spec.outcome.as_str())
+                .bind(spec.applicable_count)
+                .bind(spec.pass_count)
+                .bind(spec.fail_count)
+                .bind(spec.incomplete_count)
+                .bind(serde_json::to_string(&spec.notes).unwrap_or_else(|_| "[]".to_owned()))
+                .execute(&mut *tx)
+                .await?;
+            }
+            persist_findings(&mut tx, run_id, evaluated.findings).await?;
+            sqlx::query(
+                "UPDATE runs SET status = 'completed', finished_at = ?2, duration_ms = ?3,
+                     pass_count = ?4, fail_count = ?5, not_applicable_count = ?6, incomplete_count = ?7
+                   WHERE id = ?1 AND status = 'running'",
+            )
+            .bind(run_id)
+            .bind(&finished_at)
+            .bind(duration_ms)
+            .bind(evaluated.totals.pass)
+            .bind(evaluated.totals.fail)
+            .bind(evaluated.totals.not_applicable)
+            .bind(evaluated.totals.incomplete)
+            .execute(&mut *tx)
+            .await?
+        }
+        RunOutcome::Failed(failure) => {
+            sqlx::query(
+                "UPDATE runs SET status = 'failed', error = ?2, finished_at = ?3, duration_ms = ?4,
+                     pass_count = 0, fail_count = 0, not_applicable_count = 0, incomplete_count = 0
+                   WHERE id = ?1 AND status = 'running'",
+            )
+            .bind(run_id)
+            .bind(failure.as_str())
+            .bind(&finished_at)
+            .bind(duration_ms)
+            .execute(&mut *tx)
+            .await?
+        }
+    };
+    if settled.rows_affected() == 0 {
+        tracing::warn!(
+            run_id,
+            "run was already settled; discarding the second outcome"
+        );
+        tx.rollback().await?;
+        return Ok(());
     }
-
-    persist_findings(&state.pool, run_id, findings).await?;
-
-    sqlx::query(
-        "UPDATE runs SET pass_count = ?2, fail_count = ?3, not_applicable_count = ?4,
-             incomplete_count = ?5 WHERE id = ?1",
-    )
-    .bind(run_id)
-    .bind(totals.pass)
-    .bind(totals.fail)
-    .bind(totals.not_applicable)
-    .bind(totals.incomplete)
-    .execute(&state.pool)
-    .await?;
+    tx.commit().await?;
     Ok(())
+}
+
+pub(crate) async fn fail_interrupted(
+    tx: &mut Transaction<'_, Sqlite>,
+    _lock: &DataDirLock,
+) -> anyhow::Result<u64> {
+    let result = sqlx::query(
+        "UPDATE runs SET status = 'failed', error = ?1, finished_at = ?2, duration_ms = NULL,
+             pass_count = 0, fail_count = 0, not_applicable_count = 0, incomplete_count = 0
+         WHERE status = 'running'",
+    )
+    .bind(RunFailure::INTERRUPTED)
+    .bind(now_iso())
+    .execute(&mut **tx)
+    .await?;
+    Ok(result.rows_affected())
 }
 
 #[derive(Deserialize)]
@@ -283,7 +417,8 @@ struct FailureWire {
 }
 
 fn parse_outcomes(bytes: &[u8]) -> Result<Vec<OutcomeWire>, String> {
-    let text = std::str::from_utf8(bytes).map_err(|err| format!("outcomes are not utf-8: {err}"))?;
+    let text =
+        std::str::from_utf8(bytes).map_err(|err| format!("outcomes are not utf-8: {err}"))?;
     let mut rows = Vec::new();
     for (index, line) in text.lines().filter(|line| !line.is_empty()).enumerate() {
         let row: OutcomeWire = serde_json::from_str(line)
@@ -312,16 +447,18 @@ fn fold_outcome(
         .specification_id
         .clone()
         .unwrap_or_else(|| outcome.specification_name.clone());
-    let spec = spec_rows.entry(spec_key.clone()).or_insert_with(|| SpecAccum {
-        identifier: outcome.specification_id.clone(),
-        name: outcome.specification_name.clone(),
-        outcome: SpecRollup::Pass,
-        applicable_count: 0,
-        pass_count: 0,
-        fail_count: 0,
-        incomplete_count: 0,
-        notes: Vec::new(),
-    });
+    let spec = spec_rows
+        .entry(spec_key.clone())
+        .or_insert_with(|| SpecAccum {
+            identifier: outcome.specification_id.clone(),
+            name: outcome.specification_name.clone(),
+            outcome: SpecRollup::Pass,
+            applicable_count: 0,
+            pass_count: 0,
+            fail_count: 0,
+            incomplete_count: 0,
+            notes: Vec::new(),
+        });
     spec.applicable_count += outcome.applicable_count;
     spec.pass_count += outcome.passed_count;
     spec.fail_count += outcome.failed_count;
@@ -340,7 +477,10 @@ fn fold_outcome(
         return;
     }
 
-    let triage = metadata.triage(outcome.specification_id.as_deref(), &outcome.specification_name);
+    let triage = metadata.triage(
+        outcome.specification_id.as_deref(),
+        &outcome.specification_name,
+    );
     let incomplete = outcome.status == "incomplete";
     let facet = facet_for(&outcome.requirement);
     let key = finding_key(&spec_key, facet, &outcome.requirement);
@@ -369,7 +509,11 @@ fn fold_outcome(
             express_id: failure.express_id,
             global_id: failure.global_id,
             actual: Some(failure.reason.clone()),
-            incomplete_reason: if incomplete { Some(failure.reason) } else { None },
+            incomplete_reason: if incomplete {
+                Some(failure.reason)
+            } else {
+                None
+            },
         });
     }
 }
@@ -466,7 +610,7 @@ struct Accumulated {
 }
 
 async fn persist_findings(
-    pool: &SqlitePool,
+    tx: &mut Transaction<'_, Sqlite>,
     run_id: &str,
     findings: HashMap<String, Accumulated>,
 ) -> Result<(), ApiError> {
@@ -479,7 +623,6 @@ async fn persist_findings(
             .then(a.key.cmp(&b.key))
     });
 
-    let mut tx = pool.begin().await?;
     for (index, finding) in ordered.iter().enumerate() {
         let finding_id = new_id();
         sqlx::query(
@@ -504,7 +647,7 @@ async fn persist_findings(
         .bind(finding.objects.len() as i64)
         .bind(i64::from(finding.incomplete))
         .bind(index as i64)
-        .execute(&mut *tx)
+        .execute(&mut **tx)
         .await?;
 
         for object in &finding.objects {
@@ -522,11 +665,10 @@ async fn persist_findings(
             .bind(&object.global_id)
             .bind(&object.actual)
             .bind(&object.incomplete_reason)
-            .execute(&mut *tx)
+            .execute(&mut **tx)
             .await?;
         }
     }
-    tx.commit().await?;
     Ok(())
 }
 
@@ -534,7 +676,7 @@ pub async fn get_run(
     State(state): State<AppState>,
     Path(run_id): Path<String>,
 ) -> Result<Json<RunDetail>, ApiError> {
-    Ok(Json(run_detail(&state.pool, &run_id).await?))
+    Ok(Json(run_detail(&state.pool, &run_id).await?.into()))
 }
 
 pub async fn fetch_run_row(pool: &SqlitePool, run_id: &str) -> Result<RunRow, ApiError> {
@@ -551,12 +693,127 @@ pub async fn run_counts(pool: &SqlitePool, run_id: &str) -> Result<(i64, i64), A
     Ok(crate::dto::run_extras(pool, run_id).await?)
 }
 
-pub async fn run_detail(pool: &SqlitePool, run_id: &str) -> Result<RunDetail, ApiError> {
+enum RunStatus {
+    Running,
+    Completed,
+    Failed,
+}
+
+impl RunStatus {
+    fn parse(run_id: &str, raw: &str) -> Result<RunStatus, ApiError> {
+        match raw {
+            "running" => Ok(RunStatus::Running),
+            "completed" => Ok(RunStatus::Completed),
+            "failed" => Ok(RunStatus::Failed),
+            other => Err(ApiError::internal(format!(
+                "run {run_id} has unknown status {other:?}"
+            ))),
+        }
+    }
+}
+
+pub(crate) enum RunView {
+    Running {
+        run: RunRow,
+        models: Vec<ModelInfo>,
+    },
+    Failed {
+        run: RunRow,
+        error: RunFailure,
+        models: Vec<ModelInfo>,
+    },
+    Completed {
+        run: RunRow,
+        models: Vec<ModelInfo>,
+        finding_count: i64,
+        failing_object_count: i64,
+        scorecard: Vec<SeverityBand>,
+        specs: Vec<SpecResultRowOut>,
+        review_incomplete: Vec<Finding>,
+    },
+}
+
+pub async fn run_detail(pool: &SqlitePool, run_id: &str) -> Result<RunView, ApiError> {
     let row = fetch_run_row(pool, run_id).await?;
-    let (finding_count, failing_object_count) = run_counts(pool, run_id).await?;
+    let models: Vec<ModelInfo> = load_run_models(pool, &row)
+        .await?
+        .iter()
+        .map(model_json)
+        .collect();
+    match RunStatus::parse(run_id, &row.status)? {
+        RunStatus::Running => Ok(RunView::Running { run: row, models }),
+        RunStatus::Failed => {
+            let error = RunFailure::from_row(row.error.as_deref());
+            Ok(RunView::Failed {
+                run: row,
+                error,
+                models,
+            })
+        }
+        RunStatus::Completed => {
+            let (finding_count, failing_object_count) = run_counts(pool, run_id).await?;
+            let (scorecard, review_incomplete) = load_findings(pool, run_id).await?;
+            let specs = load_specs(pool, run_id).await?;
+            Ok(RunView::Completed {
+                run: row,
+                models,
+                finding_count,
+                failing_object_count,
+                scorecard,
+                specs,
+                review_incomplete,
+            })
+        }
+    }
+}
 
-    let models: Vec<ModelInfo> = load_run_models(pool, &row).await?.iter().map(model_json).collect();
+impl From<RunView> for RunDetail {
+    fn from(view: RunView) -> RunDetail {
+        let bare =
+            |run: RunRow, models: Vec<ModelInfo>, finding_count: i64, failing_object_count: i64| {
+                RunDetail {
+                    input_provenance: InputProvenance::from_row(
+                        &run.input_provenance,
+                        run.input_provenance_reason.as_deref(),
+                    )
+                    .into(),
+                    run: run_summary(&run, finding_count, failing_object_count),
+                    models,
+                    scorecard: Vec::new(),
+                    specs: Vec::new(),
+                    review_incomplete: Vec::new(),
+                }
+            };
+        match view {
+            RunView::Running { run, models } => bare(run, models, 0, 0),
+            RunView::Failed { run, error, models } => {
+                let mut detail = bare(run, models, 0, 0);
+                detail.run.error = Some(error.as_str().to_owned());
+                detail
+            }
+            RunView::Completed {
+                run,
+                models,
+                finding_count,
+                failing_object_count,
+                scorecard,
+                specs,
+                review_incomplete,
+            } => {
+                let mut detail = bare(run, models, finding_count, failing_object_count);
+                detail.scorecard = scorecard;
+                detail.specs = specs;
+                detail.review_incomplete = review_incomplete;
+                detail
+            }
+        }
+    }
+}
 
+async fn load_findings(
+    pool: &SqlitePool,
+    run_id: &str,
+) -> Result<(Vec<SeverityBand>, Vec<Finding>), ApiError> {
     let finding_rows: Vec<FindingRow> = sqlx::query_as(
         "SELECT id, run_id, finding_key, spec_identifier, spec_name, severity, category_id,
                 category_label, facet, title, requirement, expected, instructions, object_count,
@@ -589,14 +846,13 @@ pub async fn run_detail(pool: &SqlitePool, run_id: &str) -> Result<RunDetail, Ap
         });
     }
 
-    // Review-incomplete findings are reported separately so they cannot hide behind a
-    // passing score.
     let (incomplete, decided): (Vec<Finding>, Vec<Finding>) =
         findings.into_iter().partition(|f| f.incomplete);
+    Ok((build_scorecard(decided), incomplete))
+}
 
-    let scorecard = build_scorecard(decided);
-
-    let specs: Vec<SpecResultRowOut> = sqlx::query_as::<_, RunSpecRow>(
+async fn load_specs(pool: &SqlitePool, run_id: &str) -> Result<Vec<SpecResultRowOut>, ApiError> {
+    let specs = sqlx::query_as::<_, RunSpecRow>(
         "SELECT id, run_id, spec_identifier, spec_name, outcome, applicable_count, pass_count,
                 fail_count, incomplete_count, notes_json
            FROM run_specs WHERE run_id = ?1 ORDER BY spec_name",
@@ -621,33 +877,27 @@ pub async fn run_detail(pool: &SqlitePool, run_id: &str) -> Result<RunDetail, Ap
             .unwrap_or_default(),
     })
     .collect();
-
-    Ok(RunDetail {
-        run: run_summary(&row, finding_count, failing_object_count),
-        models,
-        scorecard,
-        specs,
-        review_incomplete: incomplete,
-        input_provenance: InputProvenance::from_row(
-            &row.input_provenance,
-            row.input_provenance_reason.as_deref(),
-        )
-        .into(),
-    })
+    Ok(specs)
 }
 
 /// Severity bands -> categories -> findings, ordered so the worst, widest problem is first.
 fn build_scorecard(findings: Vec<Finding>) -> Vec<SeverityBand> {
     let mut bands: Vec<SeverityBand> = Vec::new();
     for severity in SEVERITY_ORDER {
-        let in_band: Vec<Finding> =
-            findings.iter().filter(|f| f.severity == severity).map(clone_finding).collect();
+        let in_band: Vec<Finding> = findings
+            .iter()
+            .filter(|f| f.severity == severity)
+            .map(clone_finding)
+            .collect();
         if in_band.is_empty() {
             continue;
         }
         let mut categories: Vec<CategoryGroup> = Vec::new();
         for finding in in_band {
-            match categories.iter_mut().find(|c| c.category_id == finding.category_id) {
+            match categories
+                .iter_mut()
+                .find(|c| c.category_id == finding.category_id)
+            {
                 Some(group) => {
                     group.finding_count += 1;
                     group.object_count += finding.object_count;
@@ -663,12 +913,16 @@ fn build_scorecard(findings: Vec<Finding>) -> Vec<SeverityBand> {
             }
         }
         categories.sort_by(|a, b| {
-            b.object_count.cmp(&a.object_count).then(a.category_label.cmp(&b.category_label))
+            b.object_count
+                .cmp(&a.object_count)
+                .then(a.category_label.cmp(&b.category_label))
         });
         for group in &mut categories {
-            group
-                .findings
-                .sort_by(|a, b| b.object_count.cmp(&a.object_count).then(a.title.cmp(&b.title)));
+            group.findings.sort_by(|a, b| {
+                b.object_count
+                    .cmp(&a.object_count)
+                    .then(a.title.cmp(&b.title))
+            });
         }
         bands.push(SeverityBand {
             severity: severity.to_owned(),
@@ -740,7 +994,10 @@ pub async fn finding_objects(
     .fetch_all(pool)
     .await?;
 
-    Ok(rows.into_iter().map(|row| finding_object_json(&row)).collect())
+    Ok(rows
+        .into_iter()
+        .map(|row| finding_object_json(&row))
+        .collect())
 }
 
 async fn load_run_models(pool: &SqlitePool, row: &RunRow) -> Result<Vec<ModelRow>, ApiError> {
@@ -764,4 +1021,414 @@ async fn load_run_models(pool: &SqlitePool, row: &RunRow) -> Result<Vec<ModelRow
         }
     }
     crate::diff::load_models(pool, &row.delivery_id).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const DEAD_PID: u32 = 2_147_000_000;
+
+    async fn seed_parents(pool: &SqlitePool) {
+        for statement in [
+            "INSERT INTO tenants (id, name, created_at) VALUES ('t1','Tenant',datetime())",
+            "INSERT INTO projects (id, tenant_id, name, created_at) VALUES ('p1','t1','Project',datetime())",
+            "INSERT INTO deliveries (id, project_id, label, created_at) VALUES ('d1','p1','D1',datetime())",
+            "INSERT INTO packs (id, tenant_id, name, created_at) VALUES ('pack1','t1','Pack',datetime())",
+            "INSERT INTO pack_versions (id, pack_id, version, ids_xml, ids_sha256, spec_count, created_at)
+               VALUES ('pv1','pack1',1,'<ids/>','0',1,datetime())",
+            "INSERT INTO source_models (id, project_id, name, discipline, created_at)
+               VALUES ('s1','p1','Source','ARCH',datetime())",
+            "INSERT INTO model_revisions (id, source_model_id, filename, content_sha256, byte_size,
+                 schema_label, entity_count, product_count, storage_path, uploaded_at)
+               VALUES ('m1','s1','a.ifc','0',1,'IFC4',1,1,'blobs/0',datetime())",
+        ] {
+            sqlx::query(statement).execute(pool).await.unwrap();
+        }
+    }
+
+    async fn insert_run(pool: &SqlitePool, id: &str, status: &str, pass: i64, fail: i64) {
+        sqlx::query(
+            "INSERT INTO runs (id, project_id, delivery_id, pack_version_id, engine_version,
+                 parser_version, status, started_at, pass_count, fail_count)
+             VALUES (?1,'p1','d1','pv1','eng','par',?2,datetime(),?3,?4)",
+        )
+        .bind(id)
+        .bind(status)
+        .bind(pass)
+        .bind(fail)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    async fn insert_job(pool: &SqlitePool, id: &str, status: &str) {
+        sqlx::query(
+            "INSERT INTO ingestion_jobs (id, source_model_id, filename, content_sha256, byte_size,
+                 storage_path, status, attempt_count, created_at)
+             VALUES (?1,'s1','a.ifc','0',1,'blobs/0',?2,0,datetime())",
+        )
+        .bind(id)
+        .bind(status)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    async fn run_row(
+        pool: &SqlitePool,
+        id: &str,
+    ) -> (String, Option<String>, Option<i64>, i64, i64) {
+        sqlx::query_as(
+            "SELECT status, error, duration_ms, pass_count, fail_count FROM runs WHERE id = ?1",
+        )
+        .bind(id)
+        .fetch_one(pool)
+        .await
+        .unwrap()
+    }
+
+    async fn count(pool: &SqlitePool, sql: &str) -> i64 {
+        sqlx::query_scalar(sql).fetch_one(pool).await.unwrap()
+    }
+
+    fn spec(name: &str, pass: i64) -> SpecAccum {
+        SpecAccum {
+            identifier: None,
+            name: name.to_owned(),
+            outcome: SpecRollup::Pass,
+            applicable_count: pass,
+            pass_count: pass,
+            fail_count: 0,
+            incomplete_count: 0,
+            notes: Vec::new(),
+        }
+    }
+
+    fn evaluated(
+        specs: Vec<SpecAccum>,
+        findings: Vec<Accumulated>,
+        pass: i64,
+        fail: i64,
+    ) -> EvaluatedRun {
+        EvaluatedRun {
+            specs,
+            findings: findings.into_iter().map(|f| (f.key.clone(), f)).collect(),
+            totals: Totals {
+                pass,
+                fail,
+                not_applicable: 0,
+                incomplete: 0,
+            },
+        }
+    }
+
+    #[tokio::test]
+    async fn exclusive_open_fails_interrupted_rows_once_and_reports_the_stale_slot() {
+        let dir = tempfile::tempdir().unwrap();
+        let pool = crate::db::open(dir.path()).await.unwrap();
+        seed_parents(&pool).await;
+        insert_job(&pool, "job-live", "running").await;
+        insert_job(&pool, "job-queued", "queued").await;
+        insert_run(&pool, "run-live", "running", 0, 0).await;
+        insert_run(&pool, "run-done", "completed", 5, 1).await;
+        sqlx::query(
+            "INSERT INTO findings (id, run_id, finding_key, spec_name, severity, category_id, category_label,
+                 facet, title, requirement, object_count)
+             VALUES ('f1','run-done','key','Spec','high','c','Cat','property','Title','must exist',1)",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        std::fs::write(
+            dir.path().join("worker.slot"),
+            format!(r#"{{"pid":{DEAD_PID},"pgid":{DEAD_PID},"kind":"validate","owner":"run-live-m1","started_at":"x"}}"#),
+        )
+        .unwrap();
+
+        let (state, reconciled) = AppState::open(dir.path(), "true".to_owned()).await.unwrap();
+        assert_eq!(
+            (reconciled.ingestion_jobs_failed, reconciled.runs_failed),
+            (1, 1)
+        );
+        assert_eq!(
+            reconciled.orphan_worker.map(|live| (live.pid, live.kind)),
+            Some((DEAD_PID, "validate".to_owned()))
+        );
+        assert!(
+            !dir.path().join("worker.slot").exists(),
+            "the stale slot file must be reconciled away"
+        );
+
+        let (job_status, job_error): (String, Option<String>) =
+            sqlx::query_as("SELECT status, error FROM ingestion_jobs WHERE id = 'job-live'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(job_status, "failed");
+        assert_eq!(
+            job_error.as_deref(),
+            Some("interrupted: the service restarted while this job was running")
+        );
+        assert_eq!(
+            count(
+                &pool,
+                "SELECT COUNT(*) FROM ingestion_jobs WHERE status = 'queued'"
+            )
+            .await,
+            1
+        );
+
+        let (status, error, duration_ms, pass, fail) = run_row(&pool, "run-live").await;
+        assert_eq!(
+            (status.as_str(), duration_ms, pass, fail),
+            ("failed", None, 0, 0)
+        );
+        assert_eq!(error.as_deref(), Some(RunFailure::INTERRUPTED));
+        assert_eq!(run_row(&pool, "run-done").await.0, "completed");
+        assert_eq!(run_row(&pool, "run-done").await.3, 5);
+        assert_eq!(
+            count(
+                &pool,
+                "SELECT COUNT(*) FROM findings WHERE run_id = 'run-done'"
+            )
+            .await,
+            1
+        );
+
+        let detail: RunDetail = run_detail(&pool, "run-live").await.unwrap().into();
+        assert_eq!(detail.run.status, "failed");
+        assert!(
+            detail
+                .run
+                .error
+                .as_deref()
+                .unwrap_or("")
+                .contains("restart")
+        );
+        assert_eq!(
+            (detail.scorecard.len(), detail.specs.len(), detail.run.score),
+            (0, 0, None)
+        );
+
+        drop(state);
+        let (_state, again) = AppState::open(dir.path(), "true".to_owned()).await.unwrap();
+        assert_eq!((again.ingestion_jobs_failed, again.runs_failed), (0, 0));
+        assert!(again.orphan_worker.is_none());
+    }
+
+    #[tokio::test]
+    async fn exclusive_open_zeroes_counts_a_running_run_already_carried() {
+        let dir = tempfile::tempdir().unwrap();
+        let pool = crate::db::open(dir.path()).await.unwrap();
+        seed_parents(&pool).await;
+        insert_run(&pool, "run-partial", "running", 12, 3).await;
+
+        let (_state, reconciled) = AppState::open(dir.path(), "true".to_owned()).await.unwrap();
+        assert_eq!(reconciled.runs_failed, 1);
+
+        let (status, _, _, pass, fail) = run_row(&pool, "run-partial").await;
+        assert_eq!((status.as_str(), pass, fail), ("failed", 0, 0));
+        let detail: RunDetail = run_detail(&pool, "run-partial").await.unwrap().into();
+        assert_eq!(
+            (
+                detail.run.pass_count,
+                detail.run.fail_count,
+                detail.run.score
+            ),
+            (0, 0, None)
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn adopt_kills_orphans_after_the_group_leader_exits() {
+        use std::io::{BufRead, BufReader};
+        use std::os::unix::process::CommandExt;
+        use std::process::{Command, Stdio};
+        use std::time::{Duration, Instant};
+
+        let dir = tempfile::tempdir().unwrap();
+        let mut leader = Command::new("sh")
+            .args(["-c", "sleep 120 & echo $!; wait"])
+            .process_group(0)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        let leader_pid = leader.id();
+        let mut stdout = BufReader::new(leader.stdout.take().unwrap());
+        let mut line = String::new();
+        stdout.read_line(&mut line).unwrap();
+        let child_pid: u32 = line.trim().parse().expect("sleep pid");
+        unsafe {
+            libc::kill(leader_pid as libc::pid_t, libc::SIGKILL);
+        }
+        let _ = leader.wait();
+        assert_eq!(
+            unsafe { libc::kill(child_pid as libc::pid_t, 0) },
+            0,
+            "the leftover group member must still be alive after its leader exits"
+        );
+
+        std::fs::write(
+            dir.path().join("worker.slot"),
+            serde_json::json!({
+                "pid": leader_pid,
+                "pgid": leader_pid,
+                "kind": "inspect",
+                "owner": "job-1",
+                "started_at": "x",
+            })
+            .to_string(),
+        )
+        .unwrap();
+
+        let (_state, reconciled) = AppState::open(dir.path(), "true".to_owned()).await.unwrap();
+        assert_eq!(
+            reconciled.orphan_worker.as_ref().map(|live| live.pid),
+            Some(leader_pid)
+        );
+
+        let deadline = Instant::now() + Duration::from_secs(2);
+        let mut gone = false;
+        while Instant::now() < deadline {
+            if unsafe { libc::kill(child_pid as libc::pid_t, 0) } != 0 {
+                gone = true;
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        assert!(
+            gone,
+            "adopt must kill leftover members of the recorded process group, pid={child_pid}"
+        );
+    }
+
+    #[tokio::test]
+    async fn commit_outcome_failed_writes_no_results_and_a_later_outcome_is_ignored() {
+        let dir = tempfile::tempdir().unwrap();
+        let pool = crate::db::open(dir.path()).await.unwrap();
+        seed_parents(&pool).await;
+        insert_run(&pool, "run-1", "running", 0, 0).await;
+
+        commit_outcome(
+            &pool,
+            "run-1",
+            Duration::from_millis(1234),
+            RunOutcome::Failed(RunFailure::from_text("worker exploded")),
+        )
+        .await
+        .unwrap();
+        let (status, error, duration_ms, _, _) = run_row(&pool, "run-1").await;
+        assert_eq!(
+            (status.as_str(), error.as_deref(), duration_ms),
+            ("failed", Some("worker exploded"), Some(1234))
+        );
+        assert_eq!(
+            count(
+                &pool,
+                "SELECT COUNT(*) FROM run_specs WHERE run_id = 'run-1'"
+            )
+            .await,
+            0
+        );
+        assert_eq!(
+            count(
+                &pool,
+                "SELECT COUNT(*) FROM findings WHERE run_id = 'run-1'"
+            )
+            .await,
+            0
+        );
+
+        commit_outcome(
+            &pool,
+            "run-1",
+            Duration::from_millis(1),
+            RunOutcome::Completed(evaluated(vec![spec("Late", 7)], Vec::new(), 7, 0)),
+        )
+        .await
+        .unwrap();
+        let (status, error, _, pass, _) = run_row(&pool, "run-1").await;
+        assert_eq!(
+            (status.as_str(), error.as_deref(), pass),
+            ("failed", Some("worker exploded"), 0)
+        );
+        assert_eq!(
+            count(
+                &pool,
+                "SELECT COUNT(*) FROM run_specs WHERE run_id = 'run-1'"
+            )
+            .await,
+            0
+        );
+    }
+
+    #[tokio::test]
+    async fn commit_outcome_completed_writes_results_and_status_together() {
+        let dir = tempfile::tempdir().unwrap();
+        let pool = crate::db::open(dir.path()).await.unwrap();
+        seed_parents(&pool).await;
+        insert_run(&pool, "run-1", "running", 0, 0).await;
+        let finding = Accumulated {
+            key: "k1".to_owned(),
+            spec_identifier: None,
+            spec_name: "Wall declares a fire rating".to_owned(),
+            severity: "high".to_owned(),
+            category_id: "regulatory".to_owned(),
+            category_label: "Regulatory".to_owned(),
+            facet: "property".to_owned(),
+            title: "Fire rating".to_owned(),
+            requirement: "FireRating property".to_owned(),
+            expected: None,
+            instructions: None,
+            incomplete: false,
+            objects: vec![AffectedObject {
+                model_id: "m1".to_owned(),
+                express_id: 1,
+                global_id: None,
+                actual: Some("missing".to_owned()),
+                incomplete_reason: None,
+            }],
+        };
+
+        commit_outcome(
+            &pool,
+            "run-1",
+            Duration::from_millis(50),
+            RunOutcome::Completed(evaluated(
+                vec![spec("Wall declares a fire rating", 3)],
+                vec![finding],
+                3,
+                1,
+            )),
+        )
+        .await
+        .unwrap();
+
+        let (status, error, duration_ms, pass, fail) = run_row(&pool, "run-1").await;
+        assert_eq!(
+            (status.as_str(), error, duration_ms, pass, fail),
+            ("completed", None, Some(50), 3, 1)
+        );
+        let detail: RunDetail = run_detail(&pool, "run-1").await.unwrap().into();
+        assert_eq!(detail.run.score, Some(0.75));
+        assert_eq!(detail.specs.len(), 1);
+        assert_eq!(detail.specs[0].spec_name, "Wall declares a fire rating");
+        assert_eq!(detail.scorecard.len(), 1);
+        assert_eq!(detail.scorecard[0].severity, "high");
+        assert_eq!(
+            detail.scorecard[0].categories[0].findings[0].title,
+            "Fire rating"
+        );
+        assert_eq!(
+            detail.scorecard[0].categories[0].findings[0].object_count,
+            1
+        );
+        assert_eq!(
+            (detail.run.finding_count, detail.run.failing_object_count),
+            (1, 1)
+        );
+    }
 }

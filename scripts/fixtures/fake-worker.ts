@@ -12,6 +12,7 @@
 // Usage: node fake-worker.ts <mode> --request <path-to-request.json>
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { expressIdToObjectId } from "../../packages/model-contracts-ts/src/express-id-mapping.ts";
@@ -201,6 +202,16 @@ async function main() {
       // Bounded, not infinite: if orphaned by a killed parent it still exits on
       // its own rather than lingering forever.
       await sleep(delayMs > 0 ? delayMs : 5000);
+      process.exit(1);
+      return;
+    }
+    case "hang-child": {
+      mkdirSync(outputDir, { recursive: true });
+      writeFileSync(join(outputDir, "worker.pid"), String(process.pid));
+      const child = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], { stdio: "ignore" });
+      writeFileSync(join(outputDir, "worker.child.pid"), String(child.pid));
+      emit(progressEvent("loading"));
+      await sleep(delayMs > 0 ? delayMs : 8000);
       process.exit(1);
       return;
     }

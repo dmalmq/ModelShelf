@@ -20,6 +20,7 @@ mod seed;
 mod sources;
 mod state;
 mod upload;
+mod worker_slot;
 
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -156,13 +157,19 @@ pub fn build_router(state: AppState) -> axum::Router {
 }
 
 async fn serve(port: u16, data_dir: PathBuf, worker_command: String) -> i32 {
-    let state = match AppState::open(&data_dir).await {
-        Ok(state) => state.with_worker_command(worker_command),
+    let (state, reconciled) = match AppState::open(&data_dir, worker_command).await {
+        Ok(opened) => opened,
         Err(err) => {
             eprintln!("failed to open data dir {}: {err:#}", data_dir.display());
             return 1;
         }
     };
+    tracing::info!(
+        ingestion_jobs_failed = reconciled.ingestion_jobs_failed,
+        runs_failed = reconciled.runs_failed,
+        orphan_worker = ?reconciled.orphan_worker,
+        "adopted the heavy worker slot",
+    );
     jobs::spawn_worker(state.clone());
     let app = build_router(state);
     let addr = SocketAddr::from(([127, 0, 0, 1], port));

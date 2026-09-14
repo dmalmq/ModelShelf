@@ -1090,6 +1090,326 @@ async function runWorkerFailureScenario(check, log) {
     rmSync(dataDir, { recursive: true, force: true });
   }
   await checkRestartRecovery(check, log);
+  await checkSharedWorkerGate(check, log);
+  await checkRunInterruptedIsRecoverable(check, log);
+  await checkOrphanedWorkerGroup(check, log);
+}
+
+function pidAlive(pid) {
+  if (!Number.isInteger(pid)) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function checkOrphanedWorkerGroup(check, log) {
+  const dataDir = mkdtempSync(join(tmpdir(), "modelshelf-worker-orphan-"));
+  let childPid;
+  try {
+    const seed = runCli(["seed", "--data-dir", dataDir, "--packs-dir", dataDir, "--samples-dir", dataDir]);
+    check("orphan-group: seed succeeds", seed.status === 0, seed.stderr);
+
+    const hanging = await startServer(dataDir, fakeWorkerCommand("hang-child"), { FAKE_WORKER_DELAY_MS: "8000" });
+    let leaderPid;
+    try {
+      const sourceModel = (await api(hanging.base, "POST", "/api/projects/demo-project/source-models", { name: "Orphan Group", discipline: "OTHER" })).json;
+      const enqueued = await uploadRaw(hanging.base, sourceModel.id, "orphan.ifc");
+      check("orphan-group: upload enqueues a job", enqueued.status === 202, JSON.stringify(enqueued));
+
+      let running = false;
+      const runningDeadline = Date.now() + 5000;
+      while (Date.now() < runningDeadline && !running) {
+        const job = (await api(hanging.base, "GET", `/api/jobs/${enqueued.json.id}`)).json;
+        running = job.status === "running";
+        if (!running) await new Promise((r) => setTimeout(r, 50));
+      }
+      check("orphan-group: the job reaches 'running' before the simulated crash", running, "");
+
+      const attemptDir = join(dataDir, "jobs", enqueued.json.id, "attempt-0");
+      const leaderPath = join(attemptDir, "worker.pid");
+      const childPath = join(attemptDir, "worker.child.pid");
+      const pidDeadline = Date.now() + 2000;
+      while (Date.now() < pidDeadline && (!Number.isInteger(leaderPid) || !Number.isInteger(childPid))) {
+        if (existsSync(leaderPath)) leaderPid = Number(readFileSync(leaderPath, "utf8"));
+        if (existsSync(childPath)) childPid = Number(readFileSync(childPath, "utf8"));
+        if (!Number.isInteger(leaderPid) || !Number.isInteger(childPid)) await new Promise((r) => setTimeout(r, 50));
+      }
+      check("orphan-group: hang-child wrote leader and grandchild pids", Number.isInteger(leaderPid) && Number.isInteger(childPid), JSON.stringify({ leaderPid, childPid }));
+
+      hanging.child.kill("SIGKILL");
+      await new Promise((resolve) => hanging.child.once("exit", resolve));
+
+      const goneDeadline = Date.now() + 2000;
+      while (Date.now() < goneDeadline && pidAlive(leaderPid)) {
+        await new Promise((r) => setTimeout(r, 50));
+      }
+      check("orphan-group: PDEATHSIG kills the recorded leader", !pidAlive(leaderPid), `leader=${leaderPid}`);
+      check("orphan-group: a grandchild in the same group survives the leader", pidAlive(childPid), `child=${childPid}`);
+    } finally {
+      log("orphan-group-hang.log", hanging.getLog());
+    }
+
+    const recovered = await startServer(dataDir, undefined);
+    try {
+      const goneDeadline = Date.now() + 2000;
+      while (Date.now() < goneDeadline && pidAlive(childPid)) {
+        await new Promise((r) => setTimeout(r, 50));
+      }
+      check("orphan-group: adopt kills leftover members of the recorded group", !pidAlive(childPid), `child=${childPid}`);
+      check("orphan-group: the stale slot file was reconciled away", readSlotFile(dataDir) === null, "");
+    } finally {
+      log("orphan-group-recovered.log", recovered.getLog());
+      await stopProcess(recovered.child);
+    }
+  } finally {
+    if (pidAlive(childPid)) {
+      try { process.kill(childPid, "SIGKILL"); } catch {}
+    }
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+}
+
+function liveWorkerPids(checkerPid) {
+  const out = spawnSync("pgrep", ["-P", String(checkerPid)], { encoding: "utf8" });
+  if (out.status === 1) return [];
+  if (out.status !== 0) throw new Error(`pgrep failed: ${out.stderr}`);
+  return out.stdout.trim().split(/\s+/).filter(Boolean).map(Number);
+}
+
+function readSlotFile(dataDir) {
+  const path = join(dataDir, "worker.slot");
+  if (!existsSync(path)) return null;
+  try {
+    return JSON.parse(readFileSync(path, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+async function setupRunnableDelivery(base, name) {
+  const source = (await api(base, "POST", "/api/projects/demo-project/source-models", { name, discipline: "ARCH" })).json;
+  const uploaded = await uploadAndAwaitRevision(base, source.id, `${name}.ifc`);
+  const delivery = (await api(base, "POST", "/api/projects/demo-project/deliveries", { label: name })).json;
+  const member = await api(base, "POST", `/api/deliveries/${delivery.id}/members`, {
+    sourceModelId: source.id,
+    modelRevisionId: uploaded.job.modelRevisionId,
+  });
+  const finalized = await api(base, "POST", `/api/deliveries/${delivery.id}/finalize`, {});
+  return { source, uploaded, delivery, member, finalized };
+}
+
+async function checkSharedWorkerGate(check, log) {
+  const dataDir = mkdtempSync(join(tmpdir(), "modelshelf-worker-slot-"));
+  try {
+    const seed = runCli(["seed", "--data-dir", dataDir, "--packs-dir", dataDir, "--samples-dir", dataDir]);
+    check("shared-gate: seed succeeds", seed.status === 0, seed.stderr);
+
+    const server = await startServer(dataDir, fakeWorkerCommand("slow-success"), { FAKE_WORKER_DELAY_MS: "700" });
+    try {
+      const first = await setupRunnableDelivery(server.base, "Gate A");
+      const second = await setupRunnableDelivery(server.base, "Gate B");
+      check(
+        "shared-gate: two deliveries ingested",
+        first.uploaded.job?.status === "completed" && second.uploaded.job?.status === "completed"
+          && first.finalized.status === 200 && second.finalized.status === 200,
+        JSON.stringify({ first: first.uploaded.job, second: second.uploaded.job }),
+      );
+      const idsXml = await readFileAsync(FIXTURES_IDS, "utf8");
+      const pack = (await api(server.base, "POST", "/api/packs/demo-pack/versions", { idsXml })).json;
+      check("shared-gate: pack version published", Boolean(pack?.id), JSON.stringify(pack));
+
+      const extraA = (await api(server.base, "POST", "/api/projects/demo-project/source-models", { name: "Gate Upload A", discipline: "OTHER" })).json;
+      const extraB = (await api(server.base, "POST", "/api/projects/demo-project/source-models", { name: "Gate Upload B", discipline: "OTHER" })).json;
+
+      const runA = api(server.base, "POST", "/api/runs", { deliveryId: first.delivery.id, packVersionId: pack.id });
+      const runB = api(server.base, "POST", "/api/runs", { deliveryId: second.delivery.id, packVersionId: pack.id });
+      const uaP = uploadRaw(server.base, extraA.id, "gate-a.ifc");
+      const ubP = uploadRaw(server.base, extraB.id, "gate-b.ifc");
+
+      let runsSettled = false;
+      let runPair = null;
+      Promise.all([runA, runB]).then((pair) => {
+        runPair = pair;
+        runsSettled = true;
+      }, () => {
+        runsSettled = true;
+      });
+
+      let ua;
+      let ub;
+      const uploadsReady = Promise.all([uaP, ubP]).then((pair) => {
+        ua = pair[0];
+        ub = pair[1];
+        return pair;
+      });
+
+      let maxLive = 0;
+      let slotDisagreed = false;
+      let sawValidate = false;
+      let sawInspect = false;
+      let jobStatuses = [];
+      const deadline = Date.now() + 30_000;
+      while (Date.now() < deadline) {
+        const live = liveWorkerPids(server.child.pid);
+        maxLive = Math.max(maxLive, live.length);
+        const slot = readSlotFile(dataDir);
+        if (slot?.kind === "validate") sawValidate = true;
+        if (slot?.kind === "inspect") sawInspect = true;
+        if (slot && Number.isInteger(slot.pid) && live.length > 0 && !live.includes(slot.pid)) {
+          const liveAgain = liveWorkerPids(server.child.pid);
+          maxLive = Math.max(maxLive, liveAgain.length);
+          if (liveAgain.length > 0 && !liveAgain.includes(slot.pid)) slotDisagreed = true;
+        }
+        if (ua?.json?.id && ub?.json?.id) {
+          jobStatuses = await Promise.all(
+            [ua.json.id, ub.json.id].map((id) => api(server.base, "GET", `/api/jobs/${id}`).then((r) => r.json.status)),
+          );
+        }
+        if (runsSettled && jobStatuses.every((s) => s === "completed" || s === "failed")) break;
+        await new Promise((r) => setTimeout(r, 25));
+      }
+
+      const [a, b] = runPair ?? await Promise.all([runA, runB]);
+      await uploadsReady;
+      check("shared-gate: racing uploads enqueued", ua.status === 202 && ub.status === 202, JSON.stringify({ ua, ub }));
+      const jobA = await pollJob(server.base, ua.json.id);
+      const jobB = await pollJob(server.base, ub.json.id);
+
+      check("shared-gate: at most one live worker subprocess across runs and ingestion", maxLive <= 1, `maxLive=${maxLive}`);
+      check("shared-gate: the probe actually observed a worker", maxLive >= 1, `maxLive=${maxLive}`);
+      check("shared-gate: a validate invocation occupied the slot", sawValidate, "");
+      check("shared-gate: an inspect invocation occupied the slot", sawInspect, "");
+      check("shared-gate: slot file pid stayed in the live set when present", !slotDisagreed, "");
+      check(
+        "shared-gate: both racing runs reached a terminal status",
+        a.status === 200 && b.status === 200
+          && ["completed", "failed"].includes(a.json?.run?.status)
+          && ["completed", "failed"].includes(b.json?.run?.status),
+        JSON.stringify({ a: a.json?.run, b: b.json?.run }),
+      );
+      check(
+        "shared-gate: both racing uploads completed",
+        jobA?.status === "completed" && jobB?.status === "completed",
+        JSON.stringify({ jobA, jobB }),
+      );
+      check("shared-gate: slot file is gone after everything settled", readSlotFile(dataDir) === null, "");
+    } finally {
+      log("shared-gate.log", server.getLog());
+      await stopProcess(server.child);
+    }
+  } finally {
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+}
+
+async function checkRunInterruptedIsRecoverable(check, log) {
+  const dataDir = mkdtempSync(join(tmpdir(), "modelshelf-run-restart-"));
+  const dbPath = join(dataDir, "modelshelf.db");
+  try {
+    const seed = runCli(["seed", "--data-dir", dataDir, "--packs-dir", dataDir, "--samples-dir", dataDir]);
+    check("run-restart: seed succeeds", seed.status === 0, seed.stderr);
+
+    const setup = await startServer(dataDir, fakeWorkerCommand("slow-success"), { FAKE_WORKER_DELAY_MS: "50" });
+    let deliveryId;
+    let packVersionId;
+    try {
+      const ready = await setupRunnableDelivery(setup.base, "Interrupted");
+      check("run-restart: delivery ingested", ready.uploaded.job?.status === "completed", JSON.stringify(ready.uploaded.job));
+      const idsXml = await readFileAsync(FIXTURES_IDS, "utf8");
+      const pack = (await api(setup.base, "POST", "/api/packs/demo-pack/versions", { idsXml })).json;
+      check("run-restart: pack version published", Boolean(pack?.id), JSON.stringify(pack));
+      deliveryId = ready.delivery.id;
+      packVersionId = pack.id;
+    } finally {
+      log("run-restart-setup.log", setup.getLog());
+      await stopProcess(setup.child);
+    }
+
+    const hanging = await startServer(dataDir, fakeWorkerCommand("hang"), { FAKE_WORKER_DELAY_MS: "8000" });
+    let runId;
+    let slot;
+    try {
+      const postPromise = api(hanging.base, "POST", "/api/runs", { deliveryId, packVersionId });
+      postPromise.catch(() => {});
+
+      const runningDeadline = Date.now() + 5000;
+      while (Date.now() < runningDeadline && !runId) {
+        const detail = (await api(hanging.base, "GET", `/api/deliveries/${deliveryId}`)).json;
+        const running = (detail.runs ?? []).find((r) => r.status === "running");
+        if (running) runId = running.id;
+        else await new Promise((r) => setTimeout(r, 50));
+      }
+      check("run-restart: the run reaches 'running' before the simulated crash", Boolean(runId), "");
+
+      const slotDeadline = Date.now() + 2000;
+      while (Date.now() < slotDeadline && !slot) {
+        slot = readSlotFile(dataDir);
+        if (!slot) await new Promise((r) => setTimeout(r, 50));
+      }
+      check("run-restart: slot file names a validate invocation", Boolean(slot?.pid) && slot?.kind === "validate", JSON.stringify(slot));
+
+      hanging.child.kill("SIGKILL");
+      await new Promise((resolve) => hanging.child.once("exit", resolve));
+
+      let workerGone = false;
+      const goneDeadline = Date.now() + 2000;
+      while (Date.now() < goneDeadline && Number.isInteger(slot?.pid)) {
+        try {
+          process.kill(slot.pid, 0);
+          await new Promise((r) => setTimeout(r, 50));
+        } catch {
+          workerGone = true;
+          break;
+        }
+      }
+      check("run-restart: the old worker process is gone after the checker is killed", workerGone, `pid=${slot?.pid}`);
+    } finally {
+      log("run-restart-hang.log", hanging.getLog());
+    }
+
+    const recoveredServer = await startServer(dataDir, undefined);
+    try {
+      const recovered = (await api(recoveredServer.base, "GET", `/api/runs/${runId}`)).json;
+      check(
+        "run-restart: a run still 'running' at kill is 'failed' with an explicit restart reason",
+        recovered.run.status === "failed" && /restart/i.test(recovered.run.error ?? ""),
+        JSON.stringify(recovered.run),
+      );
+      check(
+        "run-restart: an interrupted run is not a clean scorecard",
+        recovered.scorecard.length === 0 && recovered.specs.length === 0
+          && recovered.run.passCount === 0 && recovered.run.failCount === 0 && recovered.run.score === null,
+        JSON.stringify({ scorecard: recovered.scorecard, specs: recovered.specs, run: recovered.run }),
+      );
+      check(
+        "run-restart: no run is left running",
+        dbGet(dbPath, "SELECT COUNT(*) FROM runs WHERE status='running'") === "0",
+        "",
+      );
+      check("run-restart: the stale slot file was reconciled away", readSlotFile(dataDir) === null, "");
+
+      const retried = await api(recoveredServer.base, "POST", "/api/runs", { deliveryId, packVersionId });
+      check(
+        "run-restart: a fresh POST on the same delivery completes with a new run id",
+        retried.status === 200 && retried.json?.run?.status === "completed" && retried.json?.run?.id !== runId,
+        JSON.stringify({ status: retried.status, run: retried.json?.run }),
+      );
+      const delivery = (await api(recoveredServer.base, "GET", `/api/deliveries/${deliveryId}`)).json;
+      check(
+        "run-restart: latest delivery run is the new completed run",
+        delivery.runs?.[0]?.id === retried.json.run.id && delivery.runs?.[0]?.status === "completed",
+        JSON.stringify(delivery.runs?.slice(0, 2)),
+      );
+    } finally {
+      log("run-restart-recovered.log", recoveredServer.getLog());
+      await stopProcess(recoveredServer.child);
+    }
+  } finally {
+    rmSync(dataDir, { recursive: true, force: true });
+  }
 }
 
 async function checkParserIndependentPublish(dataDir, check, log) {
