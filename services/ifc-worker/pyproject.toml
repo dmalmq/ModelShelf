@@ -2,7 +2,11 @@
 name = "modelshelf-ifc-worker"
 version = "0.1.0"
 requires-python = ">=3.12,<3.14"
-dependencies = ["ifcopenshell==0.8.5", "ifctester==0.8.5", "pydantic>=2.11,<3", "typer>=0.16,<1", "modelshelf-model-contracts"]
+# Engines and libraries that change validation bytes are pinned with `==`. Bump by
+# editing those `==` lines here and pydantic in `packages/model-contracts-py/pyproject.toml`,
+# then `uv lock --project packages/model-contracts-py` and `uv lock --project services/ifc-worker`.
+# `uv run --locked --project services/ifc-worker <cmd>` must then resolve with no lockfile rewrite.
+dependencies = ["ifcopenshell==0.8.5", "ifctester==0.8.5", "pydantic==2.13.5", "typer==0.27.2", "modelshelf-model-contracts"]
 [project.scripts]
 ifc-worker = "ifc_worker.cli:main"
 [build-system]

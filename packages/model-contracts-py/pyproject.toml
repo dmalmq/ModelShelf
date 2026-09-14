@@ -3,7 +3,8 @@ name = "modelshelf-model-contracts"
 version = "1.0.0"
 description = "Generated Python bindings and boundary validators for ModelShelf's shared model contract (schemas/model/v1). No app, database, or IFC-processing imports."
 requires-python = ">=3.12,<3.14"
-dependencies = ["pydantic>=2.11,<3"]
+# Keep pydantic == the worker pin. Bump both packages together, then `uv lock` each.
+dependencies = ["pydantic==2.13.5"]
 
 [project.scripts]
 model-contracts-produce = "model_contracts.produce:main"

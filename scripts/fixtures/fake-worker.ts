@@ -11,7 +11,7 @@
 //
 // Usage: node fake-worker.ts <mode> --request <path-to-request.json>
 
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, unlinkSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
@@ -260,6 +260,28 @@ async function main() {
       };
       const manifestInfo = writeArtifact(join(outputDir, "manifest.json"), JSON.stringify(manifest));
       emit({ protocolVersion: PROTOCOL_VERSION, jobId, event: "result", manifest: manifestInfo });
+      process.exit(0);
+      return;
+    }
+    case "manifest-symlink-escape": {
+      const manifestInfo = writeValidManifestAndResult();
+      const outsidePath = join("/tmp", `fake-worker-manifest-symlink-${jobId}.json`);
+      const linkPath = join(outputDir, "manifest.json");
+      writeFileSync(outsidePath, readFileSync(linkPath));
+      unlinkSync(linkPath);
+      const { symlinkSync } = await import("node:fs");
+      try {
+        symlinkSync(outsidePath, linkPath);
+      } catch {
+        process.exit(2);
+        return;
+      }
+      emit({
+        protocolVersion: PROTOCOL_VERSION,
+        jobId,
+        event: "result",
+        manifest: { path: linkPath, sha256: manifestInfo.sha256, size: manifestInfo.size },
+      });
       process.exit(0);
       return;
     }

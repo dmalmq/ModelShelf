@@ -987,6 +987,7 @@ const FAILURE_MODES = [
   "path-escape",
   "schema-version-mismatch",
   "symlink-escape",
+  "manifest-symlink-escape",
   "bad-render-schema",
 ];
 
@@ -996,6 +997,13 @@ async function runFailureModes(dataDir, check, log) {
     try {
       const sourceModel = (await api(server.base, "POST", "/api/projects/demo-project/source-models", { name: `Failure ${mode}`, discipline: "OTHER" })).json;
       const job = await checkJobFails(check, `worker failure mode "${mode}" leaves the job failed, not published`, server.base, sourceModel.id, `${mode}.ifc`);
+      if (mode === "manifest-symlink-escape") {
+        check(
+          `"${mode}" job error names the filesystem link`,
+          typeof job?.error === "string" && job.error.includes("filesystem link"),
+          JSON.stringify(job),
+        );
+      }
       const sourceModels = (await api(server.base, "GET", "/api/projects/demo-project/source-models")).json;
       const reloaded = sourceModels.find((s) => s.id === sourceModel.id);
       check(

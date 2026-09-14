@@ -32,8 +32,10 @@ the contract documents (`docs/contracts/`), and the sample documentation
 ## IDS support
 
 - IDS support is scoped to what IfcTester 0.8.5 evaluates. The worker pins
-  `ifctester==0.8.5` and `ifcopenshell==0.8.5` in
-  `services/ifc-worker/pyproject.toml` and `uv.lock`.
+  `ifctester==0.8.5`, `ifcopenshell==0.8.5`, `pydantic==2.13.5`, and
+  `typer==0.27.2` in `services/ifc-worker/pyproject.toml` and `uv.lock`.
+  pydantic is also `==2.13.5` in `packages/model-contracts-py`. Bump by editing
+  those `==` lines, then `uv lock` both projects.
 - Unsupported evaluation produces `incomplete` outcomes, never a pass
   (`docs/contracts/worker-v2.md`). Invalid IDS XML or schema fails the job.
 - `crates/ids` is a reference/test engine and is never used for live scoring;

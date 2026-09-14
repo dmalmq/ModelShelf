@@ -11,7 +11,7 @@ outcomes, shared-contract generation, and the shutdown/restart contract.
 | Layer | Pin | Where it is locked |
 | --- | --- | --- |
 | Rust workspace | `Cargo.lock` pins every dependency; workspace edition 2021, resolver 2 | `Cargo.lock`, `Cargo.toml` |
-| IFC/IDS worker | IfcOpenShell `==0.8.5`, IfcTester `==0.8.5`; Python `>=3.12,<3.14` | `services/ifc-worker/pyproject.toml`, `services/ifc-worker/uv.lock` |
+| IFC/IDS worker | IfcOpenShell `==0.8.5`, IfcTester `==0.8.5`, pydantic `==2.13.5`, typer `==0.27.2`; Python `>=3.12,<3.14` | `services/ifc-worker/pyproject.toml`, `services/ifc-worker/uv.lock`, `packages/model-contracts-py/pyproject.toml` |
 | Web app + viewer package | Next `15.5.25`; Playwright `1.63.0` exact; React 19; Three.js 0.185 | `apps/web/package.json`, `apps/web/package-lock.json`, `packages/model-viewer/package.json`, `packages/model-viewer/package-lock.json` |
 
 - The Rust workspace ships a checked-in `Cargo.lock`. No crate manifest
@@ -21,8 +21,9 @@ outcomes, shared-contract generation, and the shutdown/restart contract.
 - The worker is invoked by the checker as
   `uv run --locked --project services/ifc-worker ifc-worker --request {request}`
   (the `DEFAULT_WORKER_COMMAND` in `services/checker/src/jobs.rs`). `--locked`
-  makes `uv.lock` authoritative, so the pinned `ifcopenshell==0.8.5` and
-  `ifctester==0.8.5` are what actually run.
+  makes `uv.lock` authoritative, so the pinned `ifcopenshell==0.8.5`,
+  `ifctester==0.8.5`, `pydantic==2.13.5`, and `typer==0.27.2` are what actually
+  run.
 - The web lockfile pins `next` 15.5.25. That package's `engines` field
   requires Node `^18.18.0 || ^19.8.0 || >=20.0.0`, and `@playwright/test` is
   pinned exactly to `1.63.0`. The repo's own `package.json` files declare no
