@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "artifact-ref.schema.json",
+  "title": "ArtifactRef",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["path", "sha256", "size", "recordCount"],
+  "properties": {
+    "path": { "type": "string", "minLength": 1 },
+    "sha256": { "$ref": "sha256.schema.json" },
+    "size": { "type": "integer", "minimum": 0 },
+    "recordCount": { "type": ["integer", "null"], "minimum": 0 }
+  }
+}

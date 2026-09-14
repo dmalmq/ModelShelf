@@ -1,0 +1,79 @@
+{
+  "protocolVersion": 2,
+  "schemaDir": "schemas/worker/v2",
+  "modelSchemaDir": "schemas/model/v1",
+  "contractDoc": "docs/contracts/worker-v2.md",
+  "kinds": [
+    {
+      "schema": "request.schema.json",
+      "python": "Request",
+      "rust": "WorkerRequest",
+      "dumpKeys": ["request-inspect", "request-validate"],
+      "valid": ["fixtures/valid/request-inspect.json", "fixtures/valid/request-validate.json"],
+      "invalid": [
+        "fixtures/invalid/schema/request-job-id-renamed.json",
+        "fixtures/invalid/schema/request-wrong-version.json",
+        "fixtures/invalid/schema/request-extra-field.json",
+        "fixtures/invalid/schema/request-validate-without-ids.json",
+        "fixtures/invalid/schema/request-bad-hash.json"
+      ]
+    },
+    {
+      "schema": "progress-event.schema.json",
+      "python": "ProgressEvent",
+      "rust": "WorkerEvent",
+      "dumpKeys": ["progress-event"],
+      "valid": ["fixtures/valid/progress-event.json"],
+      "invalid": [
+        "fixtures/invalid/schema/progress-event-unknown-field.json",
+        "fixtures/invalid/schema/progress-with-manifest.json"
+      ]
+    },
+    {
+      "schema": "result-event.schema.json",
+      "python": "ResultEvent",
+      "rust": "WorkerEvent",
+      "dumpKeys": ["result-event"],
+      "valid": ["fixtures/valid/result-event.json"],
+      "invalid": [
+        "fixtures/invalid/schema/result-event-missing-manifest.json",
+        "fixtures/invalid/schema/result-with-stage.json"
+      ]
+    },
+    {
+      "schema": "stdout-event.schema.json",
+      "python": null,
+      "rust": "WorkerEvent",
+      "dumpKeys": ["progress-event", "result-event"],
+      "valid": ["fixtures/valid/progress-event.json", "fixtures/valid/result-event.json"],
+      "invalid": [
+        "fixtures/invalid/schema/event-unknown-kind.json",
+        "fixtures/invalid/schema/stdout-event-unknown-kind.json"
+      ]
+    },
+    {
+      "schema": "manifest.schema.json",
+      "python": "Manifest",
+      "rust": "Manifest",
+      "dumpKeys": ["manifest-inspect", "manifest-validate"],
+      "valid": ["fixtures/valid/manifest-inspect.json", "fixtures/valid/manifest-validate.json"],
+      "invalid": [
+        "fixtures/invalid/schema/manifest-missing-operation.json",
+        "fixtures/invalid/schema/manifest-empty-version.json",
+        "fixtures/invalid/schema/manifest-operation-renamed.json"
+      ]
+    }
+  ],
+  "defs": [
+    "protocol-version.schema.json",
+    "sha256.schema.json",
+    "manifest-pointer.schema.json",
+    "artifact-ref.schema.json",
+    "artifact-contents.schema.json",
+    "model-ref.schema.json",
+    "ids-ref.schema.json",
+    "settings.schema.json",
+    "job-artifacts.schema.json",
+    "versions.schema.json"
+  ]
+}

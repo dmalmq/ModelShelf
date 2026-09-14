@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// A stand-in for the real `ifc-worker` CLI (docs/contracts/worker-v1.md), used
+// A stand-in for the real `ifc-worker` CLI (docs/contracts/worker-v2.md), used
 // only by scripts/verify-api.ts's `worker-failure` scenario to exercise
 // validation paths a well-behaved real worker never triggers: malformed NDJSON,
 // duplicate/misidentified terminal results, a nonzero exit, tampered artifact
@@ -16,6 +16,7 @@ import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { expressIdToObjectId } from "../../packages/model-contracts-ts/src/express-id-mapping.ts";
+import { parseWorkerRequest, PROTOCOL_VERSION } from "../lib/worker-envelope.ts";
 
 const mode = process.argv[2];
 const requestIndex = process.argv.indexOf("--request");
@@ -37,7 +38,7 @@ function emit(event) {
 }
 
 function progressEvent(stage) {
-  return { protocolVersion: 2, jobId, event: "progress", stage };
+  return { protocolVersion: PROTOCOL_VERSION, jobId, event: "progress", stage };
 }
 
 function writeArtifact(path, text) {
@@ -118,7 +119,7 @@ function writeValidManifestAndResult({ tamperObjectsHash = false, escapeArtifact
   }
 
   const manifest = {
-    protocolVersion: 2,
+    protocolVersion: PROTOCOL_VERSION,
     jobId,
     operation: "inspect",
     revisionId,
@@ -152,7 +153,7 @@ async function main() {
     }
     case "duplicate-result": {
       const manifestInfo = writeValidManifestAndResult();
-      const result = { protocolVersion: 2, jobId, event: "result", manifest: manifestInfo };
+      const result = { protocolVersion: PROTOCOL_VERSION, jobId, event: "result", manifest: manifestInfo };
       emit(result);
       emit(result);
       process.exit(0);
@@ -160,7 +161,7 @@ async function main() {
     }
     case "wrong-job-id": {
       const manifestInfo = writeValidManifestAndResult();
-      emit({ protocolVersion: 2, jobId: `not-${jobId}`, event: "result", manifest: manifestInfo });
+      emit({ protocolVersion: PROTOCOL_VERSION, jobId: `not-${jobId}`, event: "result", manifest: manifestInfo });
       process.exit(0);
       return;
     }
@@ -172,13 +173,13 @@ async function main() {
     }
     case "bad-artifact-hash": {
       const manifestInfo = writeValidManifestAndResult({ tamperObjectsHash: true });
-      emit({ protocolVersion: 2, jobId, event: "result", manifest: manifestInfo });
+      emit({ protocolVersion: PROTOCOL_VERSION, jobId, event: "result", manifest: manifestInfo });
       process.exit(0);
       return;
     }
     case "path-escape": {
       const manifestInfo = writeValidManifestAndResult({ escapeArtifactPath: true });
-      emit({ protocolVersion: 2, jobId, event: "result", manifest: manifestInfo });
+      emit({ protocolVersion: PROTOCOL_VERSION, jobId, event: "result", manifest: manifestInfo });
       process.exit(0);
       return;
     }
@@ -188,10 +189,11 @@ async function main() {
       return;
     }
     case "slow-success": {
+      parseWorkerRequest(request);
       emit(progressEvent("loading"));
       if (delayMs > 0) await sleep(delayMs);
       const manifestInfo = writeValidManifestAndResult();
-      emit({ protocolVersion: 2, jobId, event: "result", manifest: manifestInfo });
+      emit({ protocolVersion: PROTOCOL_VERSION, jobId, event: "result", manifest: manifestInfo });
       process.exit(0);
       return;
     }
@@ -238,7 +240,7 @@ async function main() {
         outcomes: { ...outcomesInfo, recordCount: 0 },
       };
       const manifest = {
-        protocolVersion: 2,
+        protocolVersion: PROTOCOL_VERSION,
         jobId,
         operation: "inspect",
         revisionId,
@@ -252,7 +254,7 @@ async function main() {
         diagnostics: [],
       };
       const manifestInfo = writeArtifact(join(outputDir, "manifest.json"), JSON.stringify(manifest));
-      emit({ protocolVersion: 2, jobId, event: "result", manifest: manifestInfo });
+      emit({ protocolVersion: PROTOCOL_VERSION, jobId, event: "result", manifest: manifestInfo });
       process.exit(0);
       return;
     }
@@ -282,7 +284,7 @@ async function main() {
         outcomes: { ...outcomesInfo, recordCount: 0 },
       };
       const manifest = {
-        protocolVersion: 2,
+        protocolVersion: PROTOCOL_VERSION,
         jobId,
         operation: "inspect",
         revisionId,
@@ -296,7 +298,7 @@ async function main() {
         diagnostics: [],
       };
       const manifestInfo = writeArtifact(join(outputDir, "manifest.json"), JSON.stringify(manifest));
-      emit({ protocolVersion: 2, jobId, event: "result", manifest: manifestInfo });
+      emit({ protocolVersion: PROTOCOL_VERSION, jobId, event: "result", manifest: manifestInfo });
       process.exit(0);
       return;
     }

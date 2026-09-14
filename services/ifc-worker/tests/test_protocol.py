@@ -1,21 +1,26 @@
-"""Pydantic model validation for the request envelope (docs/contracts/worker-v1.md)."""
+"""Pydantic model validation for the request envelope (docs/contracts/worker-v2.md)."""
 
 from __future__ import annotations
+
+import json
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
 from ifc_worker.protocol import Request
 
-VALID_INSPECT_REQUEST = {
-    "protocolVersion": 2,
-    "jobId": "job-1",
-    "operation": "inspect",
-    "model": {"path": "/data/a.ifc", "sha256": "0" * 64, "revisionId": "revision-1"},
-    "ids": None,
-    "outputDir": "/data/jobs/job-1",
-    "settings": {"geometry": True},
-}
+VALID_INSPECT_REQUEST = json.loads(
+    (
+        Path(__file__).resolve().parents[3]
+        / "schemas"
+        / "worker"
+        / "v2"
+        / "fixtures"
+        / "valid"
+        / "request-inspect.json"
+    ).read_text(encoding="utf-8")
+)
 
 
 def test_valid_inspect_request_parses() -> None:
@@ -59,7 +64,7 @@ def test_missing_required_field_is_rejected() -> None:
         Request.model_validate(payload)
 
 
-def test_settings_geometry_defaults_true() -> None:
+def test_settings_geometry_is_required() -> None:
     payload = {**VALID_INSPECT_REQUEST, "settings": {}}
-    request = Request.model_validate(payload)
-    assert request.settings.geometry is True
+    with pytest.raises(ValidationError):
+        Request.model_validate(payload)

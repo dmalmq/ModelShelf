@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "versions.schema.json",
+  "title": "WorkerVersions",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["worker", "ifcOpenShell", "ifcTester", "extraction", "scopeSemantics"],
+  "properties": {
+    "worker": { "type": "string", "minLength": 1 },
+    "ifcOpenShell": { "type": "string", "minLength": 1 },
+    "ifcTester": { "type": "string", "minLength": 1 },
+    "extraction": { "type": "string", "minLength": 1 },
+    "scopeSemantics": { "type": "string", "minLength": 1 }
+  }
+}

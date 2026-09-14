@@ -1,0 +1,6 @@
+{
+  "protocolVersion": 2,
+  "jobId": "job-1",
+  "event": "log",
+  "stage": "loading"
+}

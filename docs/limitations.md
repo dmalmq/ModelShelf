@@ -35,7 +35,7 @@ the contract documents (`docs/contracts/`), and the sample documentation
   `ifctester==0.8.5` and `ifcopenshell==0.8.5` in
   `services/ifc-worker/pyproject.toml` and `uv.lock`.
 - Unsupported evaluation produces `incomplete` outcomes, never a pass
-  (`docs/contracts/worker-v1.md`). Invalid IDS XML or schema fails the job.
+  (`docs/contracts/worker-v2.md`). Invalid IDS XML or schema fails the job.
 - `crates/ids` is a reference/test engine and is never used for live scoring;
   IfcTester is the only scorer (map notes 2026-09-07; plan-alignment review
   2026-09-09; README). Its conformance baseline is 288/307 with 19 known gaps
@@ -56,7 +56,7 @@ the contract documents (`docs/contracts/`), and the sample documentation
 
 - Unsupported representations stay `unsupported`. The worker reports geometry
   per object as `available`, `absent`, or `unsupported` and never collapses
-  them (`docs/contracts/worker-v1.md`).
+  them (`docs/contracts/worker-v2.md`).
 - The synthetic fixture walls are `IfcBlock` CSG primitives that the browser
   IFC engine cannot tessellate, so fixture members are listed as without
   geometry in the browser (tickets 11 and 15, limits). Drawable geometry is
@@ -75,7 +75,7 @@ the contract documents (`docs/contracts/`), and the sample documentation
   decision whether to surface rotation as a change kind; it stays open.
 - Mixed units are normalized for length, area, and volume measures only
   (ticket 12; plan). Unsupported units keep the raw value with a null
-  `siValue`/`dimension` (`docs/contracts/worker-v1.md`). The Snowdon set
+  `siValue`/`dimension` (`docs/contracts/worker-v2.md`). The Snowdon set
   exercises `FOOT` units (`samples/snowdon-towers/README.md`).
 - Quantization (lengths to 0.1 mm, directions to 1e-6) is not a guarantee that
   any two values within tolerance share a hash (plan fingerprint policy).
@@ -99,10 +99,12 @@ the contract documents (`docs/contracts/`), and the sample documentation
 
 ## Worker protocol
 
-- The worker job envelope has no machine-readable schema yet. Ticket 25 owns
-  publishing `schemas/worker-v1.schema.json` and settling the protocol version
-  (the code and contract say 2; the plan and filename say 1). The model
-  payload schemas under `schemas/model/v1/` are not affected.
+- The live worker job envelope is protocol 2. Canonical JSON Schema lives in
+  `schemas/worker/v2/` and the human contract is `docs/contracts/worker-v2.md`.
+  Drift is checked by `node scripts/verify-worker-envelope.ts --check`.
+  Unpublished v1 combined `objects.jsonl` never shipped; there is no
+  published combined v1 envelope schema file. The model payload schemas under
+  `schemas/model/v1/` are not affected.
 
 ## Sample redistribution
 

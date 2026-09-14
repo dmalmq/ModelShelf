@@ -1,7 +1,7 @@
 -- Durable ingestion job queue. Uploading a revision returns a job immediately
 -- (202); a single background worker (jobs.rs) claims queued jobs one at a time
 -- so at most one heavy ifc-worker invocation ever runs concurrently, invokes the
--- authoritative worker (docs/contracts/worker-v1.md), and only inserts
+-- authoritative worker (docs/contracts/worker-v2.md), and only inserts
 -- model_revisions/objects once its output is fully validated. A job still
 -- 'running' when the process exits is recovered as 'failed' on the next
 -- startup (db.rs::recover_interrupted_jobs) since it can never resume.

@@ -160,6 +160,7 @@ Verification commands and what each proves:
 | --- | --- |
 | `node scripts/generate-model-contracts.ts --check` | Fails if the committed generated bindings have drifted from the canonical `schemas/model/v1/` files (ticket 18). |
 | `node scripts/verify-model-contracts.ts` | Proves a real Python-produced payload is consumed by both Rust and TypeScript and that none of the three packages import application, database, or checking-engine code (ticket 18). |
+| `node scripts/verify-worker-envelope.ts --check` | Fails if Python, Rust, or Ajv drift from `schemas/worker/v2/` goldens, or if a live path still cites the unpublished v1 contract filename (ticket 25). |
 | `node scripts/verify-viewer.ts` | Combined scenario (default): the real BLCJ models load and align in the browser, duplicate-GlobalId revisions select independently, an empty model stays ready without bounds, and unload releases resources (ticket 07). |
 | `node scripts/verify-viewer.ts --scenario inspection` | Finding inspector: a 100+ object finding highlights every member, filters, section cut, isolation/reset, property inspection, and incomplete-evidence handling (ticket 08). |
 | `node scripts/verify-viewer.ts --scenario standalone` | Standalone example: proves `packages/model-viewer` runs in a plain browser with the checker, worker, and Next.js stopped, exercising pick, highlight, isolate, section, and unload through public exports only, with the import-boundary check (`scripts/check-viewer-imports.ts`) green (ticket 19, landing as this ticket's prerequisite). |

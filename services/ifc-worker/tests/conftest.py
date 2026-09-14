@@ -36,7 +36,7 @@ class WorkerRun:
 
 def run_worker(request_path: Path) -> WorkerRun:
     """Invokes the real `ifc-worker` entrypoint exactly as documented
-    (docs/contracts/worker-v1.md), as a real subprocess, and parses stdout
+    (docs/contracts/worker-v2.md), as a real subprocess, and parses stdout
     strictly as NDJSON (a non-JSON or trailing-blank line here is itself a
     protocol-framing bug).
     """

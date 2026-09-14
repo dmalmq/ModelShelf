@@ -1,6 +1,6 @@
 # IFC worker protocol v2
 
-The unpublished v1 combined `objects.jsonl` envelope never shipped. Protocol 2 emits the shared `schemas/model/v1` payloads as separate artifacts. Job and progress envelopes stay worker-specific.
+The unpublished v1 combined `objects.jsonl` envelope never shipped. Protocol 2 emits the shared `schemas/model/v1` payloads as separate artifacts. Job and progress envelopes stay worker-specific. Machine-readable shapes live in `schemas/worker/v2/`.
 
 Run `uv run --locked --project services/ifc-worker ifc-worker --request /absolute/request.json`.
 All paths are absolute. The caller creates a fresh output directory for each job. Inputs are immutable and verified before parsing. No database access occurs in the worker.

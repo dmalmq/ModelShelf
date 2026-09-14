@@ -34,7 +34,7 @@ select = ["ALL"]
 #   crates/*, packages/model-contracts-py); module-level "why" docstrings stay,
 #   but a docstring is not required on every function/class/test.
 # - N815: wire-format fields (protocolVersion, jobId, ...) are deliberately
-#   camelCase to match docs/contracts/worker-v1.md and schemas/model/v1 exactly.
+#   camelCase to match docs/contracts/worker-v2.md and schemas/model/v1 exactly.
 # - T201: this package IS a CLI whose stdout protocol is print()-ed NDJSON.
 # - S101: assert is pytest's actual assertion mechanism in tests/.
 # - COM812: conflicts with the ruff formatter (ruff's own warning).

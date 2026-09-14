@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "protocol-version.schema.json",
+  "title": "ProtocolVersion",
+  "type": "integer",
+  "const": 2
+}

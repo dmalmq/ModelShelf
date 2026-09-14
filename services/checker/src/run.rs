@@ -1763,6 +1763,7 @@ output_dir = pathlib.Path(req["outputDir"])
 output_dir.mkdir(parents=True, exist_ok=True)
 revision_id = req["model"]["revisionId"]
 model_sha = req["model"]["sha256"]
+ids_sha = None if req.get("ids") is None else req["ids"]["sha256"]
 express_id = 1
 object_id = "occ_" + sha256(f"{revision_id}:{express_id}".encode())[:16]
 def write(name, text):
@@ -1817,7 +1818,7 @@ manifest = {
     "operation": "validate",
     "revisionId": revision_id,
     "modelSha256": model_sha,
-    "idsSha256": None,
+    "idsSha256": ids_sha,
     "versions": {
         "worker": "9.9.9-test",
         "ifcOpenShell": "8.8.8",

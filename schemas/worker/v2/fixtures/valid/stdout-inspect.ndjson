@@ -1,0 +1,2 @@
+{"protocolVersion":2,"jobId":"job-1","event":"progress","stage":"loading"}
+{"protocolVersion":2,"jobId":"job-1","event":"result","manifest":{"path":"/data/jobs/job-1/manifest.json","sha256":"1111111111111111111111111111111111111111111111111111111111111111","size":1234}}

@@ -600,7 +600,7 @@ pub async fn load_models(pool: &SqlitePool, delivery_id: &str) -> Result<Vec<Mod
 /// trustworthy snapshot: this returns `fingerprint_profile_mismatch` rather than
 /// fabricating one. `origin_m` reads the translation column (indices 3, 7, 11)
 /// of the stored row-major 3x4 placement in metres
-/// (`docs/contracts/worker-v1.md`); an unparseable placement yields `None`.
+/// (`docs/contracts/worker-v2.md`); an unparseable placement yields `None`.
 async fn load_diff_objects(
     pool: &SqlitePool,
     model_id: &str,

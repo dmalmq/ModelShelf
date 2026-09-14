@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "progress-event.schema.json",
+  "title": "ProgressEvent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocolVersion", "jobId", "event", "stage"],
+  "properties": {
+    "protocolVersion": { "$ref": "protocol-version.schema.json" },
+    "jobId": { "type": "string", "minLength": 1 },
+    "event": { "const": "progress" },
+    "stage": { "type": "string", "minLength": 1 }
+  }
+}

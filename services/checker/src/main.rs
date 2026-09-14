@@ -22,6 +22,7 @@ mod seed;
 mod sources;
 mod state;
 mod upload;
+mod worker_envelope;
 mod worker_slot;
 
 use std::net::SocketAddr;
@@ -47,6 +48,19 @@ fn main() {
     let Some(command) = args.first().map(String::as_str) else {
         usage_and_exit(2);
     };
+
+    if command == "dump-worker-envelope" {
+        match serde_json::to_string(&worker_envelope::dump_envelope_goldens()) {
+            Ok(json) => {
+                println!("{json}");
+                return;
+            }
+            Err(err) => {
+                eprintln!("{err}");
+                std::process::exit(1);
+            }
+        }
+    }
 
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()

@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "model-ref.schema.json",
+  "title": "ModelRef",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["path", "sha256", "revisionId"],
+  "properties": {
+    "path": { "type": "string", "minLength": 1 },
+    "sha256": { "$ref": "sha256.schema.json" },
+    "revisionId": { "type": "string", "minLength": 1 }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "stdout-event.schema.json",
+  "title": "StdoutEvent",
+  "oneOf": [
+    { "$ref": "progress-event.schema.json" },
+    { "$ref": "result-event.schema.json" }
+  ]
+}

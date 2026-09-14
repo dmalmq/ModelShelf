@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "manifest.schema.json",
+  "title": "Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocolVersion",
+    "jobId",
+    "operation",
+    "revisionId",
+    "modelSha256",
+    "idsSha256",
+    "versions",
+    "artifacts",
+    "diagnostics"
+  ],
+  "properties": {
+    "protocolVersion": { "$ref": "protocol-version.schema.json" },
+    "jobId": { "type": "string", "minLength": 1 },
+    "operation": { "enum": ["inspect", "validate"] },
+    "revisionId": { "type": "string", "minLength": 1 },
+    "modelSha256": { "$ref": "sha256.schema.json" },
+    "idsSha256": {
+      "anyOf": [{ "$ref": "sha256.schema.json" }, { "type": "null" }]
+    },
+    "versions": { "$ref": "versions.schema.json" },
+    "artifacts": { "$ref": "job-artifacts.schema.json" },
+    "diagnostics": { "type": "array", "items": { "type": "string" } }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "operation": { "const": "validate" } },
+        "required": ["operation"]
+      },
+      "then": {
+        "properties": { "idsSha256": { "$ref": "sha256.schema.json" } }
+      }
+    },
+    {
+      "if": {
+        "properties": { "operation": { "const": "inspect" } },
+        "required": ["operation"]
+      },
+      "then": {
+        "properties": { "idsSha256": { "type": "null" } }
+      }
+    }
+  ]
+}
