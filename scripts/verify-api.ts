@@ -1572,6 +1572,128 @@ async function pageAllFindingObjects(base, findingId) {
   return { total, objects };
 }
 
+function nearlyEqual(left, right, epsilon = 1e-9) {
+  return Math.abs(left - right) < epsilon;
+}
+
+function lengthScaleSet(models) {
+  return (models ?? []).map((model) => model.lengthToMetre);
+}
+
+function matchesScalePair(actual, expected) {
+  if (actual.length !== expected.length) return false;
+  const remaining = [...expected];
+  for (const value of actual) {
+    const index = remaining.findIndex((candidate) => nearlyEqual(value, candidate));
+    if (index < 0) return false;
+    remaining.splice(index, 1);
+  }
+  return true;
+}
+
+function fireRatingFinding(runJson) {
+  const findings = runJson?.scorecard?.flatMap((band) => band.categories.flatMap((c) => c.findings)) ?? [];
+  return findings.find((finding) => finding.specName === "Wall declares a fire rating") ?? findings[0];
+}
+
+async function runArchPair(base, packVersionId, label, leftPath, leftName, rightPath, rightName) {
+  const left = (await api(base, "POST", "/api/projects/demo-project/source-models", { name: `${label} left`, discipline: "ARCH" })).json;
+  const right = (await api(base, "POST", "/api/projects/demo-project/source-models", { name: `${label} right`, discipline: "ARCH" })).json;
+  const leftRev = await uploadFileAndAwait(base, left.id, leftName, leftPath);
+  const rightRev = await uploadFileAndAwait(base, right.id, rightName, rightPath);
+  const delivery = (await api(base, "POST", "/api/projects/demo-project/deliveries", { label })).json;
+  await api(base, "POST", `/api/deliveries/${delivery.id}/members`, { sourceModelId: left.id, modelRevisionId: leftRev.job.modelRevisionId });
+  await api(base, "POST", `/api/deliveries/${delivery.id}/members`, { sourceModelId: right.id, modelRevisionId: rightRev.job.modelRevisionId });
+  await api(base, "POST", `/api/deliveries/${delivery.id}/finalize`, {});
+  return api(base, "POST", "/api/runs", { deliveryId: delivery.id, packVersionId });
+}
+
+async function assertMixedUnitDelivery(base, packVersionId, mixed, idsBase, check, log) {
+  const fixturesDir = join(REPO_ROOT, "packs", "demo", "fixtures");
+  const metricPath = join(fixturesDir, mixed.metricIfc);
+  const imperialPath = join(fixturesDir, mixed.imperialIfc);
+  const metricRun = await runArchPair(base, packVersionId, "Metric equivalent", metricPath, mixed.metricIfc, metricPath, `copy-${mixed.metricIfc}`);
+  const mixedRun = await runArchPair(base, packVersionId, "Mixed units", metricPath, mixed.metricIfc, imperialPath, mixed.imperialIfc);
+  log("metric-equivalent-run.json", metricRun.json);
+  log("mixed-units-run.json", mixedRun.json);
+  const metricFinding = fireRatingFinding(metricRun.json);
+  const mixedFinding = fireRatingFinding(mixedRun.json);
+  const expectedCount = idsBase.fail * 2;
+  check(
+    "metric {base, base} FireRating objectCount is idsSummary.base.fail * 2",
+    metricRun.status === 200 && metricRun.json?.run?.status === "completed" && metricFinding?.objectCount === expectedCount,
+    JSON.stringify({ status: metricRun.status, count: metricFinding?.objectCount, expectedCount }),
+  );
+  check(
+    "metric {base, base} lengthToMetre is {1, 1}",
+    matchesScalePair(lengthScaleSet(metricRun.json?.models), [mixed.metricLengthToMetre, mixed.metricLengthToMetre]),
+    JSON.stringify(lengthScaleSet(metricRun.json?.models)),
+  );
+  check(
+    "mixed {base, foot} FireRating objectCount equals the metric equivalent",
+    mixedRun.status === 200 && mixedRun.json?.run?.status === "completed" && mixedFinding?.objectCount === expectedCount && mixedFinding?.objectCount === metricFinding?.objectCount,
+    JSON.stringify({ mixed: mixedFinding?.objectCount, metric: metricFinding?.objectCount, expectedCount }),
+  );
+  check(
+    "mixed {base, foot} lengthToMetre is {1, 0.3048}",
+    matchesScalePair(lengthScaleSet(mixedRun.json?.models), [mixed.metricLengthToMetre, mixed.imperialLengthToMetre]),
+    JSON.stringify(lengthScaleSet(mixedRun.json?.models)),
+  );
+  check(
+    "mixed-unit FireRating identity is not comparison summary.mixed",
+    mixedRun.json?.summary === undefined && mixedRun.json?.run?.incompleteCount === 0 && mixedFinding?.objectCount === expectedCount,
+    JSON.stringify({ summary: mixedRun.json?.summary, incompleteCount: mixedRun.json?.run?.incompleteCount }),
+  );
+}
+
+async function assertUnsupportedRuleRun(base, packVersionId, rule, check, log, dataDir) {
+  const ifcPath = join(REPO_ROOT, "packs", "demo", "fixtures", rule.modelIfc);
+  const source = (await api(base, "POST", "/api/projects/demo-project/source-models", { name: "IFC2X3 wall", discipline: "ARCH" })).json;
+  const revision = await uploadFileAndAwait(base, source.id, rule.modelIfc, ifcPath);
+  check(
+    "ifc2x3-wall ingest completes",
+    revision.job?.status === "completed",
+    JSON.stringify(revision.job),
+  );
+  const delivery = (await api(base, "POST", "/api/projects/demo-project/deliveries", { label: "Unsupported rule" })).json;
+  await api(base, "POST", `/api/deliveries/${delivery.id}/members`, { sourceModelId: source.id, modelRevisionId: revision.job.modelRevisionId });
+  await api(base, "POST", `/api/deliveries/${delivery.id}/finalize`, {});
+  const run = await api(base, "POST", "/api/runs", { deliveryId: delivery.id, packVersionId });
+  log("unsupported-rule-run.json", run.json);
+  check(
+    "unsupported-rule run completed with passCount 0 and failCount 0",
+    run.status === 200 && run.json?.run?.status === "completed" && run.json?.run?.passCount === 0 && run.json?.run?.failCount === 0,
+    JSON.stringify({ status: run.status, run: run.json?.run }),
+  );
+  const specs = run.json?.specs ?? [];
+  check(
+    "unsupported-rule specs[].outcome is review_incomplete",
+    specs.length >= 1 && specs.every((spec) => spec.outcome === "review_incomplete") && run.json?.run?.incompleteCount >= 1,
+    JSON.stringify(specs),
+  );
+  const reviewIncomplete = run.json?.reviewIncomplete ?? [];
+  check(
+    "unsupported-rule reviewIncomplete is nonempty and every item is incomplete",
+    reviewIncomplete.length >= 1 && reviewIncomplete.every((item) => item.incomplete === true),
+    JSON.stringify(reviewIncomplete),
+  );
+  const decided = (run.json?.scorecard ?? []).flatMap((band) => band.categories.flatMap((c) => c.findings));
+  check(
+    "unsupported-rule spec is absent from scorecard pass/fail bands",
+    decided.every((finding) => finding.specName !== "Wall declares a fire rating" || finding.incomplete === true),
+    JSON.stringify(decided.map((finding) => ({ specName: finding.specName, incomplete: finding.incomplete }))),
+  );
+  const modelId = run.json?.models?.[0]?.id;
+  const manifestPath = join(dataDir, "runs", run.json?.run?.id, modelId, "manifest.json");
+  const manifest = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, "utf8")) : null;
+  const diagnostics = (manifest?.diagnostics ?? []).join(" ").toLowerCase();
+  check(
+    "worker manifest.diagnostics mentions unsupported or schema",
+    Boolean(manifest) && (rule.diagnosticSubstrings ?? []).every((needle) => diagnostics.includes(String(needle).toLowerCase())),
+    JSON.stringify({ manifestPath, diagnostics: manifest?.diagnostics, exists: existsSync(manifestPath) }),
+  );
+}
+
 async function runChecksScenario(runDir, check, log) {
   const dataDir = mkdtempSync(join(tmpdir(), "modelshelf-verify-api-checks-"));
   let server;
@@ -1691,6 +1813,10 @@ async function runChecksScenario(runDir, check, log) {
       paged.objects.every((o) => o.ref?.revisionId === o.modelId && typeof o.ref?.objectId === "string" && o.ref.objectId.startsWith("occ_")),
       JSON.stringify(paged.objects[100]),
     );
+
+    const oracle = JSON.parse(readFileSync(join(REPO_ROOT, "packs", "demo", "fixtures", "oracle.json"), "utf8"));
+    await assertMixedUnitDelivery(base, packVersion.id, oracle.proofs.mixed_units, oracle.idsSummary.base, check, log);
+    await assertUnsupportedRuleRun(base, packVersion.id, oracle.proofs.unsupported_rule, check, log, dataDir);
 
     const beforeRestart = {
       runId: run.json.run.id,

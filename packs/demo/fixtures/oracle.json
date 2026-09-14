@@ -886,8 +886,95 @@
   "fixtureSummary": {
     "basePath": "base.ifc",
     "headPath": "head.ifc",
+    "footPath": "foot.ifc",
+    "unsupportedPath": "unsupported.ifc",
+    "ifc2x3WallPath": "ifc2x3-wall.ifc",
     "totalDistinctTrackedObjects": 141,
     "generatedBy": "scripts/generate-demo-fixtures.py"
+  },
+  "proofs": {
+    "mixed_units": {
+      "kind": "score_identity",
+      "metricIfc": "base.ifc",
+      "imperialIfc": "foot.ifc",
+      "metricLengthToMetre": 1.0,
+      "imperialLengthToMetre": 0.3048,
+      "imperialUnitName": "FOOT",
+      "idsEqualTo": "base",
+      "projectors": [
+        "oracle",
+        "checks"
+      ]
+    },
+    "unsupported_rule": {
+      "kind": "unevaluated_spec",
+      "modelIfc": "ifc2x3-wall.ifc",
+      "idsPath": "packs/demo/fixtures.ids",
+      "expectedStatus": "incomplete",
+      "never": [
+        "passed",
+        "failed"
+      ],
+      "diagnosticSubstrings": [
+        "unsupported",
+        "schema"
+      ],
+      "projectors": [
+        "oracle",
+        "checks"
+      ]
+    },
+    "empty_catalog": {
+      "kind": "empty_catalog",
+      "modes": [
+        "unseeded_existing",
+        "missing_path"
+      ],
+      "projects": 0,
+      "packs": 0,
+      "projectors": [
+        "qa_harness"
+      ]
+    },
+    "unsupported_input": {
+      "kind": "skipped_property_form",
+      "ifc": "unsupported.ifc",
+      "objectKey": "Unsupported-0",
+      "ifcClass": "IfcDoor",
+      "skippedTypes": [
+        "IfcDoorLiningProperties"
+      ],
+      "ids": {
+        "base": {
+          "outcome": "incomplete",
+          "reason": "skipped IfcDoorLiningProperties",
+          "keys": [
+            "Unsupported-0"
+          ]
+        },
+        "head": {
+          "outcome": "incomplete",
+          "reason": "skipped IfcDoorLiningProperties",
+          "keys": [
+            "Unsupported-0"
+          ]
+        }
+      },
+      "projectors": [
+        "oracle"
+      ]
+    },
+    "japanese_names": {
+      "kind": "verbatim_bytes",
+      "ifc": "unsupported.ifc",
+      "objectKey": "Unsupported-0",
+      "pset": "Rebro_PartsData",
+      "name": "用途",
+      "value": "給水",
+      "projectors": [
+        "worker_pytest"
+      ]
+    }
   },
   "notes": [
     "Intended diffs describe physical/check outcomes. engineLimitation records current matcher behavior that must not be treated as the intended result.",

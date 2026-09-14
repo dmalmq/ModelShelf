@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Smoke-tests the modelshelf-checker service against a real, isolated process:
-// build, seed twice (with samples/ids/seed-smoke.ids, so pack-version idempotency
+// build, seed twice (with packs/demo/fixtures.ids, so pack-version idempotency
 // is actually exercised, not just the empty-packs-dir no-op case), start serve, hit
 // /api/health twice, reject an unknown CLI command, then tear everything down.
 // Every process/port/data-dir it touches is its own; nothing here reads or
@@ -10,16 +10,18 @@
 //
 // Usage: node scripts/qa-harness.ts
 
-import { spawn } from "node:child_process";
-import { existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, cpSync } from "node:fs";
+import { spawn, type ChildProcess } from "node:child_process";
+import { existsSync, mkdtempSync, mkdirSync, writeFileSync, rmSync, cpSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { BIN_PATH, REPO_ROOT, buildBinary, createChecker, freePort, runCli, stopProcess, waitForHealth } from "./lib/checker-harness.ts";
 
+const ORACLE = join(REPO_ROOT, "packs", "demo", "fixtures", "oracle.json");
+
 const EVIDENCE_DIR = join(REPO_ROOT, ".omo", "evidence", "modelshelf-prototype", "task-1");
 const SAMPLE_IDS =
-  process.env.MODELSHELF_QA_IDS ?? join(REPO_ROOT, "samples", "ids", "seed-smoke.ids");
+  process.env.MODELSHELF_QA_IDS ?? join(REPO_ROOT, "packs", "demo", "fixtures.ids");
 
 async function main() {
   const { check, failureCount } = createChecker();
@@ -35,6 +37,14 @@ async function main() {
   let serverLog = "";
 
   try {
+    const empty = JSON.parse(readFileSync(ORACLE, "utf8")).proofs.empty_catalog;
+    const missingPath = join(tmpdir(), `modelshelf-qa-missing-${process.pid}`);
+    if (existsSync(missingPath)) {
+      throw new Error(`missing-path fixture already exists: ${missingPath}`);
+    }
+    await assertHonestEmpty(check, missingPath, "missing path", empty);
+    await assertHonestEmpty(check, mkdtempSync(join(tmpdir(), "modelshelf-qa-unseeded-")), "unseeded dir", empty);
+
     dataDir = mkdtempSync(join(tmpdir(), "modelshelf-qa-data-"));
     packsDir = mkdtempSync(join(tmpdir(), "modelshelf-qa-packs-"));
     if (!existsSync(SAMPLE_IDS)) {
@@ -113,6 +123,54 @@ async function main() {
     process.exit(1);
   }
   console.log("\nall checks passed");
+}
+
+async function serveBare(dataDir: string): Promise<{ port: number; child: ChildProcess }> {
+  const port = await freePort();
+  const child = spawn(BIN_PATH, ["serve", "--data-dir", dataDir, "--port", String(port)], {
+    cwd: REPO_ROOT,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  try {
+    await waitForHealth(port, { child });
+    return { port, child };
+  } catch (err) {
+    await stopProcess(child);
+    throw err;
+  }
+}
+
+async function listCatalog(port: number): Promise<{ projects: unknown[]; packs: unknown[] }> {
+  const projects = await (await fetch(`http://127.0.0.1:${port}/api/projects`)).json();
+  const packs = await (await fetch(`http://127.0.0.1:${port}/api/packs`)).json();
+  return { projects, packs };
+}
+
+async function assertHonestEmpty(
+  check: (label: string, condition: unknown, detail?: string) => void,
+  dataDir: string,
+  label: string,
+  expected: { projects: number; packs: number },
+): Promise<void> {
+  let child: ChildProcess | undefined;
+  try {
+    const served = await serveBare(dataDir);
+    child = served.child;
+    const catalog = await listCatalog(served.port);
+    check(
+      `${label}: GET /api/projects length ${expected.projects}`,
+      Array.isArray(catalog.projects) && catalog.projects.length === expected.projects,
+      JSON.stringify(catalog.projects),
+    );
+    check(
+      `${label}: GET /api/packs length ${expected.packs}`,
+      Array.isArray(catalog.packs) && catalog.packs.length === expected.packs,
+      JSON.stringify(catalog.packs),
+    );
+  } finally {
+    await stopProcess(child);
+    rmSync(dataDir, { recursive: true, force: true });
+  }
 }
 
 main().catch((err) => {
