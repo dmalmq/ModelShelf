@@ -1,13 +1,11 @@
+import { expressIdToObjectId } from "@modelshelf/model-contracts";
 import { objectIdFrom, revisionIdFrom, type ObjectId, type RevisionId } from "../object-ref";
 
 const ifcObjectIdPattern = /^occ_[0-9a-f]{16}$/;
 
 export async function ifcObjectId(revisionId: RevisionId, expressId: number): Promise<ObjectId> {
   if (!Number.isSafeInteger(expressId) || expressId < 0) throw new Error("expressId must be a non-negative integer");
-  const bytes = new TextEncoder().encode(`${revisionId}:${expressId}`);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  const hex = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-  return objectIdFrom(`occ_${hex.slice(0, 16)}`);
+  return objectIdFrom(await expressIdToObjectId(revisionId, expressId));
 }
 
 export function parseIfcObjectId(value: unknown): ObjectId {
