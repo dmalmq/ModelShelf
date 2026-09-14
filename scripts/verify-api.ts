@@ -1093,6 +1093,84 @@ async function runWorkerFailureScenario(check, log) {
   await checkRestartRecovery(check, log);
   await checkSharedWorkerGate(check, log);
   await checkRunInterruptedIsRecoverable(check, log);
+  await checkOrphanedWorkerGroup(check, log);
+}
+
+function pidAlive(pid) {
+  if (!Number.isInteger(pid)) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function checkOrphanedWorkerGroup(check, log) {
+  const dataDir = mkdtempSync(join(tmpdir(), "modelshelf-worker-orphan-"));
+  let childPid;
+  try {
+    const seed = runCli(["seed", "--data-dir", dataDir, "--packs-dir", dataDir, "--samples-dir", dataDir]);
+    check("orphan-group: seed succeeds", seed.status === 0, seed.stderr);
+
+    const hanging = await startServer(dataDir, fakeWorkerCommand("hang-child"), { FAKE_WORKER_DELAY_MS: "8000" });
+    let leaderPid;
+    try {
+      const sourceModel = (await api(hanging.base, "POST", "/api/projects/demo-project/source-models", { name: "Orphan Group", discipline: "OTHER" })).json;
+      const enqueued = await uploadRaw(hanging.base, sourceModel.id, "orphan.ifc");
+      check("orphan-group: upload enqueues a job", enqueued.status === 202, JSON.stringify(enqueued));
+
+      let running = false;
+      const runningDeadline = Date.now() + 5000;
+      while (Date.now() < runningDeadline && !running) {
+        const job = (await api(hanging.base, "GET", `/api/jobs/${enqueued.json.id}`)).json;
+        running = job.status === "running";
+        if (!running) await new Promise((r) => setTimeout(r, 50));
+      }
+      check("orphan-group: the job reaches 'running' before the simulated crash", running, "");
+
+      const attemptDir = join(dataDir, "jobs", enqueued.json.id, "attempt-0");
+      const leaderPath = join(attemptDir, "worker.pid");
+      const childPath = join(attemptDir, "worker.child.pid");
+      const pidDeadline = Date.now() + 2000;
+      while (Date.now() < pidDeadline && (!Number.isInteger(leaderPid) || !Number.isInteger(childPid))) {
+        if (existsSync(leaderPath)) leaderPid = Number(readFileSync(leaderPath, "utf8"));
+        if (existsSync(childPath)) childPid = Number(readFileSync(childPath, "utf8"));
+        if (!Number.isInteger(leaderPid) || !Number.isInteger(childPid)) await new Promise((r) => setTimeout(r, 50));
+      }
+      check("orphan-group: hang-child wrote leader and grandchild pids", Number.isInteger(leaderPid) && Number.isInteger(childPid), JSON.stringify({ leaderPid, childPid }));
+
+      hanging.child.kill("SIGKILL");
+      await new Promise((resolve) => hanging.child.once("exit", resolve));
+
+      const goneDeadline = Date.now() + 2000;
+      while (Date.now() < goneDeadline && pidAlive(leaderPid)) {
+        await new Promise((r) => setTimeout(r, 50));
+      }
+      check("orphan-group: PDEATHSIG kills the recorded leader", !pidAlive(leaderPid), `leader=${leaderPid}`);
+      check("orphan-group: a grandchild in the same group survives the leader", pidAlive(childPid), `child=${childPid}`);
+    } finally {
+      log("orphan-group-hang.log", hanging.getLog());
+    }
+
+    const recovered = await startServer(dataDir, undefined);
+    try {
+      const goneDeadline = Date.now() + 2000;
+      while (Date.now() < goneDeadline && pidAlive(childPid)) {
+        await new Promise((r) => setTimeout(r, 50));
+      }
+      check("orphan-group: adopt kills leftover members of the recorded group", !pidAlive(childPid), `child=${childPid}`);
+      check("orphan-group: the stale slot file was reconciled away", readSlotFile(dataDir) === null, "");
+    } finally {
+      log("orphan-group-recovered.log", recovered.getLog());
+      await stopProcess(recovered.child);
+    }
+  } finally {
+    if (pidAlive(childPid)) {
+      try { process.kill(childPid, "SIGKILL"); } catch { /* already gone */ }
+    }
+    rmSync(dataDir, { recursive: true, force: true });
+  }
 }
 
 /** Direct children of the checker. The spawn path is `sh -c "exec …"`, so those

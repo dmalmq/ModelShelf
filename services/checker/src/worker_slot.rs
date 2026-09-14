@@ -48,6 +48,10 @@ pub struct LiveInvocation {
     pub kind: String,
     pub owner: String,
     pub started_at: String,
+    /// `/proc/<pid>/stat` starttime. Distinguishes this group from a later
+    /// process that reused the leader pid after the group emptied.
+    #[serde(default)]
+    pub starttime: u64,
 }
 
 pub struct Adopted {
@@ -113,17 +117,39 @@ fn slot_file_path(data_dir: &Path) -> PathBuf {
     data_dir.join("worker.slot")
 }
 
-/// `process_group(0)` makes every worker its own group leader, so a recorded
-/// pid whose current pgid still matches is ours and not a reused pid.
+/// Kill leftover members of the recorded group. The leader may already be
+/// gone (`PR_SET_PDEATHSIG` kills only that one process). Linux keeps the pgid
+/// reserved while any member remains, so `kill(-pgid)` still reaches them.
+/// A live pid equal to `pgid` with a different `starttime` is a reused leader
+/// of a new group and is left alone.
 fn kill_stale_process_group(live: &LiveInvocation) {
     let pid = live.pid as libc::pid_t;
     let pgid = live.pgid as libc::pid_t;
-    // SAFETY: plain libc calls on integers; both tolerate a vanished process.
+    // SAFETY: pid/pgid come from the slot file of a data dir this process
+    // exclusively owns. Both calls tolerate ESRCH.
     unsafe {
-        if libc::getpgid(pid) == pgid {
+        let leader_alive = libc::getpgid(pid) == pgid
+            && (live.starttime == 0 || proc_starttime(live.pid) == Some(live.starttime));
+        if leader_alive {
             libc::kill(-pgid, libc::SIGKILL);
+            return;
         }
+        if live.starttime != 0 {
+            if let Some(start) = proc_starttime(live.pgid) {
+                if start != live.starttime {
+                    return;
+                }
+            }
+        }
+        libc::kill(-pgid, libc::SIGKILL);
     }
+}
+
+#[cfg(unix)]
+fn proc_starttime(pid: u32) -> Option<u64> {
+    let text = std::fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
+    let rest = text.rsplit_once(')')?.1;
+    rest.split_whitespace().nth(19)?.parse().ok()
 }
 
 /// RAII claim on `{data_dir}/worker.slot`: created `O_EXCL` before the spawn so a
@@ -381,6 +407,7 @@ async fn run_worker_process(
             kind: kind.to_owned(),
             owner: owner.to_owned(),
             started_at: now_iso(),
+            starttime: proc_starttime(pid).unwrap_or(0),
         })
         .map_err(|err| format!("cannot publish the worker slot: {err}"))?;
     let mut wait = std::pin::pin!(child.wait_with_output());

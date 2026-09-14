@@ -1278,6 +1278,71 @@ mod tests {
         );
     }
 
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn adopt_kills_orphans_after_the_group_leader_exits() {
+        use std::io::{BufRead, BufReader};
+        use std::os::unix::process::CommandExt;
+        use std::process::{Command, Stdio};
+        use std::time::{Duration, Instant};
+
+        let dir = tempfile::tempdir().unwrap();
+        let mut leader = Command::new("sh")
+            .args(["-c", "sleep 120 & echo $!; wait"])
+            .process_group(0)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        let leader_pid = leader.id();
+        let mut stdout = BufReader::new(leader.stdout.take().unwrap());
+        let mut line = String::new();
+        stdout.read_line(&mut line).unwrap();
+        let child_pid: u32 = line.trim().parse().expect("sleep pid");
+        unsafe {
+            libc::kill(leader_pid as libc::pid_t, libc::SIGKILL);
+        }
+        let _ = leader.wait();
+        assert_eq!(
+            unsafe { libc::kill(child_pid as libc::pid_t, 0) },
+            0,
+            "the leftover group member must still be alive after its leader exits"
+        );
+
+        std::fs::write(
+            dir.path().join("worker.slot"),
+            serde_json::json!({
+                "pid": leader_pid,
+                "pgid": leader_pid,
+                "kind": "inspect",
+                "owner": "job-1",
+                "started_at": "x",
+            })
+            .to_string(),
+        )
+        .unwrap();
+
+        let (_state, reconciled) = AppState::open(dir.path(), "true".to_owned()).await.unwrap();
+        assert_eq!(
+            reconciled.orphan_worker.as_ref().map(|live| live.pid),
+            Some(leader_pid)
+        );
+
+        let deadline = Instant::now() + Duration::from_secs(2);
+        let mut gone = false;
+        while Instant::now() < deadline {
+            if unsafe { libc::kill(child_pid as libc::pid_t, 0) } != 0 {
+                gone = true;
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        assert!(
+            gone,
+            "adopt must kill leftover members of the recorded process group, pid={child_pid}"
+        );
+    }
+
     #[tokio::test]
     async fn commit_outcome_failed_writes_no_results_and_a_later_outcome_is_ignored() {
         let dir = tempfile::tempdir().unwrap();
