@@ -15,6 +15,8 @@
   },
   "include": [
     "./check-published-tree.ts",
+    "./check-published-claims.ts",
+    "./lib/published-claims.ts",
     "./sync-tickets.ts",
     "./verify-worker-envelope.ts",
     "./lib/checker-harness.ts",
