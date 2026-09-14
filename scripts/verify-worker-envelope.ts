@@ -416,7 +416,7 @@ function proveRename(): void {
     try {
       const rust = rustDump(join(rustRoot, "Cargo.toml"), {
         ...process.env,
-        CARGO_TARGET_DIR: join(REPO_ROOT, "target"),
+        CARGO_TARGET_DIR: join(rustRoot, "target"),
       });
       const golden = readJson(join(SCHEMA_DIR, "fixtures/valid/request-inspect.json"));
       if (!deepEqual(rust.goldens["request-inspect"], golden)) {
