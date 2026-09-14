@@ -40,22 +40,15 @@ pub async fn create_run(
     Ok(Json(run_detail(&state.pool, &run_id).await?.into()))
 }
 
-/// A run whose inputs are frozen and whose row exists as `running`. `pin` is the
-/// only way in, `settle` consumes `self` and is the only way out, so a pinned run
-/// cannot be settled twice. Nothing outside this impl writes `runs.status` after
-/// pinning.
 pub(crate) struct PinnedRun {
     run_id: String,
     pack_version: PackVersionRow,
-    /// The pinned snapshot, in `run_models.sort_index` order.
     models: Vec<ModelRow>,
     metadata: PackMetadata,
     scope: HashMap<String, Vec<String>>,
 }
 
 impl PinnedRun {
-    /// Everything that can be a real HTTP error happens before the insert: 404
-    /// delivery, 404 pack version, 400 empty delivery, 422 IDS.
     async fn pin(state: &AppState, body: CreateRunBody) -> Result<PinnedRun, ApiError> {
         let delivery: DeliveryRow = sqlx::query_as(&format!("{DELIVERY_SELECT} WHERE id = ?1"))
             .bind(&body.delivery_id)
@@ -188,8 +181,6 @@ impl PinnedRun {
         }
     }
 
-    /// Evaluation failure is a `RunOutcome::Failed` written successfully; only a
-    /// failed terminal write is an `Err`.
     async fn settle(self, state: AppState) -> Result<(), ApiError> {
         let clock = Instant::now();
         let outcome = match evaluate(&state, &self).await {
@@ -200,8 +191,6 @@ impl PinnedRun {
     }
 }
 
-/// Everything the scorecard is built from, held in memory until it can be
-/// written in one transaction with `status = 'completed'`.
 pub(crate) struct EvaluatedRun {
     specs: Vec<SpecAccum>,
     findings: HashMap<String, Accumulated>,
@@ -213,8 +202,6 @@ pub(crate) enum RunOutcome {
     Failed(RunFailure),
 }
 
-/// A non-empty reason a run failed, so `runs.error` is never NULL or blank under
-/// `status = 'failed'`.
 pub(crate) struct RunFailure(String);
 
 impl RunFailure {
@@ -248,11 +235,6 @@ impl RunFailure {
     }
 }
 
-/// Invoke the worker per in-scope pinned model and fold the outcomes. Writes
-/// artifacts and logs to disk as evidence, writes nothing to the database. Each
-/// `invoke` waits for the shared slot on its own, so a run and an ingestion job
-/// interleave between models rather than one blocking the other for its whole
-/// duration.
 async fn evaluate(state: &AppState, pinned: &PinnedRun) -> Result<EvaluatedRun, ApiError> {
     let slot = state.worker()?;
     let run_dir = state.data_dir.join("runs").join(&pinned.run_id);
@@ -320,11 +302,6 @@ async fn evaluate(state: &AppState, pinned: &PinnedRun) -> Result<EvaluatedRun, 
     })
 }
 
-/// The only writer of a run's terminal state and of its results, in one
-/// transaction, compare-and-set on `status = 'running'`. A crash mid-commit
-/// rolls back to `running` with no partial results, so the next startup's
-/// sweep is the whole story; a second write for an already-settled run is a
-/// no-op.
 async fn commit_outcome(
     pool: &SqlitePool,
     run_id: &str,
@@ -397,10 +374,6 @@ async fn commit_outcome(
     Ok(())
 }
 
-/// Every `running` run is dead once no other process can own this data dir.
-/// Zeroes the counts as well as setting the status, so a row a pre-change build
-/// left with counts committed before status cannot survive as a partial
-/// scorecard. Evidence rows are never deleted; `RunView` refuses to render them.
 pub(crate) async fn fail_interrupted(
     tx: &mut Transaction<'_, Sqlite>,
     _lock: &DataDirLock,
@@ -720,8 +693,6 @@ pub async fn run_counts(pool: &SqlitePool, run_id: &str) -> Result<(i64, i64), A
     Ok(crate::dto::run_extras(pool, run_id).await?)
 }
 
-/// `runs.status` is bare TEXT with no CHECK, so an unexpected value becomes an
-/// error here instead of a silent fourth state.
 enum RunStatus {
     Running,
     Completed,
@@ -741,9 +712,6 @@ impl RunStatus {
     }
 }
 
-/// A run as any reader may see it. Only `Completed` carries results, so no
-/// caller can render a scorecard for a run that never finished, including rows
-/// a pre-change build left with evidence under a non-completed status.
 pub(crate) enum RunView {
     Running {
         run: RunRow,
@@ -765,8 +733,6 @@ pub(crate) enum RunView {
     },
 }
 
-/// Reads the row, parses the status, and only queries `findings` and
-/// `run_specs` for a completed run.
 pub async fn run_detail(pool: &SqlitePool, run_id: &str) -> Result<RunView, ApiError> {
     let row = fetch_run_row(pool, run_id).await?;
     let models: Vec<ModelInfo> = load_run_models(pool, &row)
@@ -801,8 +767,6 @@ pub async fn run_detail(pool: &SqlitePool, run_id: &str) -> Result<RunView, ApiE
     }
 }
 
-/// The wire shape is unchanged. A non-completed run serialises an empty
-/// scorecard, empty specs, and the row's zeroed counts, so `score` is null.
 impl From<RunView> for RunDetail {
     fn from(view: RunView) -> RunDetail {
         let bare =
@@ -846,8 +810,6 @@ impl From<RunView> for RunDetail {
     }
 }
 
-/// `(scorecard, review_incomplete)`. Review-incomplete findings are reported
-/// separately so they cannot hide behind a passing score.
 async fn load_findings(
     pool: &SqlitePool,
     run_id: &str,

@@ -9,17 +9,16 @@
 // `packs/demo/fixtures/base.ifc`, the real async job queue, and the real
 // ifc-worker.
 //
-// `--scenario worker-failure` proves the job queue's contract (ticket 04) and
-// the shared heavy-worker slot (ticket 22): every named failure mode
-// (malformed/truncated stdout, duplicate terminal results, wrong job id,
-// nonzero exit, bad artifact hash, a path escaping the job's own output
-// directory, an unsupported protocol version) fails the job without publishing
-// anything; at most one heavy subprocess ever runs at a time across ingestion
-// *and* IDS runs, observed via `pgrep -P` and `{dataDir}/worker.slot`; a job or
-// run still 'running' when the process is killed is recovered as 'failed' on
-// restart; retrying a job is idempotent and a new `POST /api/runs` succeeds
-// after an interrupted run. Failure modes come from a real subprocess
-// (scripts/fixtures/fake-worker.ts) via `--worker-command`.
+// `--scenario worker-failure` proves the job queue's contract (ticket 04):
+// every named failure mode (malformed/truncated stdout, duplicate terminal
+// results, wrong job id, nonzero exit, bad artifact hash, a path escaping the
+// job's own output directory, an unsupported protocol version) fails the job
+// without publishing anything; at most one heavy job ever runs at a time; a
+// job still 'running' when the process is killed is recovered as 'failed' on
+// restart; and retrying is idempotent and, against the real worker, actually
+// succeeds. The failure modes are produced by a real subprocess
+// (scripts/fixtures/fake-worker.ts) substituted in via `--worker-command` —
+// real processes producing real bad output, not a mocked validation result.
 //
 // `--scenario first-loop` proves one complete review loop (ticket 09): seed a
 // delivery from uploaded revisions, score it against a published pack, page a
@@ -1173,9 +1172,6 @@ async function checkOrphanedWorkerGroup(check, log) {
   }
 }
 
-/** Direct children of the checker. The spawn path is `sh -c "exec …"`, so those
- * children *are* the live worker invocations. `pgrep -P` matches on ppid even
- * when tokio spawns from a worker thread. */
 function liveWorkerPids(checkerPid) {
   const out = spawnSync("pgrep", ["-P", String(checkerPid)], { encoding: "utf8" });
   if (out.status === 1) return [];

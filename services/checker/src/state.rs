@@ -1,6 +1,3 @@
-//! Shared service state: the SQLite pool, the content-addressed blob store, the
-//! ingestion job queue's shared handles, and the heavy worker slot.
-
 use std::fs::File;
 use std::os::unix::io::AsRawFd;
 use std::path::{Path, PathBuf};
@@ -12,11 +9,6 @@ use tokio::sync::Notify;
 use crate::error::ApiError;
 use crate::worker_slot::{LiveInvocation, WorkerSlot};
 
-/// Proof that this process exclusively owns `data_dir`: `flock(LOCK_EX|LOCK_NB)`
-/// on `{data_dir}/.lock`, held for the life of `AppState`. Functions that are
-/// only safe under exclusive ownership (`WorkerSlot::adopt`, both
-/// `fail_interrupted` sweeps) take `&DataDirLock`, so `seed` and request
-/// handlers cannot call them.
 pub struct DataDirLock {
     _file: File,
     data_dir: PathBuf,
@@ -50,9 +42,6 @@ impl DataDirLock {
     }
 }
 
-/// What the previous owner of this data dir left behind. An interrupted heavy
-/// job can never be resumed (its worker is gone and its output directory is
-/// half-written), so every field is a visible failure or a killed process.
 #[derive(Debug, Default)]
 pub struct Reconciled {
     pub ingestion_jobs_failed: u64,
@@ -67,15 +56,11 @@ pub struct AppState {
     /// Wakes the background job worker (`jobs::spawn_worker`) as soon as a job
     /// is enqueued or retried, instead of making it poll on a fixed interval.
     pub job_notify: Arc<Notify>,
-    /// `None` only under `seed`, which owns no lock and therefore no slot.
     worker: Option<Arc<WorkerSlot>>,
     _lock: Option<Arc<DataDirLock>>,
 }
 
 impl AppState {
-    /// Exclusive startup: take the lock, migrate, fail every `running` row in
-    /// both tables in one transaction, adopt the worker slot. The caller must
-    /// not bind HTTP before this returns.
     pub async fn open(
         data_dir: &Path,
         worker_command: String,
@@ -105,8 +90,6 @@ impl AppState {
         ))
     }
 
-    /// No lock, no slot, no recovery: seeding must never fail a live job and
-    /// must never spawn a worker.
     pub async fn open_for_seed(data_dir: &Path) -> anyhow::Result<AppState> {
         tokio::fs::create_dir_all(data_dir).await?;
         let pool = crate::db::open(data_dir).await?;

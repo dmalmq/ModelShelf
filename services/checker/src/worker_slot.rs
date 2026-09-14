@@ -1,22 +1,3 @@
-//! The single heavy IFC worker slot for one data directory.
-//!
-//! At most one `ifc-worker` subprocess exists at a time, across ingestion and
-//! IDS runs. `invoke_worker` is private to this module and only reachable
-//! through `WorkerSlot::invoke`, so no call site can skip the gate, and
-//! `WorkerSlot::adopt` requires a `DataDirLock`, so a process that does not
-//! exclusively own the data dir (`seed`) cannot obtain a slot at all.
-//! `{data_dir}/worker.slot` is created `O_EXCL` before each spawn as a loud
-//! tripwire against a second invocation, and is also what verification reads to
-//! observe the live process.
-//!
-//! Validation of the worker-v1 contract (`docs/contracts/worker-v1.md`) is
-//! deliberately paranoid: a real worker never misbehaves, but the caller cannot
-//! assume that, so every failure mode (malformed/truncated stdout, duplicate
-//! terminal results, wrong job id, nonzero exit, bad artifact hash, a path
-//! escaping the invocation's own output directory, a protocol version this
-//! build does not understand) is checked explicitly and fails the invocation
-//! rather than returning anything.
-
 use std::collections::{HashMap, HashSet};
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
@@ -31,19 +12,15 @@ use crate::state::DataDirLock;
 
 pub struct WorkerSlot {
     data_dir: PathBuf,
-    /// `{request}` is substituted with the absolute path to request.json.
     worker_command: String,
     /// One permit. Tokio's semaphore is FIFO, so waiters are served in arrival
     /// order and neither ingestion nor runs can starve the other.
     permit: Semaphore,
 }
 
-/// The one live invocation, mirrored into `{data_dir}/worker.slot` as JSON.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LiveInvocation {
     pub pid: u32,
-    /// The child's own process group (`process_group(0)`), so a reconciling
-    /// startup can kill the whole tree rather than just the `sh`/`exec` target.
     pub pgid: u32,
     pub kind: String,
     pub owner: String,
@@ -60,11 +37,6 @@ pub struct Adopted {
 }
 
 impl WorkerSlot {
-    /// Convergent startup for the process residue only: kill whatever process
-    /// group a stale slot file names if that process is still alive, unlink the
-    /// file, and build the slot. Holding `lock` is the proof that whatever the
-    /// file names belonged to a previous owner of this data dir. Row recovery is
-    /// `AppState::open`'s job, so this never touches SQLite.
     pub async fn adopt(worker_command: String, lock: &DataDirLock) -> anyhow::Result<Adopted> {
         let data_dir = lock.data_dir().to_path_buf();
         let slot_path = slot_file_path(&data_dir);
@@ -91,11 +63,6 @@ impl WorkerSlot {
         })
     }
 
-    /// Run one heavy worker invocation, start to validated finish. Waits for the
-    /// slot, claims the slot file, spawns, waits, validates the whole worker-v1
-    /// contract, and releases. No permit is handed out, so no caller can hold
-    /// the slot across two invocations. `Err` is a human-readable reason; the
-    /// caller decides which row records it.
     pub(crate) async fn invoke(&self, spec: WorkerInvocation) -> Result<WorkerArtifacts, String> {
         let _permit = self
             .permit
@@ -152,9 +119,6 @@ fn proc_starttime(pid: u32) -> Option<u64> {
     rest.split_whitespace().nth(19)?.parse().ok()
 }
 
-/// RAII claim on `{data_dir}/worker.slot`: created `O_EXCL` before the spawn so a
-/// second concurrent invocation cannot start, rewritten with the child's pid and
-/// pgid once it exists, unlinked on drop.
 struct SlotFile {
     path: PathBuf,
 }
@@ -190,12 +154,6 @@ impl Drop for SlotFile {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Invocation types
-// ---------------------------------------------------------------------------
-
-/// The protocol's `jobId` echo field, not a database id: the run path mints a
-/// synthetic `{run_id}-{revision_id}` with no `ingestion_jobs` row behind it.
 pub(crate) struct WorkerJobId(String);
 
 impl WorkerJobId {
@@ -212,8 +170,6 @@ impl WorkerJobId {
     }
 }
 
-/// Which heavy operation to run, with the inputs that operation needs and no
-/// others. Geometry is derived (inspect only), never passed.
 pub(crate) enum WorkerOperation {
     Inspect,
     Validate(IdsInput),
@@ -246,8 +202,6 @@ impl WorkerOperation {
 pub(crate) struct IdsInput {
     pub path: PathBuf,
     pub sha256: String,
-    /// Specification names, not IDS `identifier`s: that is what
-    /// `ids_meta::specification_ids_for` filters and what `validate.py` looks up.
     pub specification_ids: Vec<String>,
 }
 
@@ -255,8 +209,6 @@ pub(crate) struct WorkerInvocation {
     pub job_id: WorkerJobId,
     pub revision_id: String,
     pub content_sha256: String,
-    /// Callers own their on-disk layout: `jobs/{id}/attempt-{n}` or
-    /// `runs/{run_id}/{revision_id}`.
     pub output_dir: PathBuf,
     pub operation: WorkerOperation,
 }
@@ -266,15 +218,8 @@ pub(crate) struct WorkerArtifacts {
     pub descriptor: model_contracts::ModelDescriptor,
     pub outcomes: Vec<u8>,
     pub versions: WorkerVersions,
-    /// Validated geometry chunks keyed by `ObjectRef.objectId` (last chunk wins,
-    /// mirroring the `fingerprint_worker` example join). Empty when geometry was
-    /// not requested or the render capability is not available.
     pub geometry_chunks: HashMap<String, model_contracts::GeometryChunk>,
 }
-
-// ---------------------------------------------------------------------------
-// Worker protocol wire types (docs/contracts/worker-v1.md)
-// ---------------------------------------------------------------------------
 
 #[derive(Deserialize)]
 struct EventEnvelope {
@@ -341,10 +286,6 @@ struct Manifest {
     artifacts: Artifacts,
 }
 
-// ---------------------------------------------------------------------------
-// Invocation and validation
-// ---------------------------------------------------------------------------
-
 fn shell_quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\\''"))
 }
@@ -365,10 +306,6 @@ fn worker_timeout() -> Duration {
         .unwrap_or(Duration::from_secs(15 * 60))
 }
 
-/// Spawns the worker in its own process group, publishes it to the slot file,
-/// and waits. On timeout the whole group is killed and the direct child is still
-/// reaped before returning, so the slot is never released while a worker
-/// process exists.
 async fn run_worker_process(
     program: &str,
     args: &[String],

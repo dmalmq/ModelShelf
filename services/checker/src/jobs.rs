@@ -1,12 +1,3 @@
-//! Durable ingestion job queue: uploading a revision (`sources.rs::upload_revision`)
-//! enqueues a job and returns immediately; this module's background worker claims
-//! one queued job at a time, hands it to the shared `WorkerSlot` (which owns the
-//! `ifc-worker` subprocess and validates every part of the worker-v1 contract
-//! before returning anything), and only then publishes the immutable revision.
-//! Nothing here touches `model-contracts` or `modeldiff` beyond calling their
-//! public functions — job/persistence logic stays in this service, per the
-//! ticket's boundary.
-
 use std::collections::HashMap;
 
 use axum::Json;
@@ -114,9 +105,6 @@ pub async fn enqueue_upload(
 // Background worker loop
 // ---------------------------------------------------------------------------
 
-/// One task per process, claiming durable jobs strictly one after another. This
-/// is the ingestion queue, not the worker lock: `WorkerSlot` is the lock, and it
-/// also covers IDS runs, which never enter this loop.
 pub fn spawn_worker(state: AppState) {
     tokio::spawn(async move {
         loop {
@@ -224,11 +212,6 @@ async fn fail_job(pool: &SqlitePool, job_id: &str, error: String) {
     .await;
 }
 
-/// Any job still `running` when the previous owner of this data dir exited was
-/// interrupted mid-flight and can never resume, so it surfaces as an explicit
-/// failure. `attempt_count` and `started_at` are left alone: `POST /retry` is
-/// still what mints `attempt-{N+1}`. Requires the lock because only the
-/// exclusive owner can know those rows are dead.
 pub(crate) async fn fail_interrupted(
     tx: &mut Transaction<'_, Sqlite>,
     _lock: &DataDirLock,
@@ -245,8 +228,6 @@ pub(crate) async fn fail_interrupted(
     Ok(result.rows_affected())
 }
 
-/// Only reachable after `WorkerSlot::invoke` succeeds. Publication uses the
-/// worker's artifacts alone.
 async fn publish_revision(
     state: &AppState,
     job: &IngestionJobRow,
