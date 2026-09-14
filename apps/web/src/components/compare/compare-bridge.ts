@@ -1,15 +1,11 @@
 import { CHANGE_COLOR, VIEWER_MAX_HIGHLIGHT_GROUPS } from "@/lib/palette";
 import type { ChangeKind, ObjectChange } from "@/lib/types";
+import type { ObjectRef as WireObjectRef } from "@modelshelf/model-contracts";
 import { NO_OVERLAY, parseObjectRef, type ObjectRef, type Overlay } from "model-viewer";
 import type { ModelViewer } from "model-viewer";
 import { compareRefKey, type CompareChangeEntry, type CompareSide } from "./compare-state";
 
-export interface PlainChangeRef {
-  revisionId: string;
-  objectId: string;
-}
-
-export function toViewerRefPlain(ref: PlainChangeRef): ObjectRef | null {
+export function toViewerRefPlain(ref: WireObjectRef): ObjectRef | null {
   try {
     return parseObjectRef(ref);
   } catch {
@@ -17,7 +13,7 @@ export function toViewerRefPlain(ref: PlainChangeRef): ObjectRef | null {
   }
 }
 
-export function activeRefOf(change: ObjectChange, side: CompareSide): PlainChangeRef | null {
+export function activeRefOf(change: ObjectChange, side: CompareSide): WireObjectRef | null {
   const ref = side === "base" ? change.base : change.head;
   if (!ref) return null;
   return { revisionId: ref.revisionId, objectId: ref.objectId };

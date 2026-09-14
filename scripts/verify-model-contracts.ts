@@ -7,7 +7,7 @@
 //   4. none of the three packages import application/database/checking-engine code
 //
 // Everything Python/Rust write lands in one isolated temp directory, removed when
-// this script exits. Usage: node scripts/verify-model-contracts.mjs
+// this script exits. Usage: node scripts/verify-model-contracts.ts
 
 import { spawnSync } from "node:child_process";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readdirSync, readFileSync } from "node:fs";
@@ -53,6 +53,114 @@ function grepFiles(dir, extensions, forbidden) {
   };
   walk(dir);
   return hits;
+}
+
+function walkSourceFiles(dir, extensions) {
+  const files = [];
+  const walk = (d) => {
+    for (const entry of readdirSync(d, { withFileTypes: true })) {
+      if (entry.name === "node_modules" || entry.name === ".venv" || entry.name === "dist" || entry.name === "target") continue;
+      const path = join(d, entry.name);
+      if (entry.isDirectory()) walk(path);
+      else if (extensions.some((ext) => entry.name.endsWith(ext))) files.push(path);
+    }
+  };
+  walk(dir);
+  return files;
+}
+
+function schemaTitles() {
+  const dir = join(REPO_ROOT, "schemas", "model", "v1");
+  const titles = [];
+  for (const name of readdirSync(dir)) {
+    if (!name.endsWith(".schema.json")) continue;
+    const schema = JSON.parse(readFileSync(join(dir, name), "utf8"));
+    if (typeof schema.title === "string" && schema.title.length > 0) titles.push(schema.title);
+  }
+  return titles;
+}
+
+function countTsFields(block) {
+  return [...block.matchAll(/^\s*(?:readonly\s+)?(\w+)\??:/gm)].length;
+}
+
+function scanHandRolledSharedPayloads(roots) {
+  const titles = schemaTitles();
+  const hits = [];
+  for (const root of roots) {
+    for (const file of walkSourceFiles(root, [".ts", ".tsx", ".rs"])) {
+      const content = readFileSync(file, "utf8");
+      if (file.endsWith(".rs")) {
+        for (const title of titles) {
+          if (new RegExp(`\\bstruct\\s+${title}\\b`).test(content)) hits.push(`${file} declares struct ${title}`);
+          if (new RegExp(`\\bstruct\\s+${title}Out\\b`).test(content)) hits.push(`${file} declares struct ${title}Out`);
+        }
+        for (const match of content.matchAll(/struct\s+(\w+)\s*\{([^}]*)\}/gs)) {
+          const fields = [...match[2].matchAll(/pub\s+(\w+)\s*:/g)].map((field) => field[1]);
+          if (fields.length === 2 && fields.includes("revision_id") && fields.includes("object_id")) {
+            hits.push(`${file} restates a two-field ObjectRef as struct ${match[1]}`);
+          }
+        }
+        continue;
+      }
+      for (const title of titles) {
+        if (new RegExp(`(?:export\\s+)?interface\\s+${title}\\b`).test(content)) {
+          hits.push(`${file} declares interface ${title}`);
+        }
+        if (new RegExp(`(?:export\\s+)?type\\s+${title}\\s*=`).test(content)) {
+          hits.push(`${file} declares type ${title}`);
+        }
+      }
+      for (const match of content.matchAll(
+        /(?:export\s+)?(?:interface|type)\s+(\w+)\s*(?:=\s*)?\{([^}]*revisionId:\s*string;[^}]*objectId:\s*string;[^}]*)\}/gs,
+      )) {
+        if (countTsFields(match[2]) === 2) {
+          hits.push(`${file} restates a two-field { revisionId, objectId } type as ${match[1]}`);
+        }
+      }
+    }
+  }
+  return hits;
+}
+
+function scanMappingCopies(roots) {
+  const hits = [];
+  for (const root of roots) {
+    for (const file of walkSourceFiles(root, [".ts", ".tsx", ".mjs", ".js"])) {
+      if (file.includes("model-contracts-ts")) continue;
+      if (file.includes("verify-model-contracts.ts")) continue;
+      const content = readFileSync(file, "utf8");
+      const hashesExpressId =
+        /createHash\(\s*["']sha256["']\s*\)/.test(content) &&
+        /revisionId:\$\{|\$\{revisionId\}:/.test(content) &&
+        /occ_/.test(content);
+      const subtleExpressId =
+        /crypto\.subtle\.digest/.test(content) &&
+        /revisionId:\$\{|\$\{revisionId\}:/.test(content) &&
+        /occ_/.test(content);
+      if (hashesExpressId || subtleExpressId) hits.push(`${file} reimplements occ_+sha256 express-id mapping`);
+    }
+  }
+  return hits;
+}
+
+function selfCheckDuplicateDetector() {
+  const dir = mkdtempSync(join(tmpdir(), "model-contracts-dup-"));
+  try {
+    writeFileSync(
+      join(dir, "dup.ts"),
+      "export interface ObjectRef {\n  revisionId: string;\n  objectId: string;\n}\n",
+    );
+    const payloadCopy = scanHandRolledSharedPayloads([dir]).length > 0;
+    writeFileSync(
+      join(dir, "hash.ts"),
+      'import { createHash } from "node:crypto";\nconst objectId = `occ_${createHash("sha256").update(`${revisionId}:${expressId}`).digest("hex").slice(0, 16)}`;\n',
+    );
+    const mappingCopy = scanMappingCopies([dir]).length > 0;
+    return payloadCopy && mappingCopy;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 async function main() {
@@ -102,7 +210,7 @@ async function main() {
     log("rust-consume.log", rustConsumeLog.join("\n"));
 
     const tsConsumeScript = `
-      import { parseModelDescriptor, parseSemanticModel, parseRenderManifest } from "${join(TS_PKG, "dist", "index.js")}";
+      import { parseModelDescriptor, parseSemanticModel, parseRenderManifest } from "${join(TS_PKG, "dist", "validate.js")}";
       import { readFileSync } from "node:fs";
       const dir = ${JSON.stringify(producedDir)};
       const read = (f) => JSON.parse(readFileSync(dir + "/" + f, "utf8"));
@@ -156,6 +264,32 @@ async function main() {
     /^\s*from fastapi/m,
   ]);
   check("python package has no ifcopenshell/ifctester/database/web-framework imports", pyForbidden.length === 0, pyForbidden.join("; "));
+
+  // --- 5. consumers must not restate shared payload shapes ---
+  const consumerHits = scanHandRolledSharedPayloads([
+    join(REPO_ROOT, "apps", "web", "src"),
+    join(REPO_ROOT, "services", "checker", "src"),
+  ]);
+  check(
+    "apps/web and checker do not restate shared model payloads",
+    consumerHits.length === 0,
+    consumerHits.join("; "),
+  );
+
+  const mappingHits = scanMappingCopies([
+    join(REPO_ROOT, "apps", "web", "src"),
+    join(REPO_ROOT, "services", "checker", "src"),
+    join(REPO_ROOT, "packages", "model-viewer", "src"),
+    join(REPO_ROOT, "scripts"),
+  ]);
+  check(
+    "no extra TypeScript occ_+sha256 express-id mapping outside model-contracts-ts",
+    mappingHits.length === 0,
+    mappingHits.join("; "),
+  );
+
+  const selfHits = selfCheckDuplicateDetector();
+  check("duplicate-payload detector flags a planted ObjectRef copy", selfHits, "");
 
   console.log(`\nevidence written to ${runDir}`);
   if (failures > 0) {

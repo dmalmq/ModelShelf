@@ -1,3 +1,5 @@
+import type { ObjectRef as WireObjectRef } from "@modelshelf/model-contracts";
+
 export type RevisionId = string & { readonly [revisionIdBrand]: "RevisionId" };
 export type ObjectId = string & { readonly [objectIdBrand]: "ObjectId" };
 export type ObjectRefKey = string & { readonly [objectRefKeyBrand]: "ObjectRefKey" };
@@ -6,10 +8,10 @@ declare const revisionIdBrand: unique symbol;
 declare const objectIdBrand: unique symbol;
 declare const objectRefKeyBrand: unique symbol;
 
-export interface ObjectRef {
+export type ObjectRef = WireObjectRef & {
   readonly revisionId: RevisionId;
   readonly objectId: ObjectId;
-}
+};
 
 export function revisionIdFrom(value: string): RevisionId {
   if (value.trim().length === 0) throw new Error("revisionId must not be empty");

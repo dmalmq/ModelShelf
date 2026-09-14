@@ -1,17 +1,13 @@
+import type { ObjectRef as WireObjectRef } from "@modelshelf/model-contracts";
 import { NO_OVERLAY, parseObjectRef, refKey, type ObjectRef, type Overlay } from "model-viewer";
 import type { ModelViewer } from "model-viewer";
-
-export interface PlainMemberRef {
-  revisionId: string;
-  objectId: string;
-}
 
 export interface FilterableMember {
   modelId: string;
   discipline: string;
   storey: string | null;
   ifcType: string;
-  ref: PlainMemberRef;
+  ref: WireObjectRef;
 }
 
 export const MISSING_STOREY = "—";
@@ -23,16 +19,12 @@ export interface PlainFilters {
   ifcType: string;
 }
 
-export function toViewerRef(ref: PlainMemberRef): ObjectRef | null {
+export function toViewerRef(ref: WireObjectRef): ObjectRef | null {
   try {
     return parseObjectRef(ref);
   } catch {
     return null;
   }
-}
-
-export function toViewerRefPlain(ref: PlainMemberRef): ObjectRef | null {
-  return toViewerRef(ref);
 }
 
 export function filterMembers<T extends FilterableMember>(
@@ -49,7 +41,7 @@ export function filterMembers<T extends FilterableMember>(
 }
 
 export function overlayForFinding(
-  members: readonly { ref: PlainMemberRef }[],
+  members: readonly { ref: WireObjectRef }[],
   paint: { color: string; label: string; mode: "isolate" | "colour-only" },
 ): Overlay {
   const refs = members.flatMap((member) => toViewerRef(member.ref) ?? []);

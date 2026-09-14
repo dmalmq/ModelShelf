@@ -13,6 +13,7 @@
     "build:example": "esbuild src/index.ts --bundle --format=esm --outfile=dist/model-viewer.mjs"
   },
   "dependencies": {
+    "@modelshelf/model-contracts": "file:../model-contracts-ts",
     "three": "^0.185.1",
     "web-ifc": "0.0.77"
   },

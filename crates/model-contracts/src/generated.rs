@@ -1,6 +1,6 @@
 // GENERATED FILE. Do not edit by hand.
-// Source: schemas/model/v1/*.schema.json (combined; see scripts/generate-model-contracts.mjs)
-// Regenerate: node scripts/generate-model-contracts.mjs
+// Source: schemas/model/v1/*.schema.json (combined; see scripts/generate-model-contracts.ts)
+// Regenerate: node scripts/generate-model-contracts.ts
 #![allow(clippy::redundant_closure_call)]
 #![allow(clippy::needless_lifetimes)]
 #![allow(clippy::match_single_binding)]

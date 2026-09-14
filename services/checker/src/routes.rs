@@ -10,10 +10,10 @@ use tokio_util::io::ReaderStream;
 
 use crate::db::{new_id, now_iso, SCHEMA_VERSION};
 use crate::dto::{
-    delivery_json, model_json, pack_version_json, project_json, run_summary,
+    delivery_json, model_json, object_row_json, pack_version_json, project_json, run_summary,
     AddDeliveryMemberBody, CreateDeliveryBody, CreatePackVersionBody, Delivery, DeliveryDetail,
     DeliveryRow, DeliverySummary, Health, ModelInfo, ModelRevisionRow, ObjectDetail,
-    ObjectFingerprints, ObjectPage, ObjectProperty, ObjectPropertyValue, ObjectRefOut, ObjectRowDb, ObjectRowOut, Pack,
+    ObjectPage, ObjectProperty, ObjectPropertyValue, ObjectRowDb, Pack,
     PackRow, PackSpecInfo, PackVersion, PackVersionDetail, PackVersionRow, Project, ProjectDetail,
     ProjectRow, PropRow, RunRow, RunSummary, DELIVERY_SELECT, MODEL_REVISION_SELECT,
     RUN_SUMMARY_SELECT,
@@ -430,29 +430,6 @@ async fn list_objects(
         offset,
         objects: rows.iter().map(object_row_json).collect(),
     }))
-}
-
-fn object_row_json(row: &ObjectRowDb) -> ObjectRowOut {
-    ObjectRowOut {
-        id: row.id.clone(),
-        model_id: row.model_id.clone(),
-        object_ref: ObjectRefOut {
-            revision_id: row.model_id.clone(),
-            object_id: row.ref_object_id.clone().unwrap_or_default(),
-        },
-        express_id: row.express_id,
-        global_id: row.global_id.clone(),
-        ifc_type: row.ifc_type.clone(),
-        name: row.name.clone(),
-        predefined_type: row.predefined_type.clone(),
-        storey: row.storey.clone(),
-        fingerprints: ObjectFingerprints {
-            properties: row.fp_properties.clone(),
-            placement: row.fp_placement.clone(),
-            shape: row.fp_shape.clone(),
-            combined: row.fp_combined.clone(),
-        },
-    }
 }
 
 async fn get_object(

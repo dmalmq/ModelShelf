@@ -731,8 +731,11 @@ fn change_json(change: &modeldiff::ObjectChange) -> ObjectChangeOut {
 
 fn object_ref_json(reference: &modeldiff::ObjectRef) -> ObjectChangeRefOut {
     ObjectChangeRefOut {
-        revision_id: reference.revision_id.clone(),
-        object_id: reference.object_id.clone(),
+        object_ref: crate::dto::object_ref(
+            &reference.revision_id,
+            Some(&reference.object_id),
+            reference.express_id as i64,
+        ),
         express_id: reference.express_id as i64,
         global_id: reference.global_id.clone(),
         ifc_type: reference.ifc_type.clone(),

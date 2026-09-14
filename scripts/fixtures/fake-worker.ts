@@ -14,6 +14,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
+import { expressIdToObjectId } from "../../packages/model-contracts-ts/src/express-id-mapping.ts";
 
 const mode = process.argv[2];
 const requestIndex = process.argv.indexOf("--request");
@@ -30,12 +31,6 @@ function sha256Hex(bufferOrString) {
   return createHash("sha256").update(bufferOrString).digest("hex");
 }
 
-// Mirrors model_contracts::express_id_to_object_id / schemas/model/v1's
-// documented mapping: "occ_" + sha256(`${revisionId}:${expressId}`)[:16 hex chars].
-function objectId(revId, expressId) {
-  return `occ_${sha256Hex(`${revId}:${expressId}`).slice(0, 16)}`;
-}
-
 function emit(event) {
   process.stdout.write(`${JSON.stringify(event)}\n`);
 }
@@ -50,8 +45,10 @@ function writeArtifact(path, text) {
   return { path, sha256: sha256Hex(bytes), size: bytes.length };
 }
 
+const wallObjectId = await expressIdToObjectId(revisionId, 1);
+
 function fakeSemanticJson() {
-  const ref = { revisionId, objectId: objectId(revisionId, 1) };
+  const ref = { revisionId, objectId: wallObjectId };
   return `${JSON.stringify({
     schemaVersion: "model-v1",
     revisionId,

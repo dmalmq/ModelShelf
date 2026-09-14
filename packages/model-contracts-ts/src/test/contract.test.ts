@@ -4,14 +4,14 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
+import { expressIdToObjectId } from "../index.js";
 import {
   parseGeometryChunk,
   parseModelDescriptor,
   parseObjectRef,
   parseRenderManifest,
   parseSemanticModel,
-  expressIdToObjectId,
-} from "../index.js";
+} from "../validate.js";
 
 const FIXTURES_DIR = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -86,16 +86,16 @@ test("fixtures/invalid/boundary/semantic-model-mismatched-revision.json passes s
   if (!result.ok) assert.match(result.errors[0], /does not match/);
 });
 
-test("express-id mapping matches the golden fixture shared with the Python worker", () => {
+test("express-id mapping matches the golden fixture shared with the Python worker", async () => {
   const golden = readJson("express-id-mapping.json") as {
     cases: Array<{ revisionId: string; expressId: number; objectId: string }>;
   };
   assert.ok(golden.cases.length > 0);
   for (const { revisionId, expressId, objectId } of golden.cases) {
-    assert.equal(expressIdToObjectId(revisionId, expressId), objectId);
+    assert.equal(await expressIdToObjectId(revisionId, expressId), objectId);
   }
 });
 
-test("the same express ID in two different revisions maps to different objectIds", () => {
-  assert.notEqual(expressIdToObjectId("rev-arch-01", 1), expressIdToObjectId("rev-struct-07", 1));
+test("the same express ID in two different revisions maps to different objectIds", async () => {
+  assert.notEqual(await expressIdToObjectId("rev-arch-01", 1), await expressIdToObjectId("rev-struct-07", 1));
 });

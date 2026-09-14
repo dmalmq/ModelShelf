@@ -1,6 +1,10 @@
 // ModelShelf API contract — mirror of docs/contracts/http-api.md and the Rust
 // serialisation in services/checker. Changing a field here means changing it there.
 
+import type { ObjectRef } from "@modelshelf/model-contracts";
+
+export type { ObjectRef };
+
 export type Severity = "critical" | "high" | "medium" | "advisory";
 export type Discipline = "ARCH" | "STRUCT" | "MEP" | "OTHER";
 export type FacetKind = "entity" | "attribute" | "classification" | "property" | "material" | "part_of";
@@ -60,12 +64,6 @@ export interface ModelInfo {
   parseMs: number | null;
   uploadedAt: string;
   originatingSystem: string | null;
-}
-
-/** schemas/model/v1 ObjectRef: opaque, unique only within revisionId. */
-export interface ObjectRef {
-  revisionId: string;
-  objectId: string;
 }
 
 /** A persistent, named, project-owned input (e.g. "Architecture East"); discipline
@@ -383,9 +381,7 @@ export type MatchConfidence =
   | { kind: "heuristic"; score: number; basis: string }
   | { kind: "none" };
 
-export interface ObjectChangeRef {
-  revisionId: string;
-  objectId: string;
+export interface ObjectChangeRef extends ObjectRef {
   expressId: number;
   globalId: string | null;
   ifcType: string;
