@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-// Proves the four NamedProof kinds log FAIL - <label> when the predicate is
-// false, without a Playwright timeout standing in for the check.
 
 import { prove } from "./verify-viewer-inspection.ts";
 

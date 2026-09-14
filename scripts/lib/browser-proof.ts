@@ -7,7 +7,6 @@ const WEB_PACKAGE_JSON = join(REPO_ROOT, "apps", "web", "package.json");
 
 export const EVIDENCE_ROOT = join(REPO_ROOT, ".omo", "evidence", "modelshelf-prototype");
 
-/** Closed catalog of Playwright importers. API and qa leaves stay out. */
 export const BROWSER_VERIFIERS = {
   combined: "07-combined-viewer",
   inspection: "08-finding-inspection",
@@ -23,7 +22,6 @@ export function evidenceDir(id: BrowserVerifierId): string {
   return join(EVIDENCE_ROOT, BROWSER_VERIFIERS[id]);
 }
 
-/** Evaluate only. Playwright types are not in the scripts tsconfig. */
 export type EvaluateHandle = {
   evaluate<R>(pageFunction: () => R | Promise<R>): Promise<R>;
 };
@@ -56,10 +54,6 @@ type CanvasLike = {
   getContext(kind: string): GlContext | null;
 };
 
-/**
- * Resolve playwright from apps/web. createRequire selects the CJS export,
- * where chromium is a property of the module object.
- */
 export async function importChromium(): Promise<{ chromium: ChromiumLauncher }> {
   const requireFromWeb = createRequire(WEB_PACKAGE_JSON);
   const playwright = requireFromWeb("playwright") as { chromium?: ChromiumLauncher };
@@ -93,7 +87,6 @@ function readViewerWebGlRenderer(): string {
   const canvas =
     view.document.querySelector("[data-review-screen] canvas") ?? view.document.querySelector("canvas");
   if (!canvas) return "unavailable: no canvas";
-  // Reuse the live viewer context. A dummy canvas can disagree with Three.
   const gl = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
   if (!gl) return "unavailable: no webgl context";
   const ext = gl.getExtension("WEBGL_debug_renderer_info");

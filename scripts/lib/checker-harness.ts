@@ -125,10 +125,6 @@ export type WorkerSync = {
   readonly errorMessage: string | null;
 };
 
-/**
- * Always writes worker-sync evidence, then throws on failure so the caller
- * finally still flushes. Does not tee a CheckFn row into the api all log.
- */
 export function preSyncIfcWorker(runDir: string): WorkerSync {
   const started = Date.now();
   const result = spawnSync("uv", ["sync", "--locked", "--project", "services/ifc-worker"], {
