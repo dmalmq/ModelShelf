@@ -17,6 +17,7 @@ mod measured_inputs;
 mod migrate_v2;
 mod routes;
 mod run;
+mod scorecard;
 mod seed;
 mod sources;
 mod state;

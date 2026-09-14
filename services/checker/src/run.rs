@@ -6,7 +6,7 @@
 //! missing a fire rating" needs one line, not 124. IfcTester is the scorer; `crates/ids`
 //! is only used here to list specification names for discipline scope.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 
 use axum::extract::{Path, State};
@@ -16,15 +16,15 @@ use sqlx::{Sqlite, SqlitePool, Transaction};
 
 use crate::db::{new_id, now_iso};
 use crate::dto::{
-    finding_object_json, model_json, run_summary, severity_rank, CategoryGroup, CreateRunBody,
-    DeliveryRow, Finding, FindingObject, FindingObjectRow, FindingRow, InputProvenance, ModelInfo,
-    ModelRow, PackVersionRow, RunDetail, RunRow, RunSpecRow, SeverityBand, SpecResultRowOut,
-    DELIVERY_SELECT, RUN_SUMMARY_SELECT, SEVERITY_ORDER, UNPINNED_REASON,
-    COMPLETE_WITHOUT_SNAPSHOT_REASON,
+    finding_object_json, model_json, run_summary, severity_rank, spec_outcome_rank, CreateRunBody, DeliveryRow,
+    Finding, FindingObject, FindingObjectRow, FindingRow, InputProvenance, ModelInfo, ModelRow,
+    PackVersionRow, RunDetail, RunRow, RunSpecRow, SeverityBand, SpecResultRowOut,
+    COMPLETE_WITHOUT_SNAPSHOT_REASON, DELIVERY_SELECT, RUN_SUMMARY_SELECT, UNPINNED_REASON,
 };
 use crate::error::ApiError;
 use crate::ids_meta::{finding_key, PackMetadata};
 use crate::measured_inputs::{MeasuredEngine, ProcessingVersions};
+use crate::scorecard::{build_scorecard, FindingMembership, ObjectIdentity};
 use crate::state::{AppState, DataDirLock};
 use crate::upload::sha256_hex;
 use crate::worker_slot::{IdsInput, WorkerInvocation, WorkerJobId, WorkerOperation};
@@ -979,14 +979,45 @@ async fn load_findings(
 
     let (incomplete, decided): (Vec<Finding>, Vec<Finding>) =
         findings.into_iter().partition(|f| f.incomplete);
-    Ok((build_scorecard(decided), incomplete))
+    let mut identities = load_decided_identities(pool, run_id).await?;
+    let members: Vec<FindingMembership> = decided
+        .into_iter()
+        .map(|finding| FindingMembership {
+            identities: identities.remove(&finding.id).unwrap_or_default(),
+            finding,
+        })
+        .collect();
+    Ok((build_scorecard(members), incomplete))
+}
+
+async fn load_decided_identities(
+    pool: &SqlitePool,
+    run_id: &str,
+) -> Result<HashMap<String, HashSet<ObjectIdentity>>, ApiError> {
+    let rows: Vec<(String, String, i64)> = sqlx::query_as(
+        "SELECT f.id, fo.model_id, fo.express_id
+           FROM findings f
+           JOIN finding_objects fo ON fo.finding_id = f.id
+          WHERE f.run_id = ?1 AND f.incomplete = 0",
+    )
+    .bind(run_id)
+    .fetch_all(pool)
+    .await?;
+
+    let mut map: HashMap<String, HashSet<ObjectIdentity>> = HashMap::new();
+    for (finding_id, model_id, express_id) in rows {
+        map.entry(finding_id)
+            .or_default()
+            .insert(ObjectIdentity::new(model_id, express_id));
+    }
+    Ok(map)
 }
 
 async fn load_specs(pool: &SqlitePool, run_id: &str) -> Result<Vec<SpecResultRowOut>, ApiError> {
-    let specs = sqlx::query_as::<_, RunSpecRow>(
+    let mut specs: Vec<SpecResultRowOut> = sqlx::query_as::<_, RunSpecRow>(
         "SELECT id, run_id, spec_identifier, spec_name, outcome, applicable_count, pass_count,
                 fail_count, incomplete_count, notes_json
-           FROM run_specs WHERE run_id = ?1 ORDER BY spec_name",
+           FROM run_specs WHERE run_id = ?1",
     )
     .bind(run_id)
     .fetch_all(pool)
@@ -1008,97 +1039,13 @@ async fn load_specs(pool: &SqlitePool, run_id: &str) -> Result<Vec<SpecResultRow
             .unwrap_or_default(),
     })
     .collect();
+    specs.sort_by(|a, b| {
+        spec_outcome_rank(&a.outcome)
+            .cmp(&spec_outcome_rank(&b.outcome))
+            .then(a.spec_name.cmp(&b.spec_name))
+            .then(a.id.cmp(&b.id))
+    });
     Ok(specs)
-}
-
-/// Severity bands -> categories -> findings, ordered so the worst, widest problem is first.
-fn build_scorecard(findings: Vec<Finding>) -> Vec<SeverityBand> {
-    let mut bands: Vec<SeverityBand> = Vec::new();
-    for severity in SEVERITY_ORDER {
-        let in_band: Vec<Finding> = findings
-            .iter()
-            .filter(|f| f.severity == severity)
-            .map(clone_finding)
-            .collect();
-        if in_band.is_empty() {
-            continue;
-        }
-        let mut categories: Vec<CategoryGroup> = Vec::new();
-        for finding in in_band {
-            match categories
-                .iter_mut()
-                .find(|c| c.category_id == finding.category_id)
-            {
-                Some(group) => {
-                    group.finding_count += 1;
-                    group.object_count += finding.object_count;
-                    group.findings.push(finding);
-                }
-                None => categories.push(CategoryGroup {
-                    category_id: finding.category_id.clone(),
-                    category_label: finding.category_label.clone(),
-                    finding_count: 1,
-                    object_count: finding.object_count,
-                    findings: vec![finding],
-                }),
-            }
-        }
-        categories.sort_by(|a, b| {
-            b.object_count
-                .cmp(&a.object_count)
-                .then(a.category_label.cmp(&b.category_label))
-        });
-        for group in &mut categories {
-            group.findings.sort_by(|a, b| {
-                b.object_count
-                    .cmp(&a.object_count)
-                    .then(a.title.cmp(&b.title))
-            });
-        }
-        bands.push(SeverityBand {
-            severity: severity.to_owned(),
-            finding_count: categories.iter().map(|c| c.finding_count).sum(),
-            object_count: categories.iter().map(|c| c.object_count).sum(),
-            categories,
-        });
-    }
-    bands
-}
-
-fn clone_finding(finding: &Finding) -> Finding {
-    Finding {
-        id: finding.id.clone(),
-        finding_key: finding.finding_key.clone(),
-        spec_identifier: finding.spec_identifier.clone(),
-        spec_name: finding.spec_name.clone(),
-        title: finding.title.clone(),
-        requirement: finding.requirement.clone(),
-        expected: finding.expected.clone(),
-        instructions: finding.instructions.clone(),
-        facet: finding.facet.clone(),
-        severity: finding.severity.clone(),
-        category_id: finding.category_id.clone(),
-        category_label: finding.category_label.clone(),
-        object_count: finding.object_count,
-        incomplete: finding.incomplete,
-        sample_objects: finding
-            .sample_objects
-            .iter()
-            .map(|o| FindingObject {
-                object_id: o.object_id.clone(),
-                model_id: o.model_id.clone(),
-                object_ref: o.object_ref.clone(),
-                discipline: o.discipline.clone(),
-                express_id: o.express_id,
-                global_id: o.global_id.clone(),
-                ifc_type: o.ifc_type.clone(),
-                name: o.name.clone(),
-                storey: o.storey.clone(),
-                actual: o.actual.clone(),
-                incomplete_reason: o.incomplete_reason.clone(),
-            })
-            .collect(),
-    }
 }
 
 pub async fn finding_objects(
@@ -1210,6 +1157,42 @@ mod tests {
             fail_count: 0,
             incomplete_count: 0,
             notes: Vec::new(),
+        }
+    }
+
+    fn wall(express_id: i64) -> AffectedObject {
+        AffectedObject {
+            model_id: "m1".to_owned(),
+            express_id,
+            global_id: None,
+            actual: None,
+            incomplete_reason: None,
+        }
+    }
+
+    fn accumulated(
+        key: &str,
+        title: &str,
+        severity: &str,
+        category_id: &str,
+        category_label: &str,
+        incomplete: bool,
+        express_ids: &[i64],
+    ) -> Accumulated {
+        Accumulated {
+            key: key.to_owned(),
+            spec_identifier: None,
+            spec_name: title.to_owned(),
+            severity: severity.to_owned(),
+            category_id: category_id.to_owned(),
+            category_label: category_label.to_owned(),
+            facet: "property".to_owned(),
+            title: title.to_owned(),
+            requirement: "must exist".to_owned(),
+            expected: None,
+            instructions: None,
+            incomplete,
+            objects: express_ids.iter().copied().map(wall).collect(),
         }
     }
 
@@ -1565,6 +1548,169 @@ mod tests {
             profile,
             r#"{"worker":"0.1.0","ifcTester":"0.8.5","ifcOpenShell":"0.8.5","operation":"validate"}"#
         );
+    }
+
+    #[tokio::test]
+    async fn run_detail_counts_distinct_objects_within_a_category() {
+        let dir = tempfile::tempdir().unwrap();
+        let pool = crate::db::open(dir.path()).await.unwrap();
+        seed_parents(&pool).await;
+        insert_run(&pool, "run-overlap", "running", 0, 0).await;
+        commit_outcome(
+            &pool,
+            "run-overlap",
+            Duration::from_millis(1),
+            RunOutcome::Completed(evaluated(
+                vec![spec("Overlap", 0)],
+                vec![
+                    accumulated(
+                        "k-a",
+                        "Rule A",
+                        "high",
+                        "regulatory",
+                        "Regulatory",
+                        false,
+                        &[1, 2],
+                    ),
+                    accumulated(
+                        "k-b",
+                        "Rule B",
+                        "high",
+                        "regulatory",
+                        "Regulatory",
+                        false,
+                        &[1, 3],
+                    ),
+                    accumulated(
+                        "k-inc",
+                        "Incomplete sibling",
+                        "high",
+                        "regulatory",
+                        "Regulatory",
+                        true,
+                        &[4],
+                    ),
+                ],
+                0,
+                2,
+            )),
+            &[],
+        )
+        .await
+        .unwrap();
+
+        let detail: RunDetail = run_detail(&pool, "run-overlap").await.unwrap().into();
+        assert_eq!(detail.scorecard.len(), 1);
+        let band = &detail.scorecard[0];
+        assert_eq!(band.severity, "high");
+        assert_eq!(band.finding_count, 2);
+        assert_eq!(band.object_count, 3);
+        assert_eq!(band.categories.len(), 1);
+        assert_eq!(band.categories[0].object_count, 3);
+        assert_eq!(band.categories[0].finding_count, 2);
+        assert_eq!(band.categories[0].findings[0].object_count, 2);
+        assert_eq!(band.categories[0].findings[1].object_count, 2);
+        assert_eq!(detail.run.failing_object_count, 3);
+        assert_eq!(detail.run.finding_count, 3);
+        assert_eq!(detail.review_incomplete.len(), 1);
+        assert_eq!(detail.review_incomplete[0].title, "Incomplete sibling");
+        assert_eq!(detail.review_incomplete[0].object_count, 1);
+    }
+
+    #[tokio::test]
+    async fn run_detail_counts_distinct_objects_across_categories_in_a_band() {
+        let dir = tempfile::tempdir().unwrap();
+        let pool = crate::db::open(dir.path()).await.unwrap();
+        seed_parents(&pool).await;
+        insert_run(&pool, "run-cross", "running", 0, 0).await;
+        commit_outcome(
+            &pool,
+            "run-cross",
+            Duration::from_millis(1),
+            RunOutcome::Completed(evaluated(
+                vec![spec("Cross", 0)],
+                vec![
+                    accumulated("k-data", "Data rule", "high", "data", "Data", false, &[1, 2]),
+                    accumulated(
+                        "k-safety",
+                        "Safety rule",
+                        "high",
+                        "safety",
+                        "Safety",
+                        false,
+                        &[1, 3],
+                    ),
+                ],
+                0,
+                2,
+            )),
+            &[],
+        )
+        .await
+        .unwrap();
+
+        let detail: RunDetail = run_detail(&pool, "run-cross").await.unwrap().into();
+        assert_eq!(detail.scorecard.len(), 1);
+        let band = &detail.scorecard[0];
+        assert_eq!(band.severity, "high");
+        assert_eq!(band.object_count, 3);
+        assert_eq!(band.categories.len(), 2);
+        assert_eq!(band.categories[0].object_count, 2);
+        assert_eq!(band.categories[1].object_count, 2);
+        assert!(
+            band.object_count < band.categories[0].object_count + band.categories[1].object_count
+        );
+        assert_eq!(detail.run.failing_object_count, 3);
+    }
+
+    #[tokio::test]
+    async fn run_detail_orders_fail_specs_before_pass_then_by_name() {
+        let dir = tempfile::tempdir().unwrap();
+        let pool = crate::db::open(dir.path()).await.unwrap();
+        seed_parents(&pool).await;
+        insert_run(&pool, "run-specs", "running", 0, 0).await;
+        commit_outcome(
+            &pool,
+            "run-specs",
+            Duration::from_millis(1),
+            RunOutcome::Completed(evaluated(
+                vec![
+                    SpecAccum {
+                        identifier: None,
+                        name: "Zulu".to_owned(),
+                        outcome: SpecRollup::Fail,
+                        applicable_count: 1,
+                        pass_count: 0,
+                        fail_count: 1,
+                        incomplete_count: 0,
+                        notes: Vec::new(),
+                    },
+                    SpecAccum {
+                        identifier: None,
+                        name: "Alpha".to_owned(),
+                        outcome: SpecRollup::Pass,
+                        applicable_count: 1,
+                        pass_count: 1,
+                        fail_count: 0,
+                        incomplete_count: 0,
+                        notes: Vec::new(),
+                    },
+                ],
+                Vec::new(),
+                1,
+                1,
+            )),
+            &[],
+        )
+        .await
+        .unwrap();
+
+        let detail: RunDetail = run_detail(&pool, "run-specs").await.unwrap().into();
+        assert_eq!(detail.specs.len(), 2);
+        assert_eq!(detail.specs[0].spec_name, "Zulu");
+        assert_eq!(detail.specs[0].outcome, "fail");
+        assert_eq!(detail.specs[1].spec_name, "Alpha");
+        assert_eq!(detail.specs[1].outcome, "pass");
     }
 
     async fn insert_member(pool: &SqlitePool, id: &str, source_id: &str, revision_id: &str) {

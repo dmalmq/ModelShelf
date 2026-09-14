@@ -339,6 +339,21 @@ async function main() {
     );
     log("run-2.json", { run: run2.run, bands: run2.scorecard?.map((b) => b.severity) });
 
+    const high = (run2.scorecard ?? []).find((b) => b.severity === "high");
+    const highUnion = new Set();
+    let highSum = 0;
+    for (const finding of (high?.categories ?? []).flatMap((c) => c.findings)) {
+      const paged = await pageAllObjects(base, finding.id);
+      highSum += paged.total;
+      for (const object of paged.objects) highUnion.add(`${object.modelId}:${object.expressId}`);
+    }
+    check(
+      "high-band objectCount is the distinct union",
+      Boolean(high) && high.objectCount === highUnion.size && high.objectCount < highSum,
+      JSON.stringify({ objectCount: high?.objectCount, union: highUnion.size, sum: highSum }),
+    );
+    log("run-2-high-band.json", { objectCount: high?.objectCount, union: highUnion.size, sum: highSum });
+
     // --- empty-model delivery: bands empty, incomplete section + N/A still visible ---
     const emptySource = (await api(base, "POST", "/api/projects/demo-project/source-models", { name: "Empty", discipline: "ARCH" })).json;
     const emptyRev = await uploadAndAwait(base, emptySource.id, "empty.ifc", EMPTY_IFC);
@@ -398,6 +413,39 @@ print("total", db.execute("SELECT COUNT(*) FROM finding_objects WHERE finding_id
     await page.goto(`${appOrigin}/deliveries/${delivery.id}`, { waitUntil: "domcontentloaded" });
     await page.waitForSelector("[data-totals-header]", { timeout: 120_000 });
     await page.waitForSelector("[data-scorecard]", { timeout: 120_000 });
+    await page.selectOption("[data-run-selector]", run2.run.id);
+    await page.waitForFunction(
+      ({ count, ids }) => {
+        const domCount = document
+          .querySelector('[data-severity-band="high"] [data-band-object-count]')
+          ?.getAttribute("data-band-object-count");
+        const rows = [...document.querySelectorAll("[data-spec-row]")].map((el) =>
+          el.getAttribute("data-spec-row"),
+        );
+        return domCount === count && JSON.stringify(rows) === JSON.stringify(ids);
+      },
+      { count: String(high?.objectCount ?? ""), ids: (run2.specs ?? []).map((s) => s.id) },
+      { timeout: 60_000 },
+    );
+    const highBandDom = await page.getAttribute(
+      '[data-severity-band="high"] [data-band-object-count]',
+      "data-band-object-count",
+    );
+    check(
+      "Chromium: high-band object count matches the API union",
+      highBandDom === String(high?.objectCount ?? "") && highBandDom !== "",
+      JSON.stringify({ dom: highBandDom, api: high?.objectCount }),
+    );
+    await page.waitForSelector("[data-spec-row]", { timeout: 60_000 });
+    const specRowOrder = await page.$$eval("[data-spec-row]", (els) =>
+      els.map((el) => el.getAttribute("data-spec-row")),
+    );
+    const payloadSpecOrder = (run2.specs ?? []).map((s) => s.id);
+    check(
+      "Chromium: spec row order matches payload specs",
+      JSON.stringify(specRowOrder) === JSON.stringify(payloadSpecOrder),
+      JSON.stringify({ dom: specRowOrder, payload: payloadSpecOrder }),
+    );
 
     const domBands = await page.$$eval("[data-severity-band]", (els) => els.map((el) => el.getAttribute("data-severity-band")));
     check("Chromium: critical band renders first", domBands[0] === "critical", JSON.stringify(domBands));

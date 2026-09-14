@@ -75,12 +75,6 @@ export function formatDistance(metres: number | null): string {
   return `${metres.toFixed(2)} m`;
 }
 
-/** Score as a percentage; null when nothing was applicable. */
-export function formatScore(score: number | null): string {
-  if (score === null) return "n/a";
-  return `${Math.round(score * 100)}%`;
-}
-
 export function formatCount(n: number, singular: string, plural?: string): string {
   return `${n} ${n === 1 ? singular : (plural ?? `${singular}s`)}`;
 }
