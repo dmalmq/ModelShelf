@@ -15,43 +15,28 @@ from __future__ import annotations
 import argparse
 import filecmp
 import json
-import sys
 import tempfile
 from pathlib import Path
 
-import ifcopenshell
-import ifctester
+from demo_oracle import (
+    IFC2X3_WALL_NAME,
+    UNSUPPORTED_OBJECT_KEY,
+    WALL_GROUPS,
+    WALL_OUTCOMES,
+    check_ids_outcome,
+    execute_proof,
+    fail,
+    parse_oracle,
+    wall_names,
+)
+from demo_oracle import evaluate_ids as live_ids
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DIR = REPO_ROOT / "packs" / "demo" / "fixtures"
-IDS_PATH = REPO_ROOT / "packs" / "demo" / "fixtures.ids"
-
-
-def fail(message: str) -> None:
-    print(f"FAIL - {message}", file=sys.stderr)
-    raise SystemExit(1)
 
 
 def load_oracle(path: Path) -> dict:
     return json.loads(path.read_text(encoding="utf-8"))
-
-
-def wall_names(ifc_path: Path) -> list[str]:
-    ifc_file = ifcopenshell.open(str(ifc_path))
-    names = [wall.Name for wall in ifc_file.by_type("IfcWall")]
-    if len(names) != len(set(names)):
-        fail(f"{ifc_path.name}: wall names are not unique, so they cannot be oracle keys")
-    return names
-
-
-def evaluate_ids(ifc_path: Path) -> tuple[list[str], list[str]]:
-    spec_file = ifctester.open(str(IDS_PATH))
-    ifc_file = ifcopenshell.open(str(ifc_path))
-    spec_file.validate(ifc_file)
-    requirement = spec_file.specifications[0].requirements[0]
-    failed = [entry["element"].Name for entry in requirement.failures]
-    passed = [entity.Name for entity in (requirement.passed_entities or [])]
-    return failed, passed
 
 
 def expect_set(label: str, actual: list[str], expected: list[str]) -> None:
@@ -72,14 +57,12 @@ def expect_order(label: str, haystack: list[str], keys: list[str]) -> None:
 
 
 def check_oracle(fixture_dir: Path) -> None:
-    oracle = load_oracle(fixture_dir / "oracle.json")
-    if oracle.get("schemaVersion") != "demo-fixtures-oracle-v2":
-        fail("oracle schemaVersion must be demo-fixtures-oracle-v2")
+    oracle = parse_oracle(load_oracle(fixture_dir / "oracle.json"))
+    objects = oracle.objects
     base_path = fixture_dir / "base.ifc"
     head_path = fixture_dir / "head.ifc"
     base_names = wall_names(base_path)
     head_names = wall_names(head_path)
-    objects = oracle["objects"]
 
     def present(revision_names: list[str], keys: list[str], label: str) -> None:
         for key in keys:
@@ -95,22 +78,6 @@ def check_oracle(fixture_dir: Path) -> None:
     if any(key in base_names for key in objects["added"]["keys"]):
         fail("added keys must not appear in base")
 
-    tracked = oracle["fixtureSummary"]["totalDistinctTrackedObjects"]
-    expected_tracked = (
-        len(objects["repeated_failure"]["keys"])
-        + len(objects["removed"]["keys"])
-        + len(objects["added"]["keys"])
-        + len(objects["property_changed"]["keys"])
-        + len(objects["shape_changed"]["keys"])
-        + len(objects["moved"]["keys"])
-        + len(objects["rotated"]["keys"])
-        + len(objects["ambiguous_ids"]["keys"])
-    )
-    if tracked != 141 or tracked != expected_tracked:
-        fail(f"totalDistinctTrackedObjects is {tracked}, expected 141")
-    if objects["repeated_failure"]["count"] != 120:
-        fail("repeated_failure.count must stay 120; the extra 15 IDS failures live in other groups")
-
     rotated = objects["rotated"]
     if rotated["intendedDiff"] != "moved":
         fail("rotated.intendedDiff must be moved (the physical change), not the engine's unchanged report")
@@ -120,8 +87,8 @@ def check_oracle(fixture_dir: Path) -> None:
         fail("duplicate/empty GlobalIds must be intendedCorrespondence=uncertain")
 
     for revision, path in (("base", base_path), ("head", head_path)):
-        failed, passed = evaluate_ids(path)
-        summary = oracle["idsSummary"][revision]
+        failed, passed = live_ids(path)
+        summary = oracle.ids_summary[revision]
         if len(failed) != summary["fail"] or summary["fail"] != 135:
             fail(f"{revision} IDS fail count is {len(failed)}, expected 135")
         if len(passed) != summary["pass"] or summary["pass"] != 3:
@@ -131,40 +98,49 @@ def check_oracle(fixture_dir: Path) -> None:
         expect_set(f"{revision} failKeys", failed, summary["failKeys"])
         expect_set(f"{revision} passKeys", passed, summary["passKeys"])
         names = base_names if revision == "base" else head_names
-        for group_name, group in objects.items():
+        for group_name in WALL_GROUPS:
+            group = objects[group_name]
             group_keys = group["ids"][revision]["keys"]
             if group_keys:
                 expect_order(f"{revision} {group_name}", names, group_keys)
-        for group_name, group in objects.items():
             ids_side = group["ids"][revision]
-            if ids_side["outcome"] == "fail":
-                for key in ids_side["keys"]:
-                    if key not in failed:
-                        fail(f"{revision} {group_name}: {key!r} should fail IDS")
-            elif ids_side["outcome"] == "pass":
-                for key in ids_side["keys"]:
-                    if key not in passed:
-                        fail(f"{revision} {group_name}: {key!r} should pass IDS")
-            elif ids_side["outcome"] == "absent":
-                for key in ids_side["keys"]:
-                    fail(f"{revision} {group_name}: absent group must have empty keys, found {key!r}")
+            outcome = ids_side["outcome"]
+            if outcome not in WALL_OUTCOMES:
+                fail(f"{revision} {group_name}: unknown ids.outcome {outcome!r}")
+            check_ids_outcome(
+                outcome,
+                ids_side["keys"],
+                failed=failed,
+                passed=passed,
+                label=f"{revision} {group_name}",
+            )
 
-    print("ok - oracle matches IfcTester affected sets and category membership")
+    for proof_id, row in oracle.proofs.items():
+        if "oracle" in row.expected.projectors:
+            execute_proof(fixture_dir, oracle, row)
+        elif proof_id not in ("empty_catalog", "japanese_names"):
+            fail(f"proofs.{proof_id} has no oracle projector and is not a shape-only row")
+
+    print("ok - oracle matches IfcTester affected sets, category membership, and proofs")
 
 
 def load_generator():
     import importlib.util
+    import sys
 
     path = REPO_ROOT / "scripts" / "generate-demo-fixtures.py"
     spec = importlib.util.spec_from_file_location("generate_demo_fixtures", path)
     if spec is None or spec.loader is None:
         fail(f"cannot load {path}")
     module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 
 
 def prove_regen(seed: str) -> None:
+    import ifcopenshell
+
     generator = load_generator()
     with tempfile.TemporaryDirectory() as first_dir, tempfile.TemporaryDirectory() as second_dir:
         first = Path(first_dir)
@@ -173,9 +149,19 @@ def prove_regen(seed: str) -> None:
         generator.build(second, seed)
         if not filecmp.cmp(first / "oracle.json", second / "oracle.json", shallow=False):
             fail("two isolated regenerations produced different oracle.json")
-        for revision in ("base.ifc", "head.ifc"):
+        for revision in ("base.ifc", "head.ifc", "foot.ifc"):
             if wall_names(first / revision) != wall_names(second / revision):
                 fail(f"two isolated regenerations produced different {revision} wall keys")
+        for isolated in (first, second):
+            doors = [
+                door.Name
+                for door in ifcopenshell.open(str(isolated / "unsupported.ifc")).by_type("IfcDoor")
+            ]
+            if doors != [UNSUPPORTED_OBJECT_KEY]:
+                fail(f"unsupported.ifc door names {doors!r}")
+            walls = wall_names(isolated / "ifc2x3-wall.ifc")
+            if walls != [IFC2X3_WALL_NAME]:
+                fail(f"ifc2x3-wall.ifc wall names {walls!r}")
         baseline = DEFAULT_DIR / "oracle.json"
         if baseline.is_file() and not filecmp.cmp(first / "oracle.json", baseline, shallow=False):
             fail("isolated regeneration does not match the checked-in oracle.json")
