@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { spawn, spawnSync } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 import { chromium } from "../apps/web/node_modules/playwright/index.mjs";
+import { expressIdToObjectId } from "../packages/model-contracts-ts/src/express-id-mapping.ts";
 import { runInspectionScenario } from "./verify-viewer-inspection.ts";
 import { runStandaloneScenario } from "./verify-viewer-standalone.ts";
 
@@ -465,7 +466,7 @@ try {
   check(matching[0].ref.objectId !== matching[1].ref.objectId, "duplicate GlobalId rows receive different opaque object IDs");
   for (const object of matching) {
     check(
-      object.ref.objectId === expectedObjectId(object.ref.revisionId, Number(object.attributes.expressId)),
+      object.ref.objectId === (await expectedObjectId(object.ref.revisionId, Number(object.attributes.expressId))),
       `ObjectRef mapping matches the contract for ${object.ref.revisionId}`,
     );
   }
@@ -680,8 +681,8 @@ function findDuplicateGlobalId(objects) {
   throw new Error("No GlobalId appeared in both duplicate revisions");
 }
 
-function expectedObjectId(revisionId, expressId) {
-  return `occ_${createHash("sha256").update(`${revisionId}:${expressId}`).digest("hex").slice(0, 16)}`;
+async function expectedObjectId(revisionId, expressId) {
+  return expressIdToObjectId(revisionId, expressId);
 }
 
 function sameRef(left, right) {

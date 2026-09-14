@@ -66,6 +66,7 @@ import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { BIN_PATH, REPO_ROOT, buildBinary, createChecker, freePort, runCli, stopProcess, waitForHealth } from "./lib/checker-harness.ts";
+import { expressIdToObjectId } from "../packages/model-contracts-ts/src/express-id-mapping.ts";
 
 const FAKE_WORKER = join(REPO_ROOT, "scripts", "fixtures", "fake-worker.ts");
 const FIXTURES_IFC = join(REPO_ROOT, "packs", "demo", "fixtures", "base.ifc");
@@ -1425,8 +1426,8 @@ ENDSEC;
 END-ISO-10303-21;
 `);
 
-function expectedObjectId(revisionId, expressId) {
-  return `occ_${createHash("sha256").update(`${revisionId}:${expressId}`).digest("hex").slice(0, 16)}`;
+async function expectedObjectId(revisionId, expressId) {
+  return expressIdToObjectId(revisionId, expressId);
 }
 
 async function runFirstLoopScenario(runDir, check, log) {
@@ -1538,7 +1539,7 @@ async function runFirstLoopScenario(runDir, check, log) {
       const first = paged.objects[0];
       check(
         "the member ref matches the shared occurrence-identity contract",
-        first?.ref?.revisionId === first?.modelId && first?.ref?.objectId === expectedObjectId(first.modelId, first.expressId),
+        first?.ref?.revisionId === first?.modelId && first?.ref?.objectId === (await expectedObjectId(first.modelId, first.expressId)),
         JSON.stringify(first?.ref),
       );
       const detail = (await api(base, "GET", `/api/objects/${first.objectId}`)).json;
