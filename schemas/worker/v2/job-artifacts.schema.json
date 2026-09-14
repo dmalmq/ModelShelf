@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "job-artifacts.schema.json",
+  "title": "JobArtifacts",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["descriptor", "semantic", "renderManifest", "geometry", "outcomes"],
+  "properties": {
+    "descriptor": { "$ref": "artifact-ref.schema.json" },
+    "semantic": { "$ref": "artifact-ref.schema.json" },
+    "renderManifest": {
+      "anyOf": [{ "$ref": "artifact-ref.schema.json" }, { "type": "null" }]
+    },
+    "geometry": {
+      "anyOf": [{ "$ref": "artifact-ref.schema.json" }, { "type": "null" }]
+    },
+    "outcomes": { "$ref": "artifact-ref.schema.json" }
+  }
+}

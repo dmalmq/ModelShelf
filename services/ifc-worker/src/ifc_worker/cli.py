@@ -1,6 +1,6 @@
 """Entrypoint: `ifc-worker --request <absolute-request.json>`.
 
-Stdout carries only the NDJSON progress/result events docs/contracts/worker-v1.md
+Stdout carries only the NDJSON progress/result events docs/contracts/worker-v2.md
 specifies; every diagnostic goes to stderr. Request/parse/input failures exit
 nonzero without ever writing a terminal result line, so a caller can tell
 "failed before producing anything trustworthy" from "produced a result" purely

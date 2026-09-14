@@ -1,4 +1,4 @@
-"""Project-frame placement, per docs/contracts/worker-v1.md: 12 numbers, the
+"""Project-frame placement, per docs/contracts/worker-v2.md: 12 numbers, the
 first three rows of the 4x4 homogeneous transform, flattened row-major.
 Translations are metres after converting the resolved placement chain; rotation
 entries are left untouched. A unit or placement that cannot be interpreted

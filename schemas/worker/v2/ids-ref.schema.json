@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "ids-ref.schema.json",
+  "title": "IdsRef",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["path", "sha256", "specificationIds"],
+  "properties": {
+    "path": { "type": "string", "minLength": 1 },
+    "sha256": { "$ref": "sha256.schema.json" },
+    "specificationIds": {
+      "anyOf": [
+        { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        { "type": "null" }
+      ]
+    }
+  }
+}

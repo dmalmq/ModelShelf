@@ -9,6 +9,11 @@ use tokio::sync::Semaphore;
 
 use crate::db::now_iso;
 use crate::state::DataDirLock;
+use crate::worker_envelope::{
+    parse_ndjson_stream, ArtifactRef, Manifest, WorkerEvent, WorkerRequest,
+};
+
+pub(crate) use crate::worker_envelope::WorkerVersions;
 
 pub struct WorkerSlot {
     data_dir: PathBuf,
@@ -165,7 +170,7 @@ impl WorkerJobId {
         WorkerJobId(format!("{run_id}-{revision_id}"))
     }
 
-    fn as_str(&self) -> &str {
+    pub(crate) fn as_str(&self) -> &str {
         &self.0
     }
 }
@@ -176,26 +181,15 @@ pub(crate) enum WorkerOperation {
 }
 
 impl WorkerOperation {
-    fn wire_name(&self) -> &'static str {
+    pub(crate) fn wire_name(&self) -> &'static str {
         match self {
             WorkerOperation::Inspect => "inspect",
             WorkerOperation::Validate(_) => "validate",
         }
     }
 
-    fn geometry(&self) -> bool {
+    pub(crate) fn geometry(&self) -> bool {
         matches!(self, WorkerOperation::Inspect)
-    }
-
-    fn ids_json(&self) -> serde_json::Value {
-        match self {
-            WorkerOperation::Inspect => serde_json::Value::Null,
-            WorkerOperation::Validate(ids) => serde_json::json!({
-                "path": ids.path.to_string_lossy(),
-                "sha256": ids.sha256,
-                "specificationIds": ids.specification_ids,
-            }),
-        }
     }
 }
 
@@ -219,75 +213,6 @@ pub(crate) struct WorkerArtifacts {
     pub outcomes: Vec<u8>,
     pub versions: WorkerVersions,
     pub geometry_chunks: HashMap<String, model_contracts::GeometryChunk>,
-}
-
-#[derive(Deserialize)]
-struct EventEnvelope {
-    #[serde(rename = "protocolVersion")]
-    protocol_version: i64,
-    #[serde(rename = "jobId")]
-    job_id: String,
-    event: String,
-}
-
-#[derive(Deserialize)]
-struct ManifestPointer {
-    path: String,
-    sha256: String,
-    size: u64,
-}
-
-#[derive(Deserialize)]
-struct ResultEvent {
-    manifest: ManifestPointer,
-}
-
-#[derive(Deserialize)]
-struct ArtifactRef {
-    path: String,
-    sha256: String,
-    size: u64,
-    #[serde(rename = "recordCount")]
-    record_count: Option<u64>,
-}
-
-#[derive(Deserialize)]
-struct Artifacts {
-    descriptor: ArtifactRef,
-    semantic: ArtifactRef,
-    #[serde(rename = "renderManifest")]
-    render_manifest: Option<ArtifactRef>,
-    geometry: Option<ArtifactRef>,
-    outcomes: ArtifactRef,
-}
-
-#[derive(Deserialize, Default, Clone)]
-pub(crate) struct WorkerVersions {
-    #[serde(default)]
-    pub worker: String,
-    #[serde(default, rename = "ifcOpenShell")]
-    pub ifc_open_shell: String,
-    #[serde(default, rename = "ifcTester")]
-    pub ifc_tester: String,
-    #[serde(default)]
-    pub extraction: String,
-    #[serde(default, rename = "scopeSemantics")]
-    pub scope_semantics: String,
-}
-
-#[derive(Deserialize)]
-struct Manifest {
-    #[serde(rename = "protocolVersion")]
-    protocol_version: i64,
-    #[serde(rename = "jobId")]
-    job_id: String,
-    #[serde(rename = "revisionId")]
-    revision_id: String,
-    #[serde(rename = "modelSha256")]
-    model_sha256: String,
-    #[serde(default)]
-    versions: WorkerVersions,
-    artifacts: Artifacts,
 }
 
 fn shell_quote(value: &str) -> String {
@@ -410,26 +335,11 @@ async fn invoke_worker(
         .canonicalize()
         .map_err(|err| format!("cannot resolve uploaded blob: {err}"))?;
 
-    let request = serde_json::json!({
-        "protocolVersion": 2,
-        "jobId": spec.job_id.as_str(),
-        "operation": spec.operation.wire_name(),
-        "model": {
-            "path": blob_path_canonical.to_string_lossy(),
-            "sha256": spec.content_sha256,
-            "revisionId": spec.revision_id,
-        },
-        "ids": spec.operation.ids_json(),
-        "outputDir": job_dir_canonical.to_string_lossy(),
-        "settings": {"geometry": spec.operation.geometry()},
-    });
+    let request = WorkerRequest::from_invocation(&spec, &blob_path_canonical, &job_dir_canonical);
     let request_path = job_dir.join("request.json");
-    tokio::fs::write(
-        &request_path,
-        serde_json::to_vec_pretty(&request).unwrap_or_default(),
-    )
-    .await
-    .map_err(|err| format!("cannot write request.json: {err}"))?;
+    tokio::fs::write(&request_path, request.to_pretty_json()?)
+        .await
+        .map_err(|err| format!("cannot write request.json: {err}"))?;
 
     let (program, args) = worker_command(&slot.worker_command, &request_path);
     let output = run_worker_process(
@@ -454,64 +364,15 @@ async fn invoke_worker(
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let lines: Vec<&str> = stdout
-        .lines()
-        .filter(|line| !line.trim().is_empty())
-        .collect();
-    if lines.is_empty() {
-        return Err("worker exited 0 but produced no NDJSON output".to_owned());
-    }
-
-    let mut result_index: Option<usize> = None;
-    for (index, line) in lines.iter().enumerate() {
-        let envelope: EventEnvelope = serde_json::from_str(line)
-            .map_err(|err| format!("malformed NDJSON on line {}: {err}", index + 1))?;
-        if envelope.protocol_version != 2 {
-            return Err(format!(
-                "worker protocol version mismatch on line {}: expected 2, got {}",
-                index + 1,
-                envelope.protocol_version
-            ));
-        }
-        if envelope.job_id != spec.job_id.as_str() {
-            return Err(format!(
-                "worker reported job id {:?} on line {}, expected {:?}",
-                envelope.job_id,
-                index + 1,
-                spec.job_id.as_str()
-            ));
-        }
-        match envelope.event.as_str() {
-            "progress" => {
-                if result_index.is_some() {
-                    return Err("a progress event followed the terminal result event".to_owned());
-                }
-            }
-            "result" => {
-                if result_index.is_some() {
-                    return Err("worker emitted more than one terminal result event".to_owned());
-                }
-                result_index = Some(index);
-            }
-            other => {
-                return Err(format!(
-                    "unknown NDJSON event kind {other:?} on line {}",
-                    index + 1
-                ));
-            }
-        }
-    }
-    let Some(result_index) = result_index else {
+    let parsed = parse_ndjson_stream(&stdout, spec.job_id.as_str())?;
+    let WorkerEvent::Result {
+        manifest: pointer, ..
+    } = parsed.result
+    else {
         return Err("worker exited 0 without ever emitting a terminal result event".to_owned());
     };
-    if result_index != lines.len() - 1 {
-        return Err("the terminal result event was not the last line of output".to_owned());
-    }
 
-    let result: ResultEvent = serde_json::from_str(lines[result_index])
-        .map_err(|err| format!("cannot parse the terminal result event: {err}"))?;
-
-    let manifest_path = PathBuf::from(&result.manifest.path);
+    let manifest_path = PathBuf::from(&pointer.path);
     if !is_within(&base_components, &manifest_path) {
         return Err(format!(
             "manifest path {} escapes the job's own output directory",
@@ -521,32 +382,15 @@ async fn invoke_worker(
     let manifest_bytes = tokio::fs::read(&manifest_path)
         .await
         .map_err(|err| format!("cannot read manifest at {}: {err}", manifest_path.display()))?;
-    if crate::upload::sha256_hex(&manifest_bytes) != result.manifest.sha256 {
+    if crate::upload::sha256_hex(&manifest_bytes) != pointer.sha256 {
         return Err("manifest content hash does not match the terminal result event".to_owned());
     }
-    if manifest_bytes.len() as u64 != result.manifest.size {
+    if manifest_bytes.len() as u64 != pointer.size {
         return Err("manifest size does not match the terminal result event".to_owned());
     }
 
-    let manifest: Manifest = serde_json::from_slice(&manifest_bytes)
-        .map_err(|err| format!("manifest is not valid JSON: {err}"))?;
-    if manifest.protocol_version != 2 {
-        return Err(format!(
-            "manifest protocol version mismatch: expected 2, got {}",
-            manifest.protocol_version
-        ));
-    }
-    if manifest.job_id != spec.job_id.as_str() {
-        return Err("manifest job id does not match this job".to_owned());
-    }
-    if manifest.revision_id != spec.revision_id {
-        return Err(
-            "manifest revision id does not match the revision this job requested".to_owned(),
-        );
-    }
-    if manifest.model_sha256 != spec.content_sha256 {
-        return Err("manifest model hash does not match the uploaded content".to_owned());
-    }
+    let manifest = Manifest::from_verified_bytes(&manifest_bytes)?;
+    manifest.check_identity(&spec)?;
 
     let descriptor_bytes = verify_artifact(
         &base_components,

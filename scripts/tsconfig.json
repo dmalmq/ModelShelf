@@ -16,6 +16,9 @@
   "include": [
     "./check-published-tree.ts",
     "./sync-tickets.ts",
-    "./lib/checker-harness.ts"
+    "./verify-worker-envelope.ts",
+    "./lib/checker-harness.ts",
+    "./lib/worker-envelope.ts",
+    "./fixtures/fake-worker.ts"
   ]
 }

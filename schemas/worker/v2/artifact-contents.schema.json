@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "artifact-contents.schema.json",
+  "title": "ArtifactContents",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["descriptor", "semantic", "renderManifest", "geometry"],
+  "properties": {
+    "descriptor": { "$ref": "model-descriptor.schema.json" },
+    "semantic": { "$ref": "semantic-model.schema.json" },
+    "renderManifest": {
+      "anyOf": [{ "$ref": "render-manifest.schema.json" }, { "type": "null" }]
+    },
+    "geometry": {
+      "anyOf": [
+        { "type": "array", "items": { "$ref": "geometry-chunk.schema.json" } },
+        { "type": "null" }
+      ]
+    }
+  }
+}

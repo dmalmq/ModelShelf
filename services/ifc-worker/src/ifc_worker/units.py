@@ -1,4 +1,4 @@
-"""Per-property unit resolution and SI normalization, per docs/contracts/worker-v1.md:
+"""Per-property unit resolution and SI normalization, per docs/contracts/worker-v2.md:
 dimension is length/area/volume or null, and an unsupported unit retains the raw
 value with null SI/dimension rather than a fabricated conversion.
 

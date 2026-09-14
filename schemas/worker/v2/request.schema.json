@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "request.schema.json",
+  "title": "WorkerRequest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocolVersion", "jobId", "operation", "model", "ids", "outputDir", "settings"],
+  "properties": {
+    "protocolVersion": { "$ref": "protocol-version.schema.json" },
+    "jobId": { "type": "string", "minLength": 1 },
+    "operation": { "enum": ["inspect", "validate"] },
+    "model": { "$ref": "model-ref.schema.json" },
+    "ids": {
+      "anyOf": [
+        { "$ref": "ids-ref.schema.json" },
+        { "type": "null" }
+      ]
+    },
+    "outputDir": { "type": "string", "minLength": 1 },
+    "settings": { "$ref": "settings.schema.json" }
+  },
+  "if": {
+    "properties": { "operation": { "const": "validate" } },
+    "required": ["operation"]
+  },
+  "then": {
+    "properties": {
+      "ids": { "$ref": "ids-ref.schema.json" }
+    }
+  }
+}

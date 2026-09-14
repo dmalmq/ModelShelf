@@ -1,0 +1,13 @@
+{
+  "protocolVersion": 2,
+  "jobId": "job-1",
+  "operation": "validate",
+  "model": {
+    "path": "/data/a.ifc",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "revisionId": "revision-1"
+  },
+  "ids": null,
+  "outputDir": "/data/jobs/job-1",
+  "settings": { "geometry": false }
+}

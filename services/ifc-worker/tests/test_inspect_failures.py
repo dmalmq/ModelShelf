@@ -79,7 +79,7 @@ def test_validate_operation_is_rejected_as_not_yet_implemented(
     tmp_path: Path,
     real_sample_path: Path,
 ) -> None:
-    """`validate` is part of the contract (docs/contracts/worker-v1.md) but IDS
+    """`validate` is part of the contract (docs/contracts/worker-v2.md) but IDS
     checking is a separate ticket's scope; this worker must say so loudly, not
     fabricate a passing/incomplete result.
     """
@@ -87,7 +87,11 @@ def test_validate_operation_is_rejected_as_not_yet_implemented(
         tmp_path,
         operation="validate",
         model={"path": str(real_sample_path), "sha256": sha256_file(real_sample_path), "revisionId": "r"},
-        ids={"path": str(real_sample_path), "sha256": sha256_file(real_sample_path)},
+        ids={
+            "path": str(real_sample_path),
+            "sha256": sha256_file(real_sample_path),
+            "specificationIds": None,
+        },
         outputDir=str(tmp_path / "out"),
     )
     run = run_worker(request_path)

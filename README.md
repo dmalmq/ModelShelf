@@ -79,6 +79,7 @@ uv sync --project packages/model-contracts-py
 node scripts/generate-model-contracts.ts           # regenerate all three languages' bindings
 node scripts/generate-model-contracts.ts --check   # fail if committed bindings have drifted
 node scripts/verify-model-contracts.ts             # cross-language fixture + round-trip + import-boundary proof
+node scripts/verify-worker-envelope.ts --check     # worker job envelope dump-lock against schemas/worker/v2
 ```
 
 ## Tests

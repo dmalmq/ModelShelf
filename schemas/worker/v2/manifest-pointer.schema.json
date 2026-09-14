@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "manifest-pointer.schema.json",
+  "title": "ManifestPointer",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["path", "sha256", "size"],
+  "properties": {
+    "path": { "type": "string", "minLength": 1 },
+    "sha256": { "$ref": "sha256.schema.json" },
+    "size": { "type": "integer", "minimum": 0 }
+  }
+}

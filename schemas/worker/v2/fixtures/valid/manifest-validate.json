@@ -1,0 +1,38 @@
+{
+  "protocolVersion": 2,
+  "jobId": "job-1",
+  "operation": "validate",
+  "revisionId": "revision-1",
+  "modelSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "idsSha256": "1111111111111111111111111111111111111111111111111111111111111111",
+  "versions": {
+    "worker": "0.1.0",
+    "ifcOpenShell": "0.8.5",
+    "ifcTester": "0.8.5",
+    "extraction": "inspect-v2",
+    "scopeSemantics": "scope-v1"
+  },
+  "artifacts": {
+    "descriptor": {
+      "path": "/data/jobs/job-1/descriptor.json",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "size": 10,
+      "recordCount": 1
+    },
+    "semantic": {
+      "path": "/data/jobs/job-1/semantic.json",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "size": 20,
+      "recordCount": 2
+    },
+    "renderManifest": null,
+    "geometry": null,
+    "outcomes": {
+      "path": "/data/jobs/job-1/outcomes.jsonl",
+      "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "size": 50,
+      "recordCount": 3
+    }
+  },
+  "diagnostics": ["ids-note"]
+}

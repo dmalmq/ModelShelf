@@ -1,4 +1,4 @@
-"""Object-local triangulated geometry, per docs/contracts/worker-v1.md.
+"""Object-local triangulated geometry, per docs/contracts/worker-v2.md.
 
 Three states, never collapsed into each other: `absent` (the product genuinely
 has no representation — e.g. an `IfcBuildingStorey` or `IfcVirtualElement`),

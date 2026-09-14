@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "settings.schema.json",
+  "title": "Settings",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["geometry"],
+  "properties": {
+    "geometry": { "type": "boolean" }
+  }
+}
