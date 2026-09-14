@@ -5,9 +5,9 @@
  * fallback — the same reviewer may work in Japanese and present the result to
  * an English-speaking stakeholder.
  *
- * These label maps previously lived in `lib/mock.ts`. That was the wrong home:
- * mock data is disposable fixture content, product copy is not, and a component
- * that imports its labels from a fixtures file cannot ship.
+ * These label maps once lived beside disposable fixture data. Product copy is
+ * not disposable, and a component that imports its labels from a fixtures file
+ * cannot ship.
  *
  * Every string here has a counterpart in the other language. Adding a term to
  * one map without the other is a type error, which is the point.
@@ -803,32 +803,6 @@ export const SHELF_COPY = {
     latest: "latest",
     noRevisions: "no revisions yet",
     status: { draft: "Draft", finalized: "Finalized", processing: "Run in progress", failed: "Run failed", checked: "Run complete" },
-  },
-} as const;
-
-/** Copy for `src/components/domain/finding-evidence.tsx`. */
-export const FINDING_EVIDENCE_COPY = {
-  ja: {
-    evidence: "根拠と対象オブジェクト",
-    requirement: "要件",
-    expected: "期待値",
-    objects: "対象オブジェクト",
-    name: "名称",
-    storey: "階",
-    model: "モデル",
-    actual: "実測値",
-    other: "ほか",
-  },
-  en: {
-    evidence: "Evidence and affected objects",
-    requirement: "Requirement",
-    expected: "Expected",
-    objects: "Affected objects",
-    name: "Name",
-    storey: "Storey",
-    model: "Model",
-    actual: "Actual",
-    other: "Other",
   },
 } as const;
 

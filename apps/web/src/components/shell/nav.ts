@@ -1,9 +1,4 @@
-// The navigation model, shared by all three design directions.
-//
-// Sections and order come from the concept sidebar: review work first, the
-// models it draws on second, configuration last. Keeping this as data means a
-// direction can render it as a labelled column or a collapsed icon rail
-// without either one owning the structure.
+// Navigation order is review work, then models, then configuration, kept as data so every shell layout can render it.
 
 import type { StringKey } from "@/lib/i18n";
 import type { IconName } from "./icons";

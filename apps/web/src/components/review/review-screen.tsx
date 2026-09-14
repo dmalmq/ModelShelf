@@ -197,10 +197,7 @@ export function ReviewScreen({
               ) : state.detail ? (
                 <>
                   <TotalsHeader run={state.detail.run} presentation={presentation} />
-                  <ProvenanceNotice
-                    status={state.detail.inputProvenance.status}
-                    reason={state.detail.inputProvenance.reason}
-                  />
+                  <ProvenanceNotice provenance={state.detail.inputProvenance} locale={locale} />
                   <ScorecardTree
                     bands={state.detail.scorecard}
                     incompleteCount={state.detail.run.incompleteCount}

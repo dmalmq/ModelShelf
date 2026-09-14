@@ -16,9 +16,8 @@ that exists, extend it rather than adding a sibling.
 | `src/lib/types.ts` | The API contract. Mirrors `docs/contracts/http-api.md`. Owned by the backend work — do not change it to suit a component. |
 | `src/lib/palette.ts` | Every colour that encodes API data. |
 | `src/lib/i18n.ts` | Every user-visible string, in both languages. |
-| `src/lib/mock.ts` | Disposable fixtures for the design-exploration routes. |
-| `src/lib/fixtures.ts` | API-typed fixtures for `/kitchen-sink`. |
-| `/kitchen-sink` | Every domain component with its edge cases, both locales. |
+| `src/lib/fixtures.ts` | API-typed fixtures. Importable only from `*.dev.tsx` (lint-enforced). |
+| `/kitchen-sink` | Selected domain components with their edge cases, both locales. `page.dev.tsx`: a route under `next dev`, absent from `next build`. |
 
 ## Colour
 
@@ -86,12 +85,19 @@ it looks right.
 - **SVG `<path>` with a stroke and no `fill` fills black.** Invisible on a dark canvas,
   glaring on the white one this product uses.
 
+## Dev-only pages
+
+A page for people building the UI (galleries, storyboards, design alternatives) is
+`page.dev.tsx`. It is a route under `npm run dev` and a plain file under `npm run build`.
+A `page.tsx` is a product URL and must be listed in `scripts/check-routes.mjs`.
+
 ## Verifying
 
 ```sh
 npm run typecheck
+npm run lint
 npm run build
-npm run start          # then open /kitchen-sink
+npm run dev            # then open /kitchen-sink
 ```
 
 Look at the render. The last three layout bugs here — a black building, a label colliding

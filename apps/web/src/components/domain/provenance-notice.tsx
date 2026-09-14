@@ -14,28 +14,25 @@ import type { RunInputProvenance } from "@/lib/types";
  * a historical run from before pinning, or one whose inputs could not be
  * proven. `complete` is the silent case: you are told when a claim is weaker
  * than it looks, never congratulated when it is fine.
+ *
+ * There is no default and no flat form. A notice that has not been handed the
+ * run's record cannot decide to stay silent, for the same reason
+ * `incompleteCount` is tri-state: an uninformed caller must not publish a
+ * claim it did not measure.
  */
 export function ProvenanceNotice({
   provenance,
-  status,
-  reason,
   locale = DEFAULT_LOCALE,
 }: {
-  /** Preferred: pass the run's provenance object straight through. */
-  provenance?: RunInputProvenance;
-  /** Flat form, kept for existing callers. */
-  status?: "complete" | "incomplete";
-  reason?: string | null;
+  provenance: RunInputProvenance;
   locale?: Locale;
-} = {}) {
-  const effectiveStatus = provenance?.status ?? status;
-  const effectiveReason = provenance?.reason ?? reason ?? null;
-  if (effectiveStatus !== "incomplete") return null;
+}): React.JSX.Element | null {
+  if (provenance.status !== "incomplete") return null;
   return (
     <Alert>
       <CircleDashed />
       <AlertTitle>{UI[locale].provenanceTitle}</AlertTitle>
-      {effectiveReason && <AlertDescription>{effectiveReason}</AlertDescription>}
+      {provenance.reason && <AlertDescription>{provenance.reason}</AlertDescription>}
     </Alert>
   );
 }

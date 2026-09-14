@@ -2,7 +2,7 @@
 
 import { createHash } from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, globSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -126,6 +126,16 @@ async function main() {
   record("production Next build succeeds", build.status === 0, `exit ${build.status}`);
   if (build.status !== 0) throw new Error("Next build failed; see next-build.log");
 
+  const routesCheck = spawnSync(process.execPath, ["scripts/check-routes.mjs"], {
+    cwd: WEB_ROOT,
+    encoding: "utf8",
+  });
+  record(
+    "production route table matches PRODUCT_ROUTES",
+    routesCheck.status === 0,
+    `${routesCheck.stdout ?? ""}${routesCheck.stderr ?? ""}`.trim() || `exit ${routesCheck.status}`,
+  );
+
   nextProcess = spawn(
     process.execPath,
     [join(WEB_ROOT, "node_modules", "next", "dist", "bin", "next"), "start", "-p", String(webPort)],
@@ -142,6 +152,17 @@ async function main() {
     }
   }, { intervalMs: 500, timeoutMs: 60_000 });
   record("production Next app serves the shelf", true);
+
+  for (const path of ["/design", "/design/a", "/kitchen-sink"]) {
+    const res = await fetch(`${webOrigin}${path}`);
+    record(`${path} is absent from the production build`, res.status === 404, `http ${res.status}`);
+  }
+  for (const file of globSync("**/page.dev.tsx", { cwd: join(WEB_ROOT, "src", "app") })) {
+    const dir = dirname(file).replaceAll("\\", "/");
+    const url = dir === "." ? "/" : `/${dir}`;
+    const res = await fetch(`${webOrigin}${url}`);
+    record(`dev-only ${url} is absent from the production build`, res.status === 404, `http ${res.status}`);
+  }
 
   const packsRes = await api(webOrigin, "/api/packs");
   snap("packs.json", packsRes.body);
