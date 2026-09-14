@@ -702,10 +702,7 @@ fn clone_finding(finding: &Finding) -> Finding {
             .map(|o| FindingObject {
                 object_id: o.object_id.clone(),
                 model_id: o.model_id.clone(),
-                object_ref: crate::dto::ObjectRefOut {
-                    revision_id: o.object_ref.revision_id.clone(),
-                    object_id: o.object_ref.object_id.clone(),
-                },
+                object_ref: o.object_ref.clone(),
                 discipline: o.discipline.clone(),
                 express_id: o.express_id,
                 global_id: o.global_id.clone(),

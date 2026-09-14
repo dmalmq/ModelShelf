@@ -485,7 +485,7 @@ pub struct FindingObject {
     pub object_id: Option<String>,
     pub model_id: String,
     #[serde(rename = "ref")]
-    pub object_ref: ObjectRefOut,
+    pub object_ref: model_contracts::ObjectRef,
     pub discipline: String,
     pub express_id: i64,
     pub global_id: Option<String>,
@@ -626,15 +626,19 @@ pub struct ObjectFingerprints {
     pub combined: String,
 }
 
-/// Mirrors `model_contracts::ObjectRef`'s wire shape exactly (not the generated type
-/// itself: these are already-valid internal strings computed at ingest time via
-/// `model_contracts::express_id_to_object_id`, not external input that needs that
-/// crate's ingress validation).
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ObjectRefOut {
-    pub revision_id: String,
-    pub object_id: String,
+pub(crate) fn object_ref(
+    revision_id: &str,
+    stored_object_id: Option<&str>,
+    express_id: i64,
+) -> model_contracts::ObjectRef {
+    let object_id = match stored_object_id {
+        Some(id) if !id.is_empty() => id.to_owned(),
+        _ => model_contracts::express_id_to_object_id(revision_id, express_id as u64),
+    };
+    model_contracts::ObjectRef {
+        revision_id: revision_id.parse().expect("model id is a non-empty revisionId"),
+        object_id: object_id.parse().expect("objectId minLength 1"),
+    }
 }
 
 #[derive(Serialize)]
@@ -643,7 +647,7 @@ pub struct ObjectRowOut {
     pub id: String,
     pub model_id: String,
     #[serde(rename = "ref")]
-    pub object_ref: ObjectRefOut,
+    pub object_ref: model_contracts::ObjectRef,
     pub express_id: i64,
     pub global_id: Option<String>,
     pub ifc_type: String,
@@ -717,8 +721,8 @@ pub enum MatchConfidenceOut {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ObjectChangeRefOut {
-    pub revision_id: String,
-    pub object_id: String,
+    #[serde(flatten)]
+    pub object_ref: model_contracts::ObjectRef,
     pub express_id: i64,
     pub global_id: Option<String>,
     pub ifc_type: String,
@@ -1064,10 +1068,7 @@ pub fn object_row_json(row: &ObjectRowDb) -> ObjectRowOut {
     ObjectRowOut {
         id: row.id.clone(),
         model_id: row.model_id.clone(),
-        object_ref: ObjectRefOut {
-            revision_id: row.model_id.clone(),
-            object_id: row.ref_object_id.clone().unwrap_or_default(),
-        },
+        object_ref: object_ref(&row.model_id, row.ref_object_id.as_deref(), row.express_id),
         express_id: row.express_id,
         global_id: row.global_id.clone(),
         ifc_type: row.ifc_type.clone(),
@@ -1084,13 +1085,10 @@ pub fn object_row_json(row: &ObjectRowDb) -> ObjectRowOut {
 }
 
 pub fn finding_object_json(row: &FindingObjectRow) -> FindingObject {
-    let object_id = row.ref_object_id.clone().unwrap_or_else(|| {
-        model_contracts::express_id_to_object_id(&row.model_id, row.express_id as u64)
-    });
     FindingObject {
         object_id: row.object_id.clone(),
         model_id: row.model_id.clone(),
-        object_ref: ObjectRefOut { revision_id: row.model_id.clone(), object_id },
+        object_ref: object_ref(&row.model_id, row.ref_object_id.as_deref(), row.express_id),
         discipline: row.discipline.clone().unwrap_or_else(|| "OTHER".to_string()),
         express_id: row.express_id,
         global_id: row.global_id.clone(),
@@ -1199,4 +1197,58 @@ pub fn make_ids(spec_key_count: usize) -> Vec<String> {
 
 pub fn timestamp_now() -> String {
     now_iso()
+}
+
+#[cfg(test)]
+mod object_ref_wire {
+    use super::*;
+
+    #[test]
+    fn object_row_ref_matches_the_schema_fixture_shape() {
+        let fixture = include_str!("../../../schemas/model/v1/fixtures/valid/object-ref.json");
+        let expected: serde_json::Value = serde_json::from_str(fixture).unwrap();
+        let row = ObjectRowDb {
+            id: "obj-1".into(),
+            model_id: "rev-arch-01".into(),
+            express_id: 1,
+            global_id: None,
+            ifc_type: "IfcWall".into(),
+            name: None,
+            predefined_type: None,
+            storey: None,
+            placement_json: None,
+            fp_properties: "p".into(),
+            fp_placement: "l".into(),
+            fp_shape: "s".into(),
+            fp_combined: "c".into(),
+            ref_object_id: Some("occ_823c7adb931b5478".into()),
+            profile_version: None,
+            profile_id: None,
+            canonical_properties: None,
+            canonical_placement: None,
+            canonical_shape: None,
+        };
+        let json = serde_json::to_value(&object_row_json(&row)).unwrap();
+        assert_eq!(json["ref"], expected);
+    }
+
+    #[test]
+    fn object_change_ref_flattens_generated_object_ref() {
+        let fixture = include_str!("../../../schemas/model/v1/fixtures/valid/object-ref.json");
+        let expected: serde_json::Value = serde_json::from_str(fixture).unwrap();
+        let change = ObjectChangeRefOut {
+            object_ref: object_ref("rev-arch-01", Some("occ_823c7adb931b5478"), 12),
+            express_id: 12,
+            global_id: None,
+            ifc_type: "IfcWall".into(),
+            name: None,
+            storey: None,
+        };
+        let json = serde_json::to_value(&change).unwrap();
+        assert_eq!(json["revisionId"], expected["revisionId"]);
+        assert_eq!(json["objectId"], expected["objectId"]);
+        assert_eq!(json["expressId"], 12);
+        assert!(json.get("ref").is_none());
+        assert!(json.get("object_ref").is_none());
+    }
 }
