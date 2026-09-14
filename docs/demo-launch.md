@@ -217,12 +217,19 @@ Verification commands and what each proves:
 
 ## Where evidence lives
 
-Ticket-16 aggregate and standalone runs write logs, JSON responses, and
-screenshots under `.omo/evidence/modelshelf-prototype/ticket-16/` (gitignored). The existing
-ticket-owned viewer and UI scenarios retain their historical `.scratch`
-directories (`07-combined-viewer`, `08-finding-inspection`, and
-`11-priority-review`); each command records its own result there locally. Third-party
-inputs and restricted samples are never committed.
+Browser verifiers write under one root, `.omo/evidence/modelshelf-prototype/`
+(gitignored):
+
+- `07-combined-viewer` from `node scripts/verify-viewer.ts`
+- `08-finding-inspection` from `node scripts/verify-viewer.ts --scenario inspection`
+- `19-extract-viewer/standalone` from `node scripts/verify-viewer.ts --scenario standalone`
+- `11-priority-review` from `node scripts/verify-ui.ts --scenario findings`
+- `task-10` from `node scripts/verify-ui.ts --scenario deliveries`
+- `ticket-15` from `node scripts/verify-ui.ts --scenario comparisons`
+
+API and qa harnesses already write under this same root. These verifiers no
+longer write `.scratch/modelshelf-prototype/evidence/`. Third-party inputs and
+restricted samples are never committed.
 
 ## Verification ownership
 

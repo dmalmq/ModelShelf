@@ -11,7 +11,7 @@ Wave 1 is the review loop: upload IFC → checked delivery → grouped findings 
 | Delivery | BLCJ S1000 ARCH 36 MB + STRUCT 0.8 MB + MEP 49 MB, one delivery, BLCJ v2 pack |
 | Scene | 5,275 selectable objects, 692,230 drawable triangles, 3 draw batches, 1 shared material |
 
-Per-run machine/browser/inputs land locally in `.scratch/modelshelf-prototype/evidence/08-finding-inspection/results.json` under `perf` (gitignored).
+Per-run machine/browser/inputs land locally in `.omo/evidence/modelshelf-prototype/08-finding-inspection/results.json` under `perf` (gitignored).
 
 ## Proven
 
@@ -34,9 +34,9 @@ Per-run machine/browser/inputs land locally in `.scratch/modelshelf-prototype/ev
 | Criterion | Measured | Root cause |
 |---|---|---|
 | Median orbit 30 FPS | 2.5 full scene, 25 STRUCT-only | Software rasterizer bound on a GPU-less host, not app cost. Isolation: raw WebGL hits 29.7 FPS on 700k simple-shaded triangles in the same browser, so the 12x gap is PBR fragment load under SwiftShader; FPS scales 10x with scene size while app JS stays trivial (select p95 1.5 ms); viewport shrink changes nothing, ruling out fill rate. No app change fixes software triangle throughput without degrading the product. |
-| No parsing-induced UI task over 200 ms | Unprovable here | Longtask telemetry self-contradicts under headless SwiftShader (334 entries inside a 3.5 s window, needing 16 s of task time), so no verdict is drawn from it. Closest valid proxies are all green: select p95, filter, cold. Rerun path below re-enables the verdict. |
+| No parsing-induced UI task over 200 ms | Unprovable here | Longtask telemetry self-contradicts under headless SwiftShader (334 entries inside a 3.5 s window, needing 16 s of task time), so the recorded number is not a trustworthy app cost. Closest valid proxies are all green: select p95, filter, cold. The default inspection run now asserts this threshold anyway and exits non-zero on a miss. |
 
-Rerun path: `node scripts/verify-viewer.ts --scenario inspection --assert-perf` on any host with hardware GL asserts every threshold and exits non-zero on a miss. The default run records the same numbers without failing, so ticket 08's functional proof stays green anywhere.
+Rerun path: `node scripts/verify-viewer.ts --scenario inspection` asserts every threshold on any host, including hardware GL, and exits non-zero on a miss. Recorded SwiftShader misses remain documented misses. They now fail the process as well.
 
 ## Remaining Wave 2
 
