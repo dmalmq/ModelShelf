@@ -1,7 +1,6 @@
 import { createRequire } from "node:module";
 import { cpus, platform, arch as osArch, totalmem } from "node:os";
 import { join } from "node:path";
-import { pathToFileURL } from "node:url";
 import { REPO_ROOT } from "./checker-harness.ts";
 
 const WEB_PACKAGE_JSON = join(REPO_ROOT, "apps", "web", "package.json");
@@ -58,13 +57,16 @@ type CanvasLike = {
 };
 
 /**
- * Resolve playwright from apps/web package.json exports.
- * A hardcoded index.mjs path couples every verifier to one install layout.
+ * Resolve playwright from apps/web. createRequire selects the CJS export,
+ * where chromium is a property of the module object.
  */
 export async function importChromium(): Promise<{ chromium: ChromiumLauncher }> {
   const requireFromWeb = createRequire(WEB_PACKAGE_JSON);
-  const entry = requireFromWeb.resolve("playwright");
-  return import(pathToFileURL(entry).href) as Promise<{ chromium: ChromiumLauncher }>;
+  const playwright = requireFromWeb("playwright") as { chromium?: ChromiumLauncher };
+  if (!playwright.chromium) {
+    throw new Error("apps/web playwright export has no chromium launcher");
+  }
+  return { chromium: playwright.chromium };
 }
 
 export async function readProofHost(args: {
