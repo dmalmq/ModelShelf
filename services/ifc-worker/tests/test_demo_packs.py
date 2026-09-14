@@ -18,6 +18,8 @@ DEMO = REPO_ROOT / "packs" / "demo"
 FIXTURES = DEMO / "fixtures"
 FIXTURES_IDS = DEMO / "fixtures.ids"
 ORACLE = FIXTURES / "oracle.json"
+CORRECTION = "62 ducts, 45 pipes, and 43 cable trays"
+STALE = "every one was a cable-tray-family segment"
 
 IDS_NS = "http://standards.buildingsmart.org/IDS"
 
@@ -306,6 +308,14 @@ def test_two_files_evaluate_independently(tmp_path: Path) -> None:
         assert outcomes[0]["failedCount"] == 1
         results.append(outcomes[0]["failures"][0]["expressId"])
     assert results[0] > 0 and results[1] > 0
+
+
+def test_v2_ids_rationale_matches_checks_md() -> None:
+    ids = (DEMO / "blcj-s1000-v2.ids").read_text(encoding="utf-8")
+    checks = (DEMO / "checks.md").read_text(encoding="utf-8")
+    assert CORRECTION in checks
+    assert CORRECTION in ids
+    assert STALE not in ids
 
 
 def test_ids_hash_mismatch_fails_the_job(tmp_path: Path) -> None:
