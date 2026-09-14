@@ -131,8 +131,13 @@ async function serveBare(dataDir: string): Promise<{ port: number; child: ChildP
     cwd: REPO_ROOT,
     stdio: ["ignore", "pipe", "pipe"],
   });
-  await waitForHealth(port, { child });
-  return { port, child };
+  try {
+    await waitForHealth(port, { child });
+    return { port, child };
+  } catch (err) {
+    await stopProcess(child);
+    throw err;
+  }
 }
 
 async function listCatalog(port: number): Promise<{ projects: unknown[]; packs: unknown[] }> {
