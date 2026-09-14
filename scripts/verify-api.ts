@@ -1166,7 +1166,7 @@ async function checkOrphanedWorkerGroup(check, log) {
     }
   } finally {
     if (pidAlive(childPid)) {
-      try { process.kill(childPid, "SIGKILL"); } catch { /* already gone */ }
+      try { process.kill(childPid, "SIGKILL"); } catch {}
     }
     rmSync(dataDir, { recursive: true, force: true });
   }

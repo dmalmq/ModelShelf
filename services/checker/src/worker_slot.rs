@@ -367,10 +367,6 @@ async fn run_worker_process(
     }
 }
 
-/// Lexical containment: both paths are documented as absolute, so this
-/// normalises `.`/`..` components without touching the filesystem (a malicious
-/// or buggy manifest may point somewhere that never gets created) and compares
-/// the resulting component sequences. `base` must already be normalised.
 fn is_within(base: &[std::path::Component<'_>], candidate: &Path) -> bool {
     if !candidate.is_absolute() {
         return false;
