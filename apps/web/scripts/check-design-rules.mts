@@ -59,7 +59,6 @@ for (const file of componentFiles) {
       /(?:bg|text|border)-(?:red|orange|amber|yellow|green|lime|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d+/g,
       (match) => `raw Tailwind colour bypasses product tokens: ${match[0]}`,
     ),
-    ...linesFor(text, /from\s+["']@\/lib\/mock["']/g, () => "shipped component imports design fixture data"),
     ...linesFor(
       text,
       /(?:[A-Za-z][^\n"'`]* \/ [^\n"'`]*[\u3040-\u30ff\u3400-\u9fff]|[\u3040-\u30ff\u3400-\u9fff][^\n"'`]* \/ [^\n"'`]*[A-Za-z])/g,
@@ -75,9 +74,8 @@ for (const file of componentFiles) {
 }
 
 const paletteText = await readFile(PALETTE, "utf8");
-const paletteConsumerTexts = await Promise.all(
-  allFiles.filter((file) => file !== PALETTE).map((file) => readFile(file, "utf8")),
-);
+const consumerFiles = allFiles.filter((file) => file !== PALETTE);
+const paletteConsumerTexts = await Promise.all(consumerFiles.map((file) => readFile(file, "utf8")));
 const importedPaletteNames = new Set();
 for (const text of paletteConsumerTexts) {
   for (const match of text.matchAll(/import\s*{([^}]*)}\s*from\s*["']@\/lib\/palette["'];/g)) {
@@ -93,6 +91,23 @@ for (const match of paletteText.matchAll(/export const ([A-Z][A-Z0-9_]*)/g)) {
     violations.push(`${relative(PALETTE)}: unused exported palette token ${name}`);
   }
 }
+
+const FIXTURES = path.join(SRC, "lib", "fixtures.ts");
+const DEV_ONLY_PAGE = /\.dev\.tsx$/;
+function checkFixturesImport(file, text) {
+  if (DEV_ONLY_PAGE.test(file) || file === FIXTURES) return;
+  for (const finding of linesFor(
+    text,
+    /from\s+["']@\/lib\/fixtures["']/g,
+    () => "fixture data reaches a shipped module; only *.dev.tsx pages may import @/lib/fixtures",
+  )) {
+    violations.push(`${relative(file)}:${finding}`);
+  }
+}
+for (let i = 0; i < consumerFiles.length; i++) {
+  checkFixturesImport(consumerFiles[i], paletteConsumerTexts[i]);
+}
+checkFixturesImport(PALETTE, paletteText);
 
 if (violations.length > 0) {
   console.error(violations.join("\n"));

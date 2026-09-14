@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3210",
-    "build": "next build",
+    "build": "next build && node scripts/check-routes.mts",
     "start": "next start -p 3210",
     "lint": "node scripts/check-design-rules.mts",
     "typecheck": "tsc --noEmit",

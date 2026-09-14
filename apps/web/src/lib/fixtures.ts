@@ -9,7 +9,8 @@
  * one of those is a case a component can get wrong, and a tidy made-up dataset
  * would hide all three.
  *
- * Nothing here is imported by application code.
+ * Imported only by `src/app/kitchen-sink/page.dev.tsx`, a dev-only route.
+ * `npm run lint` fails if any shipped module imports this file.
  */
 
 import type {
@@ -235,8 +236,8 @@ export const RUN_NOTHING_APPLIED = run({
   failingObjectCount: 0,
 });
 
-/** The only provenance state that occurs today; `complete` is unreachable until
- *  input pinning lands, so it is the exception the UI must never assume. */
+/** `complete` is the normal case since input pinning (ticket 06). `incomplete` is
+ *  the historical or unproven state the UI interrupts for (AGENTS.md rule 7). */
 export const PROVENANCE_INCOMPLETE: RunInputProvenance = {
   status: "incomplete",
   reason:

@@ -12,12 +12,10 @@ import {
   SCORECARD,
   SCORECARD_CLEAN,
 } from "@/lib/fixtures";
-import { DEFAULT_LOCALE, UI, type Locale } from "@/lib/i18n";
+import { DEFAULT_LOCALE, LOCALES, UI, type Locale } from "@/lib/i18n";
 import { SEVERITY_ORDER } from "@/lib/types";
 
 export const metadata = { title: "Kitchen sink · ModelShelf" };
-
-const LOCALES: Locale[] = ["ja", "en"];
 
 /**
  * Every domain component, against real BLCJ numbers and the states that break
@@ -28,6 +26,9 @@ const LOCALES: Locale[] = ["ja", "en"];
  * default, and side-by-side is the only way to catch the failure this kit is
  * most likely to have: a label that fits in English and overflows in Japanese,
  * or a hierarchy that reads in Latin and vanishes in kanji.
+ *
+ * `page.dev.tsx` is a page under `next dev` and not under `next build`.
+ * See `next.config.ts`.
  */
 export default function KitchenSink() {
   return (
