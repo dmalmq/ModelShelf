@@ -18,7 +18,7 @@
 // absence markers, scope, pack identity, pager), malformed-member banner with
 // valid prefix intact, deduped header, geometry-failure listing with retry.
 //
-// Evidence: .scratch/modelshelf-prototype/evidence/11-priority-review/run-<ts>/
+// Evidence: .omo/evidence/modelshelf-prototype/11-priority-review/run-<ts>/
 // Usage: node scripts/verify-ui.ts --scenario findings (or this file directly)
 
 import { spawn, spawnSync } from "node:child_process";
@@ -26,7 +26,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync
 import { readFile as readFileAsync } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { chromium } from "../apps/web/node_modules/playwright/index.mjs";
+import { evidenceDir, importChromium, readProofHost } from "./lib/browser-proof.ts";
 import { BIN_PATH, REPO_ROOT, buildBinary, createChecker, freePort, runCli, stopProcess, waitForHealth } from "./lib/checker-harness.ts";
 
 const flagIndex = process.argv.indexOf("--scenario");
@@ -37,7 +37,7 @@ if (scenario !== "findings") {
 }
 
 const FIXTURES_IFC = join(REPO_ROOT, "packs", "demo", "fixtures", "base.ifc");
-const EVIDENCE_ROOT = join(REPO_ROOT, ".scratch", "modelshelf-prototype", "evidence", "11-priority-review");
+const EVIDENCE_ROOT = evidenceDir("findings");
 // Non-interactive shells do not inherit the Rust toolchain path; the harness
 // shells out to `cargo`, so put it on PATH before anything else runs.
 if (process.env.HOME) {
@@ -402,6 +402,7 @@ print("total", db.execute("SELECT COUNT(*) FROM finding_objects WHERE finding_id
     const appOrigin = `http://127.0.0.1:${webPort}`;
     await waitForHttp(`${appOrigin}/deliveries/${delivery.id}`);
 
+    const { chromium } = await importChromium();
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     const pageErrors = [];
@@ -507,6 +508,7 @@ print("total", db.execute("SELECT COUNT(*) FROM finding_objects WHERE finding_id
     const geometryText = (await page.textContent("[data-evidence-panel]")) ?? "";
     check("Chromium: viewer read-back + without-geometry listing present", /ビューア一致|描画不可/.test(geometryText), geometryText.slice(-200));
     const diagnostics = await page.evaluate(() => window.__modelshelfViewer?.inspect()).catch(() => null);
+    const host = await readProofHost({ browserVersion: browser.version(), page });
     log("viewer-diagnostics.json", diagnostics ?? { unavailable: true });
     const matched = diagnostics?.renderer?.highlightGroups?.[0]?.matched ?? null;
     check("Chromium: drawable subset highlights against real geometry", typeof matched === "number" && matched >= 1, JSON.stringify({ matched }));
@@ -542,6 +544,7 @@ print("total", db.execute("SELECT COUNT(*) FROM finding_objects WHERE finding_id
       run2: run2.run.id,
       bandOrder: domBands,
       failures: failures(),
+      host,
     });
   } finally {
     if (browser) await browser.close().catch(() => {});

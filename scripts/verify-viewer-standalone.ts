@@ -5,10 +5,10 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { extname, join, normalize, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
-import { chromium, type Browser } from "../apps/web/node_modules/playwright/index.mjs";
+import { evidenceDir, importChromium, readProofHost, type ChromiumLauncher } from "./lib/browser-proof.ts";
 import { REPO_ROOT } from "./lib/checker-harness.ts";
 
-const EVIDENCE_DIR = join(REPO_ROOT, ".scratch", "modelshelf-prototype", "evidence", "19-extract-viewer", "standalone");
+const EVIDENCE_DIR = evidenceDir("standalone");
 const PKG_ROOT = join(REPO_ROOT, "packages", "model-viewer");
 const CONTENT_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -61,7 +61,7 @@ export async function runStandaloneScenario(): Promise<void> {
   const log = (name: string, value: unknown) =>
     writeFileSync(join(runDir, name), typeof value === "string" ? value : JSON.stringify(value, null, 2));
 
-  const results: { passed: boolean; checks: string[]; log?: string[] } = { passed: false, checks: [] };
+  const results: { passed: boolean; checks: string[]; log?: string[]; host?: unknown } = { passed: false, checks: [] };
   const check = (condition: unknown, label: string, detail?: unknown) => {
     if (!condition) throw new Error(`FAIL - ${label}${detail ? ` (${detail})` : ""}`);
     console.log(`ok - ${label}`);
@@ -108,11 +108,12 @@ export async function runStandaloneScenario(): Promise<void> {
   const port = await listen(fixtureServer);
   const origin = `http://127.0.0.1:${port}`;
 
-  let browser: Browser | null = null;
+  let browser: Awaited<ReturnType<ChromiumLauncher["launch"]>> | null = null;
   const pageLogs: string[] = [];
   try {
     await waitFor("/example/index.html", port);
 
+    const { chromium } = await importChromium();
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     page.on("console", (message) => pageLogs.push(`${message.type()}: ${message.text()}`));
@@ -143,6 +144,8 @@ export async function runStandaloneScenario(): Promise<void> {
       undefined,
       { timeout: 60_000 },
     );
+
+    results.host = await readProofHost({ browserVersion: browser.version(), page });
 
     let current = await readState();
     check(current.sources.length === 2, "both fixture revisions reach ready");

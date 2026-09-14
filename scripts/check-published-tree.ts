@@ -4,7 +4,8 @@
 // type-stripping cannot load.
 
 import { spawnSync } from "node:child_process";
-import { dirname } from "node:path";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const REPO_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -64,6 +65,19 @@ for (const path of tracked) {
   }
   if (/\.(?:js|mjs|cjs|jsx)$/.test(path) && !ALLOWED_JS.has(path)) {
     failures.push(`javascript not on the allowlist: ${path}`);
+  }
+}
+
+const tautologyCheck = /check\(true/;
+const playwrightIndex = /node_modules\/playwright\/index\.mjs/;
+for (const path of tracked) {
+  if (!path.startsWith("scripts/") || !path.endsWith(".ts")) continue;
+  const source = readFileSync(join(REPO_ROOT, path), "utf8");
+  if (tautologyCheck.test(source)) {
+    failures.push(`banned tautology in ${path}`);
+  }
+  if (playwrightIndex.test(source)) {
+    failures.push(`banned hardcoded playwright entry in ${path}`);
   }
 }
 
