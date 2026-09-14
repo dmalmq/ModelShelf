@@ -236,7 +236,6 @@ export interface Finding {
   severity: Severity;
   categoryId: string;
   categoryLabel: string;
-  /** Persist membership for this finding. Not a group-total input. */
   objectCount: number;
   /** true when the engine could not decide — "review incomplete", never a pass. */
   incomplete: boolean;
@@ -248,7 +247,6 @@ export interface CategoryGroup {
   categoryId: string;
   categoryLabel: string;
   findingCount: number;
-  /** Distinct decided objects in this category. */
   objectCount: number;
   findings: Finding[];
 }
@@ -256,7 +254,6 @@ export interface CategoryGroup {
 export interface SeverityBand {
   severity: Severity;
   findingCount: number;
-  /** Distinct decided objects in this band. Not the sum of category counts. */
   objectCount: number;
   categories: CategoryGroup[];
 }

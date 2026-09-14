@@ -24,7 +24,6 @@ pub fn spec_outcome_rank(outcome: &str) -> usize {
         .unwrap_or(OUTCOME_ORDER.len())
 }
 
-/// SQL encoding of `ObjectIdentity` for COUNT(DISTINCT). Rust unions hash the pair.
 pub const OBJECT_IDENTITY_SQL: &str = "fo.model_id || ':' || fo.express_id";
 
 pub const DISCIPLINES: [&str; 4] = ["ARCH", "STRUCT", "MEP", "OTHER"];
@@ -533,7 +532,6 @@ pub struct Finding {
     pub severity: String,
     pub category_id: String,
     pub category_label: String,
-    /// Persist membership (`objects.len()` at settle). Not a group-total input.
     pub object_count: i64,
     pub incomplete: bool,
     pub sample_objects: Vec<FindingObject>,
@@ -545,7 +543,6 @@ pub struct CategoryGroup {
     pub category_id: String,
     pub category_label: String,
     pub finding_count: i64,
-    /// Distinct decided objects in this category.
     pub object_count: i64,
     pub findings: Vec<Finding>,
 }
@@ -555,7 +552,6 @@ pub struct CategoryGroup {
 pub struct SeverityBand {
     pub severity: String,
     pub finding_count: i64,
-    /// Distinct decided objects in this band. Not the sum of category counts.
     pub object_count: i64,
     pub categories: Vec<CategoryGroup>,
 }

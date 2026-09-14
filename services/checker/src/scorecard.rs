@@ -1,5 +1,3 @@
-//! Scorecard assembly: distinct object identities folded into category and band sets.
-
 use std::collections::{HashMap, HashSet};
 
 use crate::dto::{CategoryGroup, Finding, SeverityBand, SEVERITY_ORDER};
