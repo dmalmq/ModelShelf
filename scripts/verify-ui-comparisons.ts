@@ -35,8 +35,8 @@ import { spawn, spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { chromium } from "../apps/web/node_modules/playwright/index.mjs";
-import { BIN_PATH, REPO_ROOT, buildBinary, createChecker, freePort, runCli, stopProcess, waitForHealth } from "./lib/checker-harness.ts";
+import { evidenceDir, importChromium, readProofHost } from "./lib/browser-proof.ts";
+import { BIN_PATH, REPO_ROOT, buildBinary, createChecker, freePort, preSyncIfcWorker, runCli, stopProcess, waitForHealth } from "./lib/checker-harness.ts";
 
 const scenarioFlag = process.argv.indexOf("--scenario");
 const scenario = scenarioFlag >= 0 ? process.argv[scenarioFlag + 1] : null;
@@ -238,13 +238,13 @@ function packMeta() {
 // ---------------------------------------------------------------------------
 
 const WEB_ROOT = join(REPO_ROOT, "apps", "web");
-const EVIDENCE_ROOT = join(REPO_ROOT, ".omo", "evidence", "modelshelf-prototype", "ticket-15");
+const EVIDENCE_ROOT = evidenceDir("comparisons");
 
 const runDir = join(EVIDENCE_ROOT, `run-${new Date().toISOString().replace(/[:.]/g, "-")}`);
 mkdirSync(join(runDir, "snapshots"), { recursive: true });
 
 const { check, failureCount } = createChecker();
-const results = { scenario, passed: false, checks: [], ids: {} };
+const results = { scenario, passed: false, checks: [], ids: {}, host: null };
 function record(label, condition, detail) {
   check(label, condition, detail);
   results.checks.push({ label, passed: Boolean(condition), detail: detail ?? null });
@@ -326,12 +326,7 @@ async function main() {
   writeFileSync(join(runDir, "seed.log"), `${seed.stdout}${seed.stderr}`);
   record("seed exits zero", seed.status === 0, `exit ${seed.status}: ${seed.stdout}${seed.stderr}`);
 
-  const uvSync = spawnSync("uv", ["sync", "--locked", "--project", "services/ifc-worker"], {
-    cwd: REPO_ROOT,
-    encoding: "utf8",
-  });
-  writeFileSync(join(runDir, "worker-sync.log"), `${uvSync.stdout ?? ""}${uvSync.stderr ?? ""}`);
-  if (uvSync.status !== 0) console.error(`WARN - worker pre-sync failed, first job pays the cost: ${uvSync.stderr}`);
+  preSyncIfcWorker(runDir);
 
   const checkerPort = await freePort();
   checkerProcess = spawn(BIN_PATH, ["serve", "--data-dir", dataDir, "--port", String(checkerPort)], {
@@ -484,6 +479,7 @@ async function main() {
   }, { intervalMs: 500, timeoutMs: 60_000 });
   record("production Next app serves the shelf", true);
 
+  const { chromium } = await importChromium();
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await page.addInitScript(() => {
@@ -537,6 +533,7 @@ async function main() {
     undefined,
     { timeout: 360_000 },
   );
+  results.host = await readProofHost({ browserVersion: browser.version(), page });
   record("base-side geometry loads in the viewer", true);
   const probe = await page.evaluate(() => {
     const diag = window.__modelshelfViewer?.inspect();

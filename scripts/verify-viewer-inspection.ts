@@ -13,13 +13,18 @@
 // while the non-geometric evidence runs against the fixtures delivery, where
 // the IFC2X3 pack against IFC4 models honestly reports incomplete findings.
 
-import { mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync, statSync, writeFileSync } from "node:fs";
 import { readFile as readFileAsync } from "node:fs/promises";
-import { cpus, platform, arch as osArch, tmpdir, totalmem } from "node:os";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
-import { chromium } from "../apps/web/node_modules/playwright/index.mjs";
+import {
+  evidenceDir,
+  importChromium,
+  readProofHost,
+  type EvaluateHandle,
+} from "./lib/browser-proof.ts";
 import {
   BIN_PATH,
   REPO_ROOT,
@@ -31,7 +36,7 @@ import {
 } from "./lib/checker-harness.ts";
 
 const WEB_ROOT = join(REPO_ROOT, "apps", "web");
-const EVIDENCE_DIR = join(REPO_ROOT, ".scratch", "modelshelf-prototype", "evidence", "08-finding-inspection");
+const EVIDENCE_DIR = evidenceDir("inspection");
 const SAMPLES = {
   ARCH: join(REPO_ROOT, "samples", "ifc", "blcj-s1000-architecture.ifc"),
   STRUCT: join(REPO_ROOT, "samples", "ifc", "blcj-s1000-structure.ifc"),
@@ -43,11 +48,186 @@ const BLCJ_METADATA = join(REPO_ROOT, "packs", "demo", "blcj-s1000-v2.metadata.j
 
 const results = { passed: false, checks: [], runA: null, runB: null, highlight: null, isolation: null, perf: null };
 const nextLogs = [];
-const assertPerf = process.argv.includes("--assert-perf");
 function check(condition, label) {
   if (!condition) throw new Error(`FAIL - ${label}`);
   console.log(`ok - ${label}`);
   results.checks.push(label);
+}
+
+type InspectSlice = {
+  isolatedRequested: number | null;
+  selectedHidden: boolean;
+  clipping: boolean;
+};
+
+export type NamedProof =
+  | { kind: "isolatedRequested"; expected: number }
+  | { kind: "selectedHidden" }
+  | { kind: "clipping" }
+  | { kind: "propertyPanelDetached" };
+
+type ProofCtx = {
+  inspect: InspectSlice | null;
+  propertyPanelCount: number;
+};
+
+export function holds(proof: NamedProof, ctx: ProofCtx): boolean {
+  switch (proof.kind) {
+    case "isolatedRequested":
+      return ctx.inspect?.isolatedRequested === proof.expected;
+    case "selectedHidden":
+      return ctx.inspect?.selectedHidden === true;
+    case "clipping":
+      return ctx.inspect?.clipping === true;
+    case "propertyPanelDetached":
+      return ctx.propertyPanelCount === 0;
+    default: {
+      const _exhaustive: never = proof;
+      return _exhaustive;
+    }
+  }
+}
+
+export type ProofPage = EvaluateHandle & {
+  locator(selector: string): { count(): Promise<number> };
+};
+
+async function readCtx(page: ProofPage): Promise<ProofCtx> {
+  const inspect = await page.evaluate(() => {
+    const raw = window.__modelshelfViewer?.inspect();
+    if (!raw) return null;
+    return {
+      isolatedRequested: raw.isolatedRequested,
+      selectedHidden: raw.selectedHidden,
+      clipping: raw.renderer.clipping,
+    };
+  });
+  const propertyPanelCount = await page.locator("[data-property-panel]").count();
+  return { inspect, propertyPanelCount };
+}
+
+export async function prove(page: ProofPage, proof: NamedProof, label: string, timeoutMs = 30_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  let last = false;
+  while (Date.now() <= deadline) {
+    last = holds(proof, await readCtx(page));
+    if (last) break;
+    await delay(50);
+  }
+  check(last, label);
+}
+
+type Wave1Id = "cold" | "orbit" | "select" | "filter" | "ui-longtask";
+type Wave1Compare = "lt" | "gte";
+
+type Wave1Spec = {
+  readonly id: Wave1Id;
+  readonly compare: Wave1Compare;
+  readonly threshold: number;
+  readonly label: (measured: number) => string;
+};
+
+const WAVE1_GATES: readonly Wave1Spec[] = Object.freeze([
+  {
+    id: "cold",
+    compare: "lt",
+    threshold: 15_000,
+    label: (n) => `cold usable geometry arrives within 15 s (${n} ms)`,
+  },
+  {
+    id: "orbit",
+    compare: "gte",
+    threshold: 30,
+    label: (n) => `median orbit stays at 30 FPS or above (${n.toFixed(1)})`,
+  },
+  {
+    id: "select",
+    compare: "lt",
+    threshold: 200,
+    label: (n) => `p95 selection stays below 200 ms (${n.toFixed(1)} ms)`,
+  },
+  {
+    id: "filter",
+    compare: "lt",
+    threshold: 500,
+    label: (n) => `filtering stays below 500 ms (${n} ms)`,
+  },
+  {
+    id: "ui-longtask",
+    compare: "lt",
+    threshold: 200,
+    label: (n) => `no non-render UI task over 200 ms (${n.toFixed(1)} ms max)`,
+  },
+]);
+
+type Wave1Measured = {
+  coldMs: number;
+  orbitMedian: number;
+  selectP95: number;
+  filterMs: number;
+  maxUiTask: number;
+};
+
+type Wave1Gate = {
+  id: Wave1Id;
+  label: string;
+  measured: number;
+  threshold: number;
+  met: boolean;
+};
+
+function measuredOf(id: Wave1Id, m: Wave1Measured): number {
+  switch (id) {
+    case "cold":
+      return m.coldMs;
+    case "orbit":
+      return m.orbitMedian;
+    case "select":
+      return m.selectP95;
+    case "filter":
+      return m.filterMs;
+    case "ui-longtask":
+      return m.maxUiTask;
+    default: {
+      const _exhaustive: never = id;
+      return _exhaustive;
+    }
+  }
+}
+
+function met(compare: Wave1Compare, measured: number, threshold: number): boolean {
+  if (!Number.isFinite(measured)) return false;
+  return compare === "lt" ? measured < threshold : measured >= threshold;
+}
+
+function evaluateWave1(m: Wave1Measured): Wave1Gate[] {
+  const gates = WAVE1_GATES.map((spec) => {
+    const measured = measuredOf(spec.id, m);
+    return {
+      id: spec.id,
+      label: spec.label(Number.isFinite(measured) ? measured : Number.NaN),
+      measured,
+      threshold: spec.threshold,
+      met: met(spec.compare, measured, spec.threshold),
+    };
+  });
+  results.perf.gate = gates.map(({ label, met: gateMet }) => ({ label, met: gateMet }));
+  return gates;
+}
+
+function assertWave1(gates: Wave1Gate[]): void {
+  for (const gate of gates) {
+    if (gate.met) {
+      console.log(`ok - ${gate.label}`);
+      results.checks.push(gate.label);
+    } else {
+      console.error(`FAIL - ${gate.label}`);
+    }
+  }
+  const missed = gates.filter((gate) => !gate.met);
+  if (missed.length > 0) {
+    throw new Error(`FAIL - ${missed.map((gate) => gate.label).join("; ")}`);
+  }
 }
 
 function median(values) {
@@ -158,6 +338,7 @@ async function toggleDiscipline(page, discipline) {
 }
 
 export async function runInspectionScenario() {
+  mkdirSync(EVIDENCE_DIR, { recursive: true });
   const runDir = mkdtempSync(join(tmpdir(), "modelshelf-verify-inspection-"));
   buildBinary(runDir);
   const dataDir = mkdtempSync(join(tmpdir(), "modelshelf-inspect-data-"));
@@ -252,6 +433,7 @@ export async function runInspectionScenario() {
 
     const appOrigin = `http://127.0.0.1:${appPort}`;
     await waitForHttp(`${appOrigin}/deliveries/${delivery.id}?run=${runA.run.id}`, nextProcess, 180_000);
+    const { chromium } = await importChromium();
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     await page.addInitScript(() => {
@@ -274,7 +456,8 @@ export async function runInspectionScenario() {
     page.on("pageerror", (error) => nextLogs.push(`browser error: ${error.stack ?? error.message}\n`));
 
     const perf = {
-      machine: { platform: platform(), arch: osArch(), cpus: cpus().length, totalMem: totalmem() },
+      machine: null,
+      gpu: null,
       browser: { version: browser.version(), viewport: { width: 1440, height: 900 } },
       inputs: null,
       coldMs: null,
@@ -289,6 +472,16 @@ export async function runInspectionScenario() {
     const navStart = Date.now();
     await page.goto(`${appOrigin}/deliveries/${delivery.id}?run=${runA.run.id}`, { waitUntil: "domcontentloaded" });
     await waitForModelsReady(page, 360_000);
+    const host = await readProofHost({ browserVersion: browser.version(), page });
+    perf.machine = {
+      platform: host.platform,
+      arch: host.arch,
+      cpuModel: host.cpuModel,
+      cpus: host.cpuCount,
+      totalMem: host.ramBytes,
+    };
+    perf.gpu = { renderer: host.webglRenderer };
+    perf.browser = { version: host.browserVersion, viewport: { width: 1440, height: 900 } };
     perf.coldMs = Date.now() - navStart;
     await mark(page, perf.marks, "ready");
 
@@ -423,21 +616,17 @@ export async function runInspectionScenario() {
     check(Boolean(otherRef), "a member outside the narrowed storey exists for the hidden-selection proof");
     await page.locator('[data-filter="storey"]').selectOption(narrowStorey);
     const filterStart = Date.now();
-    await page.waitForFunction(
-      (expected) => window.__modelshelfViewer?.inspect().isolatedRequested === expected,
-      narrowCount,
-      { timeout: 30_000 },
+    await prove(
+      page,
+      { kind: "isolatedRequested", expected: narrowCount },
+      `storey filter narrows isolation (${narrowStorey}: ${narrowCount})`,
     );
     perf.filterMs = Date.now() - filterStart;
     results.isolation = { storey: narrowStorey, isolatedRequested: narrowCount };
-    check(true, `storey filter narrows isolation (${narrowStorey}: ${narrowCount})`);
     await page.screenshot({ path: join(EVIDENCE_DIR, "inspection-isolated.png") });
 
     await page.evaluate((ref) => window.__modelshelfViewer?.select(ref), otherRef);
-    await page.waitForFunction(() => window.__modelshelfViewer?.inspect().selectedHidden === true, undefined, {
-      timeout: 30_000,
-    });
-    check(true, "selecting an object outside the isolation is reported as hidden");
+    await prove(page, { kind: "selectedHidden" }, "selecting an object outside the isolation is reported as hidden");
     check(await review.locator("[data-hidden-notice]").isVisible(), "hidden selection renders an explicit notice");
 
     await page.screenshot({ path: join(EVIDENCE_DIR, "inspection-selection.png") });
@@ -459,10 +648,7 @@ export async function runInspectionScenario() {
 
     await page.locator("[data-section-z]").fill("1.5");
     await page.locator("[data-section-z]").press("Enter");
-    await page.waitForFunction(() => window.__modelshelfViewer?.inspect().renderer.clipping === true, undefined, {
-      timeout: 30_000,
-    });
-    check(true, "section cut clips above the project height");
+    await prove(page, { kind: "clipping" }, "section cut enables renderer clipping");
     await page.screenshot({ path: join(EVIDENCE_DIR, "inspection-section.png") });
     await page.locator("[data-section-z]").fill("");
     await page.locator("[data-section-z]").press("Enter");
@@ -498,18 +684,25 @@ export async function runInspectionScenario() {
     check(Boolean(secondMemberRef), "a second member is available for property cleanup");
     if (secondMemberRef) {
       await page.evaluate((ref) => window.__modelshelfViewer?.select(ref), secondMemberRef);
-      await page.waitForSelector("[data-property-panel]", { state: "detached", timeout: 30_000 });
-      check(true, "changing viewer selection clears stale property details");
+      await prove(page, { kind: "propertyPanelDetached" }, "changing viewer selection clears stale property details");
     }
 
     const finale = await inspect(page);
+    const archBytes = statSync(SAMPLES.ARCH).size;
+    const structBytes = statSync(SAMPLES.STRUCT).size;
+    const mepBytes = statSync(SAMPLES.MEP).size;
     perf.inputs = {
       revisions: finale.snapshot.sources.map((source) => ({ revisionId: source.revisionId })),
       objects: finale.objects.length,
       triangles: finale.resources.triangles,
+      modelBytes: {
+        ARCH: archBytes,
+        STRUCT: structBytes,
+        MEP: mepBytes,
+        total: archBytes + structBytes + mepBytes,
+      },
     };
     perf.longTasks = await page.evaluate(() => window.__modelshelfLongTasks ?? []);
-    results.perf = perf;
     const orbitMedian = median(perf.orbitFps);
     const selectP95 = percentile(perf.selectMs, 95);
     const markTime = (name) => perf.marks.find((m) => m.name === name)?.t ?? null;
@@ -532,20 +725,14 @@ export async function runInspectionScenario() {
       maxUiMs: maxUiTask,
       orbitCount: orbitTasks.length,
     };
-    // Threshold verdicts are the Wave 1 gate (ticket 09), requested explicitly
-    // with --assert-perf. The default run records the same numbers without
-    // failing, so ticket 08's functional proof stays green on any host.
-    const gate = (condition, label) => {
-      results.perf.gate = results.perf.gate ?? [];
-      results.perf.gate.push({ label, met: Boolean(condition) });
-      if (assertPerf) check(condition, label);
-      else console.log(`recorded (gate only) - ${label}`);
-    };
-    gate(perf.coldMs < 15_000, `cold usable geometry arrives within 15 s (${perf.coldMs} ms)`);
-    gate(orbitMedian >= 30, `median orbit stays at 30 FPS or above (${orbitMedian.toFixed(1)})`);
-    gate(selectP95 < 200, `p95 selection stays below 200 ms (${selectP95.toFixed(1)} ms)`);
-    gate(perf.filterMs < 500, `filtering stays below 500 ms (${perf.filterMs} ms)`);
-    gate(maxUiTask < 200, `no non-render UI task over 200 ms (${maxUiTask.toFixed(1)} ms max)`);
+    results.perf = perf;
+    const gates = evaluateWave1({
+      coldMs: perf.coldMs,
+      orbitMedian: Number(orbitMedian),
+      selectP95: Number(selectP95),
+      filterMs: Number(perf.filterMs),
+      maxUiTask,
+    });
     await page.goto(`${appOrigin}/deliveries/${deliveryB.id}?run=${runB.run.id}`, { waitUntil: "domcontentloaded" });
 
     await waitForModelsReady(page, 180_000);
@@ -567,6 +754,7 @@ export async function runInspectionScenario() {
     );
     await page.screenshot({ path: join(EVIDENCE_DIR, "inspection-evidence.png"), fullPage: true });
 
+    assertWave1(gates);
     results.passed = true;
     console.log("viewer inspection verification passed");
   } catch (error) {
@@ -576,7 +764,6 @@ export async function runInspectionScenario() {
     if (browser) await browser.close();
     if (nextProcess) await stopProcess(nextProcess);
     await stopProcess(checker);
-    const { writeFileSync, mkdirSync } = await import("node:fs");
     mkdirSync(EVIDENCE_DIR, { recursive: true });
     writeFileSync(join(EVIDENCE_DIR, "results.json"), `${JSON.stringify(results, null, 2)}\n`);
     writeFileSync(join(EVIDENCE_DIR, "verifier.log"), nextLogs.join(""));

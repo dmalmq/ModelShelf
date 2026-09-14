@@ -18,6 +18,7 @@
     "./sync-tickets.ts",
     "./verify-worker-envelope.ts",
     "./lib/checker-harness.ts",
+    "./lib/browser-proof.ts",
     "./lib/worker-envelope.ts",
     "./fixtures/fake-worker.ts"
   ]

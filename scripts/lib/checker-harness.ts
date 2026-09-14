@@ -117,3 +117,35 @@ export function buildBinary(runDir: string): void {
   }
   console.log("ok - cargo build succeeds");
 }
+
+export type WorkerSync = {
+  readonly ok: boolean;
+  readonly status: number | null;
+  readonly elapsedMs: number;
+  readonly errorMessage: string | null;
+};
+
+/**
+ * Always writes worker-sync evidence, then throws on failure so the caller
+ * finally still flushes. Does not tee a CheckFn row into the api all log.
+ */
+export function preSyncIfcWorker(runDir: string): WorkerSync {
+  const started = Date.now();
+  const result = spawnSync("uv", ["sync", "--locked", "--project", "services/ifc-worker"], {
+    cwd: REPO_ROOT,
+    encoding: "utf8",
+  });
+  const elapsedMs = Date.now() - started;
+  const errorMessage = result.error?.message ?? null;
+  const status = result.status;
+  const ok = status === 0 && result.error === undefined;
+  writeFileSync(
+    join(runDir, "worker-sync.log"),
+    `${result.stdout ?? ""}${result.stderr ?? ""}${errorMessage ? `${errorMessage}\n` : ""}elapsedMs=${elapsedMs}\n`,
+  );
+  writeFileSync(join(runDir, "worker-sync.json"), `${JSON.stringify({ ok, status, elapsedMs })}\n`);
+  if (!ok) {
+    throw new Error(`worker pre-sync failed: status=${status} elapsedMs=${elapsedMs}`);
+  }
+  return { ok, status, elapsedMs, errorMessage };
+}

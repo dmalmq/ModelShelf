@@ -8,15 +8,15 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn, spawnSync } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
-import { chromium } from "../apps/web/node_modules/playwright/index.mjs";
 import { expressIdToObjectId } from "../packages/model-contracts-ts/src/express-id-mapping.ts";
+import { evidenceDir, importChromium, readProofHost } from "./lib/browser-proof.ts";
 import { runInspectionScenario } from "./verify-viewer-inspection.ts";
 import { runStandaloneScenario } from "./verify-viewer-standalone.ts";
 
 const scenarioFlag = process.argv.indexOf("--scenario");
 const scenario = scenarioFlag >= 0 ? process.argv[scenarioFlag + 1] : "combined";
 if (scenario !== "combined" && scenario !== "inspection" && scenario !== "standalone") {
-  console.error(`usage: node scripts/verify-viewer.ts [--scenario combined|inspection|standalone] [--assert-perf] (got ${scenario ?? "<none>"})`);
+  console.error(`usage: node scripts/verify-viewer.ts [--scenario combined|inspection|standalone] (got ${scenario ?? "<none>"})`);
   process.exit(2);
 }
 if (scenario === "inspection") {
@@ -30,13 +30,7 @@ if (scenario === "standalone") {
 
 const REPO_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const WEB_ROOT = join(REPO_ROOT, "apps", "web");
-const EVIDENCE_DIR = join(
-  REPO_ROOT,
-  ".scratch",
-  "modelshelf-prototype",
-  "evidence",
-  "07-combined-viewer",
-);
+const EVIDENCE_DIR = evidenceDir("combined");
 const SAMPLE_PATHS = {
   ARCH: join(REPO_ROOT, "samples", "ifc", "blcj-s1000-architecture.ifc"),
   STRUCT: join(REPO_ROOT, "samples", "ifc", "blcj-s1000-structure.ifc"),
@@ -208,12 +202,14 @@ const results = {
   duplicate: null,
   empty: null,
   disposalRuns: [],
+  host: null,
 };
 
 try {
   const appOrigin = `http://127.0.0.1:${appPort}`;
   await waitForHttp(`${appOrigin}/deliveries/combined`, nextProcess, 120_000);
 
+  const { chromium } = await importChromium();
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   await page.addInitScript(() => {
@@ -239,6 +235,7 @@ try {
     undefined,
     { timeout: 60_000 },
   );
+  results.host = await readProofHost({ browserVersion: browser.version(), page });
 
   const partial = await inspect(page);
   results.partial = {

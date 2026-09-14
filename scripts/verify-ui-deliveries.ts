@@ -6,8 +6,8 @@ import { existsSync, globSync, mkdirSync, mkdtempSync, readFileSync, rmSync, wri
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { chromium } from "../apps/web/node_modules/playwright/index.mjs";
-import { BIN_PATH, REPO_ROOT, buildBinary, createChecker, freePort, runCli, stopProcess, waitForHealth } from "./lib/checker-harness.ts";
+import { evidenceDir, importChromium, readProofHost } from "./lib/browser-proof.ts";
+import { BIN_PATH, REPO_ROOT, buildBinary, createChecker, freePort, preSyncIfcWorker, runCli, stopProcess, waitForHealth } from "./lib/checker-harness.ts";
 
 const scenarioFlag = process.argv.indexOf("--scenario");
 const scenario = scenarioFlag >= 0 ? process.argv[scenarioFlag + 1] : null;
@@ -17,7 +17,7 @@ if (scenario !== "deliveries") {
 }
 
 const WEB_ROOT = join(REPO_ROOT, "apps", "web");
-const EVIDENCE_ROOT = join(REPO_ROOT, ".omo", "evidence", "modelshelf-prototype", "task-10");
+const EVIDENCE_ROOT = evidenceDir("deliveries");
 const BASE_IFC = join(REPO_ROOT, "packs", "demo", "fixtures", "base.ifc");
 const HEAD_IFC = join(REPO_ROOT, "packs", "demo", "fixtures", "head.ifc");
 const FIXTURES_IDS = join(REPO_ROOT, "packs", "demo", "fixtures.ids");
@@ -33,7 +33,7 @@ const runDir = join(EVIDENCE_ROOT, `run-${new Date().toISOString().replace(/[:.]
 mkdirSync(join(runDir, "snapshots"), { recursive: true });
 
 const { check, failureCount } = createChecker();
-const results = { scenario, passed: false, checks: [], ids: {}, membershipBeforeFinalize: null, membershipAfterReload: null };
+const results = { scenario, passed: false, checks: [], ids: {}, membershipBeforeFinalize: null, membershipAfterReload: null, host: null };
 function record(label, condition, detail) {
   check(label, condition, detail);
   results.checks.push({ label, ok: Boolean(condition), detail: condition ? undefined : String(detail ?? "") });
@@ -95,12 +95,7 @@ async function main() {
   writeFileSync(join(runDir, "seed.log"), `${seed.stdout}${seed.stderr}`);
   record("seed exits zero", seed.status === 0, `exit ${seed.status}: ${seed.stdout}${seed.stderr}`);
 
-  const uvSync = spawnSync("uv", ["sync", "--locked", "--project", "services/ifc-worker"], {
-    cwd: REPO_ROOT,
-    encoding: "utf8",
-  });
-  writeFileSync(join(runDir, "worker-sync.log"), `${uvSync.stdout ?? ""}${uvSync.stderr ?? ""}`);
-  if (uvSync.status !== 0) console.error(`WARN - worker pre-sync failed, first job pays the cost: ${uvSync.stderr}`);
+  preSyncIfcWorker(runDir);
 
   const checkerPort = await freePort();
   checkerProcess = spawn(BIN_PATH, ["serve", "--data-dir", dataDir, "--port", String(checkerPort)], {
@@ -171,6 +166,7 @@ async function main() {
   record("seeded pack versions are reachable through the app", packsRes.ok && versions.length >= 1, JSON.stringify(packsRes.body)?.slice(0, 200));
   results.ids.packVersionId = fixtureVersion?.id ?? null;
 
+  const { chromium } = await importChromium();
   browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   page.on("console", (message) => browserLog.push(`console ${message.type()}: ${message.text()}\n`));
@@ -289,6 +285,7 @@ async function main() {
   }
 
   await openDelivery(drop1.href);
+  results.host = await readProofHost({ browserVersion: browser.version(), page });
   record("delivery route is bookmarkable with project context", new URL(page.url()).searchParams.get("project") === projectId, page.url());
 
   await uploadToSource(mepNorthId, BASE_IFC, "completed");
