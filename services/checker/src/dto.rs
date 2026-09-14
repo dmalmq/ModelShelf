@@ -4,11 +4,15 @@
 use serde::{Deserialize, Serialize};
 
 use crate::db::{new_id, now_iso};
+use crate::measured_inputs::{processing_versions_wire, ProcessingVersionsWire};
 
 pub const SEVERITY_ORDER: [&str; 4] = ["critical", "high", "medium", "advisory"];
 
 pub fn severity_rank(severity: &str) -> usize {
-    SEVERITY_ORDER.iter().position(|s| *s == severity).unwrap_or(SEVERITY_ORDER.len())
+    SEVERITY_ORDER
+        .iter()
+        .position(|s| *s == severity)
+        .unwrap_or(SEVERITY_ORDER.len())
 }
 
 pub const DISCIPLINES: [&str; 4] = ["ARCH", "STRUCT", "MEP", "OTHER"];
@@ -88,6 +92,8 @@ pub struct ModelRow {
     pub header_json: Option<String>,
     pub parse_ms: Option<i64>,
     pub uploaded_at: String,
+    #[sqlx(default)]
+    pub processing_versions_json: String,
 }
 
 /// Every current (post-migration) read of "the models in a delivery" goes through
@@ -97,7 +103,7 @@ pub const DELIVERY_MODEL_ROW_SELECT: &str = "SELECT mr.id, dm.delivery_id, sm.di
         sm.id AS source_model_id, sm.name AS source_model_name,
         mr.filename, mr.content_sha256, mr.byte_size, mr.schema_label, mr.entity_count,
         mr.product_count, mr.length_to_metre, mr.storage_path, mr.header_json, mr.parse_ms,
-        mr.uploaded_at
+        mr.uploaded_at, mr.processing_versions_json
    FROM delivery_members dm
    JOIN model_revisions mr ON mr.id = dm.model_revision_id
    JOIN source_models sm ON sm.id = dm.source_model_id";
@@ -127,11 +133,13 @@ pub struct ModelRevisionRow {
     pub parse_ms: Option<i64>,
     pub uploaded_at: String,
     pub provenance: String,
+    #[sqlx(default)]
+    pub processing_versions_json: String,
 }
 
 pub const MODEL_REVISION_SELECT: &str = "SELECT id, source_model_id, filename, content_sha256,
         byte_size, schema_label, entity_count, product_count, length_to_metre, storage_path,
-        header_json, parse_ms, uploaded_at, provenance
+        header_json, parse_ms, uploaded_at, provenance, processing_versions_json
    FROM model_revisions";
 
 #[derive(sqlx::FromRow)]
@@ -352,6 +360,7 @@ pub struct ModelInfo {
     pub parse_ms: Option<i64>,
     pub uploaded_at: String,
     pub originating_system: Option<String>,
+    pub processing_versions: Option<ProcessingVersionsWire>,
 }
 
 #[derive(Serialize, Clone)]
@@ -367,6 +376,7 @@ pub struct ModelRevisionSummary {
     pub product_count: i64,
     pub uploaded_at: String,
     pub provenance: String,
+    pub processing_versions: Option<ProcessingVersionsWire>,
 }
 
 #[derive(Serialize)]
@@ -552,7 +562,15 @@ pub struct SpecResultRowOut {
 /// Why a historical run cannot claim its listed models are its proven inputs.
 pub const UNPINNED_REASON: &str =
     "the listed models are this delivery's current membership, not a recorded snapshot of what \
+     this run evaluated; this run was created before input pinning was recorded";
+
+pub const LEGACY_UNPINNED_DENIAL: &str =
+    "the listed models are this delivery's current membership, not a recorded snapshot of what \
      this run evaluated; pinning a run's exact inputs is not implemented yet";
+
+pub const COMPLETE_WITHOUT_SNAPSHOT_REASON: &str =
+    "this run is stored as complete provenance but has no run_models snapshot; \
+     models are omitted rather than reconstructed from current delivery membership";
 
 /// Whether a run's listed `models` are its proven inputs. The two stored columns can
 /// express `complete` with a reason, `incomplete` without one, and any string at all.
@@ -571,7 +589,15 @@ impl InputProvenance {
     pub fn from_row(status: &str, reason: Option<&str>) -> Self {
         match status {
             "complete" => Self::Complete,
-            _ => Self::Incomplete { reason: reason.unwrap_or(UNPINNED_REASON).to_owned() },
+            _ => {
+                let reason = match reason {
+                    Some(stored) if stored != LEGACY_UNPINNED_DENIAL => stored,
+                    _ => UNPINNED_REASON,
+                };
+                Self::Incomplete {
+                    reason: reason.to_owned(),
+                }
+            }
         }
     }
 
@@ -636,7 +662,9 @@ pub(crate) fn object_ref(
         _ => model_contracts::express_id_to_object_id(revision_id, express_id as u64),
     };
     model_contracts::ObjectRef {
-        revision_id: revision_id.parse().expect("model id is a non-empty revisionId"),
+        revision_id: revision_id
+            .parse()
+            .expect("model id is a non-empty revisionId"),
         object_id: object_id.parse().expect("objectId minLength 1"),
     }
 }
@@ -897,11 +925,7 @@ pub struct AddDeliveryMemberBody {
 // Conversions
 // ---------------------------------------------------------------------------
 
-pub fn project_json(
-    row: ProjectRow,
-    delivery_count: i64,
-    run_count: i64,
-) -> Project {
+pub fn project_json(row: ProjectRow, delivery_count: i64, run_count: i64) -> Project {
     Project {
         id: row.id,
         tenant_id: row.tenant_id,
@@ -913,7 +937,10 @@ pub fn project_json(
     }
 }
 
-pub async fn delivery_json(pool: &sqlx::SqlitePool, row: &DeliveryRow) -> Result<Delivery, sqlx::Error> {
+pub async fn delivery_json(
+    pool: &sqlx::SqlitePool,
+    row: &DeliveryRow,
+) -> Result<Delivery, sqlx::Error> {
     let (model_count, product_count): (i64, i64) = sqlx::query_as(
         "SELECT COUNT(*), COALESCE(SUM(mr.product_count), 0)
            FROM delivery_members dm JOIN model_revisions mr ON mr.id = dm.model_revision_id
@@ -961,6 +988,7 @@ pub fn model_json(row: &ModelRow) -> ModelInfo {
         parse_ms: row.parse_ms,
         uploaded_at: row.uploaded_at.clone(),
         originating_system,
+        processing_versions: processing_versions_wire(Some(&row.processing_versions_json)),
     }
 }
 
@@ -976,6 +1004,7 @@ pub fn model_revision_summary_json(row: &ModelRevisionRow) -> ModelRevisionSumma
         product_count: row.product_count,
         uploaded_at: row.uploaded_at.clone(),
         provenance: row.provenance.clone(),
+        processing_versions: processing_versions_wire(Some(&row.processing_versions_json)),
     }
 }
 
@@ -1043,11 +1072,10 @@ pub fn run_summary(row: &RunRow, finding_count: i64, failing_object_count: i64) 
 /// never folded into pass/fail — and one object failing several rules counts
 /// once. `score` stays on the wire for compatibility but is never rendered.
 pub async fn run_extras(pool: &sqlx::SqlitePool, run_id: &str) -> Result<(i64, i64), sqlx::Error> {
-    let finding_count: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM findings WHERE run_id = ?1")
-            .bind(run_id)
-            .fetch_one(pool)
-            .await?;
+    let finding_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM findings WHERE run_id = ?1")
+        .bind(run_id)
+        .fetch_one(pool)
+        .await?;
     let failing_object_count: i64 = sqlx::query_scalar(
         "SELECT COUNT(DISTINCT fo.model_id || ':' || fo.express_id)
            FROM finding_objects fo JOIN findings f ON f.id = fo.finding_id
@@ -1059,7 +1087,10 @@ pub async fn run_extras(pool: &sqlx::SqlitePool, run_id: &str) -> Result<(i64, i
     Ok((finding_count, failing_object_count))
 }
 
-pub async fn run_summary_for(pool: &sqlx::SqlitePool, row: &RunRow) -> Result<RunSummary, sqlx::Error> {
+pub async fn run_summary_for(
+    pool: &sqlx::SqlitePool,
+    row: &RunRow,
+) -> Result<RunSummary, sqlx::Error> {
     let (finding_count, failing_object_count) = run_extras(pool, &row.id).await?;
     Ok(run_summary(row, finding_count, failing_object_count))
 }
@@ -1089,7 +1120,10 @@ pub fn finding_object_json(row: &FindingObjectRow) -> FindingObject {
         object_id: row.object_id.clone(),
         model_id: row.model_id.clone(),
         object_ref: object_ref(&row.model_id, row.ref_object_id.as_deref(), row.express_id),
-        discipline: row.discipline.clone().unwrap_or_else(|| "OTHER".to_string()),
+        discipline: row
+            .discipline
+            .clone()
+            .unwrap_or_else(|| "OTHER".to_string()),
         express_id: row.express_id,
         global_id: row.global_id.clone(),
         ifc_type: row.ifc_type.clone().unwrap_or_default(),

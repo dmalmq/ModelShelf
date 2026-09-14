@@ -27,7 +27,7 @@ import type {
   Severity,
   SourceModel,
 } from "@/lib/types";
-import { fetchDelivery, parseDeliveryDetail } from "@/lib/delivery-api";
+import { fetchDelivery, parseDeliveryDetail, parseProcessingVersions } from "@/lib/delivery-api";
 import { fetchRunDetail as fetchViewerRunDetail } from "@/lib/findings-api";
 
 export { fetchDelivery };
@@ -413,6 +413,7 @@ export function parseModelInfo(value: unknown): ModelInfo {
     parseMs: nullableNumber(record.parseMs, "model.parseMs"),
     uploadedAt: stringValue(record.uploadedAt, "model.uploadedAt"),
     originatingSystem: nullableString(record.originatingSystem, "model.originatingSystem"),
+    processingVersions: parseProcessingVersions(record.processingVersions, "model.processingVersions"),
   };
 }
 
@@ -442,6 +443,7 @@ export function parseRevisionSummary(value: unknown): ModelRevisionSummary {
     productCount: integerValue(record.productCount, "revision.productCount"),
     uploadedAt: stringValue(record.uploadedAt, "revision.uploadedAt"),
     provenance: provenanceValue(record.provenance),
+    processingVersions: parseProcessingVersions(record.processingVersions, "revision.processingVersions"),
   };
 }
 
@@ -473,8 +475,8 @@ export function parseRunSummary(value: unknown): RunSummary {
     packVersionId: stringValue(record.packVersionId, "run.packVersionId"),
     packName: stringValue(record.packName, "run.packName"),
     packVersion: integerValue(record.packVersion, "run.packVersion"),
-    engineVersion: stringValue(record.engineVersion, "run.engineVersion"),
-    parserVersion: stringValue(record.parserVersion, "run.parserVersion"),
+    engineVersion: stringOrEmpty(record.engineVersion, "run.engineVersion"),
+    parserVersion: stringOrEmpty(record.parserVersion, "run.parserVersion"),
     status: runStatusValue(record.status),
     error: nullableString(record.error, "run.error"),
     startedAt: stringValue(record.startedAt, "run.startedAt"),
@@ -553,8 +555,8 @@ function parseDecisionEvidence(value: unknown): DecisionEvidence {
     packVersionId: stringValue(record.packVersionId, "decision.evidence.packVersionId"),
     packName: stringValue(record.packName, "decision.evidence.packName"),
     packVersion: integerValue(record.packVersion, "decision.evidence.packVersion"),
-    engineVersion: stringValue(record.engineVersion, "decision.evidence.engineVersion"),
-    parserVersion: stringValue(record.parserVersion, "decision.evidence.parserVersion"),
+    engineVersion: stringOrEmpty(record.engineVersion, "decision.evidence.engineVersion"),
+    parserVersion: stringOrEmpty(record.parserVersion, "decision.evidence.parserVersion"),
     inputProvenance: parseRunInputProvenance(record.inputProvenance),
     incompleteCount: integerValue(record.incompleteCount, "decision.evidence.incompleteCount"),
     citedFindings: record.citedFindings.map(parseDecisionFindingEvidence),
@@ -636,6 +638,11 @@ function nonEmpty(value: string, field: string): string {
 
 function stringValue(value: unknown, field: string): string {
   if (typeof value !== "string" || value.length === 0) throw new Error(`${field} must be a non-empty string`);
+  return value;
+}
+
+function stringOrEmpty(value: unknown, field: string): string {
+  if (typeof value !== "string") throw new Error(`${field} must be a string`);
   return value;
 }
 

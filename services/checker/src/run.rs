@@ -9,20 +9,22 @@
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
 
-use axum::Json;
 use axum::extract::{Path, State};
+use axum::Json;
 use serde::Deserialize;
 use sqlx::{Sqlite, SqlitePool, Transaction};
 
 use crate::db::{new_id, now_iso};
 use crate::dto::{
-    CategoryGroup, CreateRunBody, DELIVERY_SELECT, DeliveryRow, Finding, FindingObject,
-    FindingObjectRow, FindingRow, InputProvenance, ModelInfo, ModelRow, PackVersionRow,
-    RUN_SUMMARY_SELECT, RunDetail, RunRow, RunSpecRow, SEVERITY_ORDER, SeverityBand,
-    SpecResultRowOut, finding_object_json, model_json, run_summary, severity_rank,
+    finding_object_json, model_json, run_summary, severity_rank, CategoryGroup, CreateRunBody,
+    DeliveryRow, Finding, FindingObject, FindingObjectRow, FindingRow, InputProvenance, ModelInfo,
+    ModelRow, PackVersionRow, RunDetail, RunRow, RunSpecRow, SeverityBand, SpecResultRowOut,
+    DELIVERY_SELECT, RUN_SUMMARY_SELECT, SEVERITY_ORDER, UNPINNED_REASON,
+    COMPLETE_WITHOUT_SNAPSHOT_REASON,
 };
 use crate::error::ApiError;
-use crate::ids_meta::{CHECK_ENGINE_VERSION, CHECK_PARSER_VERSION, PackMetadata, finding_key};
+use crate::ids_meta::{finding_key, PackMetadata};
+use crate::measured_inputs::{MeasuredEngine, ProcessingVersions};
 use crate::state::{AppState, DataDirLock};
 use crate::upload::sha256_hex;
 use crate::worker_slot::{IdsInput, WorkerInvocation, WorkerJobId, WorkerOperation};
@@ -50,9 +52,10 @@ pub(crate) struct PinnedRun {
 
 impl PinnedRun {
     async fn pin(state: &AppState, body: CreateRunBody) -> Result<PinnedRun, ApiError> {
+        let mut tx = state.pool.begin_with("BEGIN IMMEDIATE").await?;
         let delivery: DeliveryRow = sqlx::query_as(&format!("{DELIVERY_SELECT} WHERE id = ?1"))
             .bind(&body.delivery_id)
-            .fetch_optional(&state.pool)
+            .fetch_optional(&mut *tx)
             .await?
             .ok_or_else(|| ApiError::not_found("delivery"))?;
 
@@ -63,12 +66,19 @@ impl PinnedRun {
               WHERE pv.id = ?1",
         )
         .bind(&body.pack_version_id)
-        .fetch_optional(&state.pool)
+        .fetch_optional(&mut *tx)
         .await?
         .ok_or_else(|| ApiError::not_found("pack version"))?;
 
-        let models: Vec<ModelRow> = crate::diff::load_models(&state.pool, &delivery.id).await?;
+        let models: Vec<ModelRow> = sqlx::query_as(&format!(
+            "{} WHERE dm.delivery_id = ?1 ORDER BY sm.discipline, sm.name",
+            crate::dto::DELIVERY_MODEL_ROW_SELECT
+        ))
+        .bind(&delivery.id)
+        .fetch_all(&mut *tx)
+        .await?;
         if models.is_empty() {
+            tx.rollback().await?;
             return Err(ApiError::bad_request("delivery has no models to check"));
         }
 
@@ -91,19 +101,11 @@ impl PinnedRun {
             .metadata_json
             .as_deref()
             .map(|text| sha256_hex(text.as_bytes()));
-        let engine_profile = serde_json::json!({
-            "worker": "0.1.0",
-            "ifcTester": "0.8.5",
-            "ifcOpenShell": "0.8.5",
-            "operation": "validate",
-        })
-        .to_string();
         let scope_json = serde_json::to_string(&scope).unwrap_or_else(|_| "{}".to_owned());
 
         let run_id = new_id();
         let started_at = now_iso();
         let provenance = InputProvenance::Complete;
-        let mut tx = state.pool.begin().await?;
         sqlx::query(
             "INSERT INTO runs (id, project_id, delivery_id, pack_version_id, engine_version,
                  parser_version, status, started_at, input_provenance, input_provenance_reason,
@@ -114,15 +116,15 @@ impl PinnedRun {
         .bind(&delivery.project_id)
         .bind(&delivery.id)
         .bind(&pack_version.id)
-        .bind(CHECK_ENGINE_VERSION)
-        .bind(CHECK_PARSER_VERSION)
+        .bind("")
+        .bind("")
         .bind(&started_at)
         .bind(provenance.status())
         .bind(provenance.reason())
         .bind(&pack_version.ids_sha256)
         .bind(&pack_metadata_sha256)
         .bind(&scope_json)
-        .bind(&engine_profile)
+        .bind(Option::<String>::None)
         .execute(&mut *tx)
         .await?;
         for (index, model) in models.iter().enumerate() {
@@ -175,6 +177,7 @@ impl PinnedRun {
                     &run_id,
                     clock.elapsed(),
                     RunOutcome::Failed(RunFailure::from_text(format!("run task aborted: {join}"))),
+                    &[],
                 )
                 .await
             }
@@ -183,11 +186,19 @@ impl PinnedRun {
 
     async fn settle(self, state: AppState) -> Result<(), ApiError> {
         let clock = Instant::now();
-        let outcome = match evaluate(&state, &self).await {
+        let mut invocation_versions = Vec::new();
+        let outcome = match evaluate(&state, &self, &mut invocation_versions).await {
             Ok(evaluated) => RunOutcome::Completed(evaluated),
             Err(err) => RunOutcome::Failed(RunFailure::from_api(&err)),
         };
-        commit_outcome(&state.pool, &self.run_id, clock.elapsed(), outcome).await
+        commit_outcome(
+            &state.pool,
+            &self.run_id,
+            clock.elapsed(),
+            outcome,
+            &invocation_versions,
+        )
+        .await
     }
 }
 
@@ -235,7 +246,11 @@ impl RunFailure {
     }
 }
 
-async fn evaluate(state: &AppState, pinned: &PinnedRun) -> Result<EvaluatedRun, ApiError> {
+async fn evaluate(
+    state: &AppState,
+    pinned: &PinnedRun,
+    invocation_versions: &mut Vec<ProcessingVersions>,
+) -> Result<EvaluatedRun, ApiError> {
     let slot = state.worker()?;
     let run_dir = state.data_dir.join("runs").join(&pinned.run_id);
     tokio::fs::create_dir_all(&run_dir)
@@ -280,6 +295,9 @@ async fn evaluate(state: &AppState, pinned: &PinnedRun) -> Result<EvaluatedRun, 
             })
             .await
             .map_err(|err| ApiError::parse_failed(format!("{}: {err}", model_row.filename)))?;
+        let versions = ProcessingVersions::from_worker(&artifacts.versions)
+            .map_err(|err| ApiError::parse_failed(format!("{}: {err}", model_row.filename)))?;
+        invocation_versions.push(versions);
 
         let outcomes = parse_outcomes(&artifacts.outcomes)
             .map_err(|err| ApiError::parse_failed(format!("{}: {err}", model_row.filename)))?;
@@ -295,6 +313,10 @@ async fn evaluate(state: &AppState, pinned: &PinnedRun) -> Result<EvaluatedRun, 
         }
     }
 
+    if !invocation_versions.is_empty() {
+        MeasuredEngine::from_invocations(invocation_versions).map_err(ApiError::internal)?;
+    }
+
     Ok(EvaluatedRun {
         specs: spec_rows.into_values().collect(),
         findings,
@@ -307,12 +329,21 @@ async fn commit_outcome(
     run_id: &str,
     elapsed: Duration,
     outcome: RunOutcome,
+    invocation_versions: &[ProcessingVersions],
 ) -> Result<(), ApiError> {
     let mut tx = pool.begin().await?;
     let finished_at = now_iso();
     let duration_ms = elapsed.as_millis() as i64;
     let settled = match outcome {
         RunOutcome::Completed(evaluated) => {
+            let measured = if invocation_versions.is_empty() {
+                None
+            } else {
+                Some(
+                    MeasuredEngine::from_invocations(invocation_versions)
+                        .map_err(ApiError::internal)?,
+                )
+            };
             for spec in evaluated.specs {
                 sqlx::query(
                     "INSERT INTO run_specs (id, run_id, spec_identifier, spec_name, outcome,
@@ -335,7 +366,8 @@ async fn commit_outcome(
             persist_findings(&mut tx, run_id, evaluated.findings).await?;
             sqlx::query(
                 "UPDATE runs SET status = 'completed', finished_at = ?2, duration_ms = ?3,
-                     pass_count = ?4, fail_count = ?5, not_applicable_count = ?6, incomplete_count = ?7
+                     pass_count = ?4, fail_count = ?5, not_applicable_count = ?6, incomplete_count = ?7,
+                     engine_profile_json = ?8, engine_version = ?9, parser_version = ?10
                    WHERE id = ?1 AND status = 'running'",
             )
             .bind(run_id)
@@ -345,6 +377,19 @@ async fn commit_outcome(
             .bind(evaluated.totals.fail)
             .bind(evaluated.totals.not_applicable)
             .bind(evaluated.totals.incomplete)
+            .bind(measured.as_ref().map(|engine| engine.to_profile_json()))
+            .bind(
+                measured
+                    .as_ref()
+                    .map(|engine| engine.engine_version())
+                    .unwrap_or_default(),
+            )
+            .bind(
+                measured
+                    .as_ref()
+                    .map(|engine| engine.parser_version())
+                    .unwrap_or_default(),
+            )
             .execute(&mut *tx)
             .await?
         }
@@ -716,15 +761,18 @@ pub(crate) enum RunView {
     Running {
         run: RunRow,
         models: Vec<ModelInfo>,
+        input_provenance: InputProvenance,
     },
     Failed {
         run: RunRow,
         error: RunFailure,
         models: Vec<ModelInfo>,
+        input_provenance: InputProvenance,
     },
     Completed {
         run: RunRow,
         models: Vec<ModelInfo>,
+        input_provenance: InputProvenance,
         finding_count: i64,
         failing_object_count: i64,
         scorecard: Vec<SeverityBand>,
@@ -733,21 +781,88 @@ pub(crate) enum RunView {
     },
 }
 
+pub enum RunInputs {
+    Pinned {
+        models: Vec<ModelRow>,
+    },
+    Reconstructed {
+        models: Vec<ModelRow>,
+        reason: String,
+    },
+}
+
+impl RunInputs {
+    pub async fn load(pool: &SqlitePool, row: &RunRow) -> Result<Self, ApiError> {
+        if row.input_provenance == "complete" {
+            let pinned: Vec<ModelRow> = sqlx::query_as(
+                "SELECT mr.id, r.delivery_id, rm.discipline, rm.source_model_id, rm.source_model_name,
+                        rm.filename, rm.content_sha256, rm.byte_size, mr.schema_label, mr.entity_count,
+                        mr.product_count, mr.length_to_metre, mr.storage_path, mr.header_json, mr.parse_ms,
+                        mr.uploaded_at, mr.processing_versions_json
+                   FROM run_models rm
+                   JOIN runs r ON r.id = rm.run_id
+                   JOIN model_revisions mr ON mr.id = rm.model_revision_id
+                  WHERE rm.run_id = ?1
+                  ORDER BY rm.sort_index",
+            )
+            .bind(&row.id)
+            .fetch_all(pool)
+            .await?;
+            if pinned.is_empty() {
+                return Ok(Self::Reconstructed {
+                    models: Vec::new(),
+                    reason: COMPLETE_WITHOUT_SNAPSHOT_REASON.to_owned(),
+                });
+            }
+            return Ok(Self::Pinned { models: pinned });
+        }
+        let reason = InputProvenance::from_row(
+            &row.input_provenance,
+            row.input_provenance_reason.as_deref(),
+        )
+        .reason()
+        .unwrap_or(UNPINNED_REASON)
+        .to_owned();
+        Ok(Self::Reconstructed {
+            models: crate::diff::load_models(pool, &row.delivery_id).await?,
+            reason,
+        })
+    }
+
+    pub fn models(&self) -> &[ModelRow] {
+        match self {
+            Self::Pinned { models } | Self::Reconstructed { models, .. } => models,
+        }
+    }
+
+    pub fn provenance(&self) -> InputProvenance {
+        match self {
+            Self::Pinned { .. } => InputProvenance::Complete,
+            Self::Reconstructed { reason, .. } => InputProvenance::Incomplete {
+                reason: reason.clone(),
+            },
+        }
+    }
+}
+
 pub async fn run_detail(pool: &SqlitePool, run_id: &str) -> Result<RunView, ApiError> {
     let row = fetch_run_row(pool, run_id).await?;
-    let models: Vec<ModelInfo> = load_run_models(pool, &row)
-        .await?
-        .iter()
-        .map(model_json)
-        .collect();
+    let inputs = RunInputs::load(pool, &row).await?;
+    let models: Vec<ModelInfo> = inputs.models().iter().map(model_json).collect();
+    let input_provenance = inputs.provenance();
     match RunStatus::parse(run_id, &row.status)? {
-        RunStatus::Running => Ok(RunView::Running { run: row, models }),
+        RunStatus::Running => Ok(RunView::Running {
+            run: row,
+            models,
+            input_provenance,
+        }),
         RunStatus::Failed => {
             let error = RunFailure::from_row(row.error.as_deref());
             Ok(RunView::Failed {
                 run: row,
                 error,
                 models,
+                input_provenance,
             })
         }
         RunStatus::Completed => {
@@ -757,6 +872,7 @@ pub async fn run_detail(pool: &SqlitePool, run_id: &str) -> Result<RunView, ApiE
             Ok(RunView::Completed {
                 run: row,
                 models,
+                input_provenance,
                 finding_count,
                 failing_object_count,
                 scorecard,
@@ -769,38 +885,53 @@ pub async fn run_detail(pool: &SqlitePool, run_id: &str) -> Result<RunView, ApiE
 
 impl From<RunView> for RunDetail {
     fn from(view: RunView) -> RunDetail {
-        let bare =
-            |run: RunRow, models: Vec<ModelInfo>, finding_count: i64, failing_object_count: i64| {
-                RunDetail {
-                    input_provenance: InputProvenance::from_row(
-                        &run.input_provenance,
-                        run.input_provenance_reason.as_deref(),
-                    )
-                    .into(),
-                    run: run_summary(&run, finding_count, failing_object_count),
-                    models,
-                    scorecard: Vec::new(),
-                    specs: Vec::new(),
-                    review_incomplete: Vec::new(),
-                }
-            };
+        let bare = |run: RunRow,
+                    models: Vec<ModelInfo>,
+                    input_provenance: InputProvenance,
+                    finding_count: i64,
+                    failing_object_count: i64| {
+            RunDetail {
+                input_provenance: input_provenance.into(),
+                run: run_summary(&run, finding_count, failing_object_count),
+                models,
+                scorecard: Vec::new(),
+                specs: Vec::new(),
+                review_incomplete: Vec::new(),
+            }
+        };
         match view {
-            RunView::Running { run, models } => bare(run, models, 0, 0),
-            RunView::Failed { run, error, models } => {
-                let mut detail = bare(run, models, 0, 0);
+            RunView::Running {
+                run,
+                models,
+                input_provenance,
+            } => bare(run, models, input_provenance, 0, 0),
+            RunView::Failed {
+                run,
+                error,
+                models,
+                input_provenance,
+            } => {
+                let mut detail = bare(run, models, input_provenance, 0, 0);
                 detail.run.error = Some(error.as_str().to_owned());
                 detail
             }
             RunView::Completed {
                 run,
                 models,
+                input_provenance,
                 finding_count,
                 failing_object_count,
                 scorecard,
                 specs,
                 review_incomplete,
             } => {
-                let mut detail = bare(run, models, finding_count, failing_object_count);
+                let mut detail = bare(
+                    run,
+                    models,
+                    input_provenance,
+                    finding_count,
+                    failing_object_count,
+                );
                 detail.scorecard = scorecard;
                 detail.specs = specs;
                 detail.review_incomplete = review_incomplete;
@@ -1000,29 +1131,6 @@ pub async fn finding_objects(
         .collect())
 }
 
-async fn load_run_models(pool: &SqlitePool, row: &RunRow) -> Result<Vec<ModelRow>, ApiError> {
-    if row.input_provenance == "complete" {
-        let pinned: Vec<ModelRow> = sqlx::query_as(
-            "SELECT mr.id, r.delivery_id, rm.discipline, rm.source_model_id, rm.source_model_name,
-                    rm.filename, rm.content_sha256, rm.byte_size, mr.schema_label, mr.entity_count,
-                    mr.product_count, mr.length_to_metre, mr.storage_path, mr.header_json, mr.parse_ms,
-                    mr.uploaded_at
-               FROM run_models rm
-               JOIN runs r ON r.id = rm.run_id
-               JOIN model_revisions mr ON mr.id = rm.model_revision_id
-              WHERE rm.run_id = ?1
-              ORDER BY rm.sort_index",
-        )
-        .bind(&row.id)
-        .fetch_all(pool)
-        .await?;
-        if !pinned.is_empty() {
-            return Ok(pinned);
-        }
-    }
-    crate::diff::load_models(pool, &row.delivery_id).await
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1198,14 +1306,12 @@ mod tests {
 
         let detail: RunDetail = run_detail(&pool, "run-live").await.unwrap().into();
         assert_eq!(detail.run.status, "failed");
-        assert!(
-            detail
-                .run
-                .error
-                .as_deref()
-                .unwrap_or("")
-                .contains("restart")
-        );
+        assert!(detail
+            .run
+            .error
+            .as_deref()
+            .unwrap_or("")
+            .contains("restart"));
         assert_eq!(
             (detail.scorecard.len(), detail.specs.len(), detail.run.score),
             (0, 0, None)
@@ -1312,11 +1418,19 @@ mod tests {
         seed_parents(&pool).await;
         insert_run(&pool, "run-1", "running", 0, 0).await;
 
+        let leftover = [ProcessingVersions {
+            worker: "9.9.9".to_owned(),
+            ifc_open_shell: "1.2.3".to_owned(),
+            ifc_tester: "4.5.6".to_owned(),
+            extraction: "e".to_owned(),
+            scope_semantics: "s".to_owned(),
+        }];
         commit_outcome(
             &pool,
             "run-1",
             Duration::from_millis(1234),
             RunOutcome::Failed(RunFailure::from_text("worker exploded")),
+            &leftover,
         )
         .await
         .unwrap();
@@ -1325,6 +1439,8 @@ mod tests {
             (status.as_str(), error.as_deref(), duration_ms),
             ("failed", Some("worker exploded"), Some(1234))
         );
+        let (engine, parser, profile) = engine_columns(&pool, "run-1").await;
+        assert_eq!((engine.as_str(), parser.as_str(), profile.as_deref()), ("eng", "par", None));
         assert_eq!(
             count(
                 &pool,
@@ -1347,6 +1463,7 @@ mod tests {
             "run-1",
             Duration::from_millis(1),
             RunOutcome::Completed(evaluated(vec![spec("Late", 7)], Vec::new(), 7, 0)),
+            &[],
         )
         .await
         .unwrap();
@@ -1393,16 +1510,25 @@ mod tests {
             }],
         };
 
+        let completed = evaluated(
+            vec![spec("Wall declares a fire rating", 3)],
+            vec![finding],
+            3,
+            1,
+        );
+        let versions = [ProcessingVersions {
+            worker: "9.9.9".to_owned(),
+            ifc_open_shell: "1.2.3".to_owned(),
+            ifc_tester: "4.5.6".to_owned(),
+            extraction: "e".to_owned(),
+            scope_semantics: "s".to_owned(),
+        }];
         commit_outcome(
             &pool,
             "run-1",
             Duration::from_millis(50),
-            RunOutcome::Completed(evaluated(
-                vec![spec("Wall declares a fire rating", 3)],
-                vec![finding],
-                3,
-                1,
-            )),
+            RunOutcome::Completed(completed),
+            &versions,
         )
         .await
         .unwrap();
@@ -1430,5 +1556,335 @@ mod tests {
             (detail.run.finding_count, detail.run.failing_object_count),
             (1, 1)
         );
+        let (engine, parser, profile) = engine_columns(&pool, "run-1").await;
+        assert_eq!(engine, "ifctester/4.5.6");
+        assert_eq!(parser, "ifcopenshell/1.2.3");
+        let profile = profile.expect("completed settle writes engine_profile_json");
+        assert!(profile.contains("9.9.9"), "{profile}");
+        assert_ne!(
+            profile,
+            r#"{"worker":"0.1.0","ifcTester":"0.8.5","ifcOpenShell":"0.8.5","operation":"validate"}"#
+        );
+    }
+
+    async fn insert_member(pool: &SqlitePool, id: &str, source_id: &str, revision_id: &str) {
+        sqlx::query(
+            "INSERT INTO delivery_members (id, delivery_id, source_model_id, model_revision_id, added_at)
+             VALUES (?1,'d1',?2,?3,datetime())",
+        )
+        .bind(id)
+        .bind(source_id)
+        .bind(revision_id)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    async fn engine_columns(pool: &SqlitePool, run_id: &str) -> (String, String, Option<String>) {
+        sqlx::query_as(
+            "SELECT engine_version, parser_version, engine_profile_json FROM runs WHERE id = ?1",
+        )
+        .bind(run_id)
+        .fetch_one(pool)
+        .await
+        .unwrap()
+    }
+
+    const MINIMAL_IDS: &str = r#"<ids>
+  <specifications>
+    <specification name="Everywhere" ifcVersion="IFC4">
+      <applicability minOccurs="0" maxOccurs="unbounded">
+        <entity><name><simpleValue>IFCWALL</simpleValue></name></entity>
+      </applicability>
+      <requirements>
+        <property dataType="IFCLABEL">
+          <propertySet><simpleValue>Pset_WallCommon</simpleValue></propertySet>
+          <baseName><simpleValue>FireRating</simpleValue></baseName>
+        </property>
+      </requirements>
+    </specification>
+  </specifications>
+</ids>"#;
+
+    const FAKE_WORKER_PY: &str = r#"
+import hashlib, json, pathlib, sys
+def sha256(data):
+    return hashlib.sha256(data).hexdigest()
+request_path = sys.argv[sys.argv.index("--request") + 1]
+req = json.loads(pathlib.Path(request_path).read_text())
+job_id = req["jobId"]
+output_dir = pathlib.Path(req["outputDir"])
+output_dir.mkdir(parents=True, exist_ok=True)
+revision_id = req["model"]["revisionId"]
+model_sha = req["model"]["sha256"]
+express_id = 1
+object_id = "occ_" + sha256(f"{revision_id}:{express_id}".encode())[:16]
+def write(name, text):
+    path = output_dir / name
+    data = text.encode()
+    path.write_bytes(data)
+    return {"path": str(path), "sha256": sha256(data), "size": len(data)}
+semantic = json.dumps({
+    "schemaVersion": "model-v1",
+    "revisionId": revision_id,
+    "objects": [{
+        "ref": {"revisionId": revision_id, "objectId": object_id},
+        "nativeIds": {"expressId": express_id},
+        "classification": "IfcWall",
+        "properties": [],
+    }],
+}) + "\n"
+semantic_info = write("semantic.json", semantic)
+semantic_info["recordCount"] = 1
+descriptor = json.dumps({
+    "schemaVersion": "model-v1",
+    "revisionId": revision_id,
+    "lengthToMetre": 1,
+    "upAxis": "Z_UP",
+    "transform": {
+        "translation": [0, 0, 0],
+        "rotationQuaternion": [0, 0, 0, 1],
+        "scale": [1, 1, 1],
+    },
+    "sourceProvenance": {
+        "format": "IFC4",
+        "originalFilename": "a.ifc",
+        "contentHash": model_sha,
+    },
+    "artifacts": {
+        "semantic": {
+            "status": "available",
+            "artifactVersion": "1",
+            "contentHash": semantic_info["sha256"],
+            "objectCount": 1,
+        },
+        "render": {"status": "unsupported", "reason": "test worker"},
+    },
+}) + "\n"
+descriptor_info = write("descriptor.json", descriptor)
+descriptor_info["recordCount"] = 1
+outcomes_info = write("outcomes.jsonl", "")
+outcomes_info["recordCount"] = 0
+manifest = {
+    "protocolVersion": 2,
+    "jobId": job_id,
+    "operation": "validate",
+    "revisionId": revision_id,
+    "modelSha256": model_sha,
+    "idsSha256": None,
+    "versions": {
+        "worker": "9.9.9-test",
+        "ifcOpenShell": "8.8.8",
+        "ifcTester": "9.9.9",
+        "extraction": "extract-test",
+        "scopeSemantics": "scope-test",
+    },
+    "artifacts": {
+        "descriptor": descriptor_info,
+        "semantic": semantic_info,
+        "renderManifest": None,
+        "geometry": None,
+        "outcomes": outcomes_info,
+    },
+    "diagnostics": [],
+}
+manifest_info = write("manifest.json", json.dumps(manifest))
+sys.stdout.write(json.dumps({"protocolVersion": 2, "jobId": job_id, "event": "progress", "stage": "loading"}) + "\n")
+sys.stdout.write(json.dumps({"protocolVersion": 2, "jobId": job_id, "event": "result", "manifest": manifest_info}) + "\n")
+"#;
+
+    #[tokio::test]
+    async fn complete_without_run_models_reports_incomplete_on_get() {
+        let dir = tempfile::tempdir().unwrap();
+        let pool = crate::db::open(dir.path()).await.unwrap();
+        seed_parents(&pool).await;
+        insert_member(&pool, "dm1", "s1", "m1").await;
+        sqlx::query(
+            "INSERT INTO source_models (id, project_id, name, discipline, created_at)
+             VALUES ('s2','p1','Other','MEP',datetime())",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO model_revisions (id, source_model_id, filename, content_sha256, byte_size,
+                 schema_label, entity_count, product_count, storage_path, uploaded_at)
+             VALUES ('m2','s2','b.ifc','1',1,'IFC4',1,1,'blobs/1',datetime())",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        insert_member(&pool, "dm2", "s2", "m2").await;
+        sqlx::query(
+            "INSERT INTO runs (id, project_id, delivery_id, pack_version_id, engine_version,
+                 parser_version, status, started_at, input_provenance)
+             VALUES ('run-bare','p1','d1','pv1','eng','par','completed',datetime(),'complete')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let detail: RunDetail = run_detail(&pool, "run-bare").await.unwrap().into();
+        assert_eq!(detail.input_provenance.status, "incomplete");
+        assert!(
+            detail
+                .input_provenance
+                .reason
+                .as_deref()
+                .unwrap_or("")
+                .contains("run_models snapshot"),
+            "{:?}",
+            detail.input_provenance.reason
+        );
+        assert_eq!(
+            detail.input_provenance.reason.as_deref(),
+            Some(COMPLETE_WITHOUT_SNAPSHOT_REASON)
+        );
+        let live = crate::diff::load_models(&pool, "d1").await.unwrap();
+        assert_eq!(live.len(), 2);
+        let ids: Vec<&str> = detail
+            .models
+            .iter()
+            .map(|model| model.id.as_str())
+            .collect();
+        assert!(
+            detail.models.is_empty(),
+            "must not serve live membership for a complete claim with no run_models: {ids:?}"
+        );
+        assert_ne!(
+            ids.len(),
+            live.len(),
+            "GET models must not equal current delivery membership"
+        );
+    }
+
+    #[tokio::test]
+    async fn pin_rejects_a_delivery_with_no_models() {
+        let dir = tempfile::tempdir().unwrap();
+        let (state, _) = AppState::open(dir.path(), "false".to_owned())
+            .await
+            .unwrap();
+        seed_parents(&state.pool).await;
+        let err = match PinnedRun::pin(
+            &state,
+            CreateRunBody {
+                delivery_id: "d1".to_owned(),
+                pack_version_id: "pv1".to_owned(),
+            },
+        )
+        .await
+        {
+            Ok(_) => panic!("empty delivery must not pin"),
+            Err(err) => err,
+        };
+        assert_eq!(err.message, "delivery has no models to check");
+        let runs: i64 = count(&state.pool, "SELECT COUNT(*) FROM runs").await;
+        assert_eq!(runs, 0);
+    }
+
+    #[tokio::test]
+    async fn zero_scope_run_leaves_pin_engine_columns() {
+        let dir = tempfile::tempdir().unwrap();
+        let (state, _) = AppState::open(dir.path(), "false".to_owned())
+            .await
+            .unwrap();
+        seed_parents(&state.pool).await;
+        insert_member(&state.pool, "dm1", "s1", "m1").await;
+        sqlx::query("UPDATE pack_versions SET ids_xml = ?1, metadata_json = ?2 WHERE id = 'pv1'")
+            .bind(MINIMAL_IDS)
+            .bind(r#"{"specs":{"Everywhere":{"disciplines":["MEP"]}}}"#)
+            .execute(&state.pool)
+            .await
+            .unwrap();
+
+        let pinned = PinnedRun::pin(
+            &state,
+            CreateRunBody {
+                delivery_id: "d1".to_owned(),
+                pack_version_id: "pv1".to_owned(),
+            },
+        )
+        .await
+        .unwrap();
+        let run_id = pinned.run_id().to_owned();
+        let (engine, parser, profile) = engine_columns(&state.pool, &run_id).await;
+        assert_eq!(
+            (engine.as_str(), parser.as_str(), profile.as_deref()),
+            ("", "", None)
+        );
+
+        pinned.settle(state.clone()).await.unwrap();
+        let (engine, parser, profile) = engine_columns(&state.pool, &run_id).await;
+        assert_eq!(
+            (engine.as_str(), parser.as_str(), profile.as_deref()),
+            ("", "", None)
+        );
+        let detail: RunDetail = run_detail(&state.pool, &run_id).await.unwrap().into();
+        assert_eq!(detail.run.status, "completed");
+        assert_eq!(detail.input_provenance.status, "complete");
+        assert_eq!(detail.run.engine_version, "");
+    }
+
+    #[tokio::test]
+    async fn settle_writes_measured_engine_not_pin_literal() {
+        let dir = tempfile::tempdir().unwrap();
+        let script = dir.path().join("fake_worker.py");
+        std::fs::write(&script, FAKE_WORKER_PY).unwrap();
+        let worker = format!("python3 {} --request {{request}}", script.display());
+        let (state, _) = AppState::open(dir.path(), worker).await.unwrap();
+        seed_parents(&state.pool).await;
+        insert_member(&state.pool, "dm1", "s1", "m1").await;
+        sqlx::query("UPDATE pack_versions SET ids_xml = ?1 WHERE id = 'pv1'")
+            .bind(MINIMAL_IDS)
+            .execute(&state.pool)
+            .await
+            .unwrap();
+        let blob_sha = "0".repeat(64);
+        sqlx::query("UPDATE model_revisions SET content_sha256 = ?1 WHERE id = 'm1'")
+            .bind(&blob_sha)
+            .execute(&state.pool)
+            .await
+            .unwrap();
+        tokio::fs::write(state.data_dir.join("blobs").join(&blob_sha), b"ifc")
+            .await
+            .unwrap();
+
+        let pinned = PinnedRun::pin(
+            &state,
+            CreateRunBody {
+                delivery_id: "d1".to_owned(),
+                pack_version_id: "pv1".to_owned(),
+            },
+        )
+        .await
+        .unwrap();
+        let run_id = pinned.run_id().to_owned();
+        let (engine, parser, profile) = engine_columns(&state.pool, &run_id).await;
+        assert_eq!(
+            (engine.as_str(), parser.as_str(), profile.as_deref()),
+            ("", "", None)
+        );
+
+        pinned.settle(state.clone()).await.unwrap();
+        let (status, error, _, _, _) = run_row(&state.pool, &run_id).await;
+        assert_eq!(
+            (status.as_str(), error.as_deref()),
+            ("completed", None),
+            "settle must complete by invoking the fake worker"
+        );
+        let (engine, parser, profile) = engine_columns(&state.pool, &run_id).await;
+        assert_eq!(engine, "ifctester/9.9.9");
+        assert_eq!(parser, "ifcopenshell/8.8.8");
+        let profile = profile.expect("settle must write engine_profile_json");
+        assert!(profile.contains("9.9.9-test"), "{profile}");
+        assert!(profile.contains("extract-test"), "{profile}");
+        assert!(
+            !profile.contains("0.1.0") && !profile.contains("0.8.5"),
+            "{profile}"
+        );
+        let detail: RunDetail = run_detail(&state.pool, &run_id).await.unwrap().into();
+        assert_eq!(detail.run.status, "completed");
+        assert_eq!(detail.run.engine_version, "ifctester/9.9.9");
+        assert_eq!(detail.input_provenance.status, "complete");
     }
 }

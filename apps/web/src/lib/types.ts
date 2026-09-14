@@ -48,6 +48,14 @@ export interface Delivery {
   productCount: number;
 }
 
+export interface ProcessingVersions {
+  worker: string;
+  ifcOpenShell: string;
+  ifcTester: string;
+  extraction: string;
+  scopeSemantics: string;
+}
+
 export interface ModelInfo {
   id: string;
   deliveryId: string;
@@ -64,6 +72,7 @@ export interface ModelInfo {
   parseMs: number | null;
   uploadedAt: string;
   originatingSystem: string | null;
+  processingVersions: ProcessingVersions | null;
 }
 
 /** A persistent, named, project-owned input (e.g. "Architecture East"); discipline
@@ -93,6 +102,7 @@ export interface ModelRevisionSummary {
   /** "incomplete" for a revision data-migrated from the pre-source-model schema,
    * whose source-model identity was synthesized rather than authored. */
   provenance: "complete" | "incomplete";
+  processingVersions: ProcessingVersions | null;
 }
 
 export type IngestionJobStatus = "queued" | "running" | "completed" | "failed";

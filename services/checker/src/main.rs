@@ -13,6 +13,7 @@ mod dto;
 mod error;
 mod ids_meta;
 mod jobs;
+mod measured_inputs;
 mod migrate_v2;
 mod routes;
 mod run;

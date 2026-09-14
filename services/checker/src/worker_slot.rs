@@ -269,6 +269,10 @@ pub(crate) struct WorkerVersions {
     pub ifc_open_shell: String,
     #[serde(default, rename = "ifcTester")]
     pub ifc_tester: String,
+    #[serde(default)]
+    pub extraction: String,
+    #[serde(default, rename = "scopeSemantics")]
+    pub scope_semantics: String,
 }
 
 #[derive(Deserialize)]

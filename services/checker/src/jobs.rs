@@ -1,16 +1,17 @@
 use std::collections::HashMap;
 
-use axum::Json;
 use axum::extract::{Path as AxumPath, State};
 use axum::http::StatusCode;
+use axum::Json;
 use sqlx::{Sqlite, SqlitePool, Transaction};
 
 use crate::db::{new_id, now_iso};
-use crate::dto::{IngestionJob, IngestionJobRow, JOB_SELECT, job_json};
+use crate::dto::{job_json, IngestionJob, IngestionJobRow, JOB_SELECT};
 use crate::error::ApiError;
+use crate::measured_inputs::ProcessingVersions;
 use crate::state::{AppState, DataDirLock};
 use crate::worker_slot::{WorkerInvocation, WorkerJobId, WorkerOperation};
-use fingerprint::normalized::{FingerprintProfile, fingerprint_normalized};
+use fingerprint::normalized::{fingerprint_normalized, FingerprintProfile};
 
 /// `{request}` is substituted with the absolute path to the job's request.json.
 /// Run through `sh -c`, same as any override, so there is exactly one code path.
@@ -181,6 +182,10 @@ async fn process_job(state: &AppState, job: &IngestionJobRow) {
         Ok(artifacts) => artifacts,
         Err(reason) => return fail_job(&state.pool, &job.id, reason).await,
     };
+    let versions = match ProcessingVersions::from_worker(&artifacts.versions) {
+        Ok(versions) => versions,
+        Err(reason) => return fail_job(&state.pool, &job.id, reason).await,
+    };
     if let Err(err) = publish_revision(
         state,
         job,
@@ -188,6 +193,7 @@ async fn process_job(state: &AppState, job: &IngestionJobRow) {
         &artifacts.semantic,
         &artifacts.descriptor,
         &artifacts.geometry_chunks,
+        &versions,
     )
     .await
     {
@@ -235,6 +241,7 @@ async fn publish_revision(
     semantic: &model_contracts::SemanticModel,
     descriptor: &model_contracts::ModelDescriptor,
     geometry_chunks: &HashMap<String, model_contracts::GeometryChunk>,
+    versions: &ProcessingVersions,
 ) -> anyhow::Result<()> {
     let header_json = serde_json::json!({
         "format": descriptor.source_provenance.format.as_str(),
@@ -258,14 +265,15 @@ async fn publish_revision(
         parse_ms: None,
         uploaded_at: now_iso(),
         provenance: "complete".to_owned(),
+        processing_versions_json: versions.to_json(),
     };
 
     let mut tx = state.pool.begin().await?;
     sqlx::query(
         "INSERT INTO model_revisions (id, source_model_id, filename, content_sha256, byte_size,
              schema_label, entity_count, product_count, length_to_metre, storage_path,
-             header_json, parse_ms, uploaded_at, provenance)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14)",
+             header_json, parse_ms, uploaded_at, provenance, processing_versions_json)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15)",
     )
     .bind(&row.id)
     .bind(&row.source_model_id)
@@ -281,6 +289,7 @@ async fn publish_revision(
     .bind(row.parse_ms)
     .bind(&row.uploaded_at)
     .bind(&row.provenance)
+    .bind(&row.processing_versions_json)
     .execute(&mut *tx)
     .await?;
 

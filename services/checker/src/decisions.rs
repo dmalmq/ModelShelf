@@ -8,7 +8,7 @@ use sqlx::FromRow;
 use crate::db::{new_id, now_iso};
 use crate::dto::{InputProvenance, RunInputProvenance, RunRow};
 use crate::error::ApiError;
-use crate::run::fetch_run_row;
+use crate::run::{fetch_run_row, RunInputs};
 use crate::state::AppState;
 
 const MAX_RATIONALE_CHARS: usize = 20_000;
@@ -178,7 +178,9 @@ pub async fn create_decision(
     .execute(&mut *tx)
     .await
     .map_err(|error| match unique_current_violation(&error) {
-        true => ApiError::decision_conflict("this run already has a current decision; reload before deciding again"),
+        true => ApiError::decision_conflict(
+            "this run already has a current decision; reload before deciding again",
+        ),
         false => ApiError::from(error),
     })?;
     tx.commit().await?;
@@ -206,9 +208,10 @@ async fn load_history(state: &AppState, run_id: &str) -> Result<DecisionHistory,
     .await?;
 
     let finding_map = load_finding_evidence(&state.pool, run_id).await?;
+    let input_provenance = RunInputs::load(&state.pool, &run).await?.provenance();
     let mut history = Vec::with_capacity(rows.len());
     for row in rows {
-        history.push(decision_json(&run, row, &finding_map)?);
+        history.push(decision_json(&run, row, &finding_map, &input_provenance)?);
     }
     let current = history
         .iter()
@@ -250,6 +253,7 @@ fn decision_json(
     run: &RunRow,
     row: DecisionRow,
     finding_map: &HashMap<String, DecisionFindingEvidence>,
+    input_provenance: &InputProvenance,
 ) -> Result<ReviewDecision, ApiError> {
     let cited_finding_ids: Vec<String> = serde_json::from_str(&row.cited_finding_ids_json)
         .map_err(|error| ApiError::internal(format!("invalid cited finding JSON: {error}")))?;
@@ -274,11 +278,7 @@ fn decision_json(
             pack_version: run.pack_version,
             engine_version: run.engine_version.clone(),
             parser_version: run.parser_version.clone(),
-            input_provenance: InputProvenance::from_row(
-                &run.input_provenance,
-                run.input_provenance_reason.as_deref(),
-            )
-            .into(),
+            input_provenance: input_provenance.clone().into(),
             incomplete_count: run.incomplete_count,
             cited_findings,
         },
@@ -286,7 +286,10 @@ fn decision_json(
 }
 
 fn validate_body(body: &CreateDecisionBody) -> Result<(), ApiError> {
-    if !matches!(body.outcome.as_str(), "accept" | "reject" | "conditional_accept") {
+    if !matches!(
+        body.outcome.as_str(),
+        "accept" | "reject" | "conditional_accept"
+    ) {
         return Err(ApiError::bad_request(
             "outcome must be accept, reject, or conditional_accept",
         ));

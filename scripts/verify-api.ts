@@ -355,6 +355,56 @@ async function runRevisionsScenario(base, dataDir, check, log) {
     run.status === 200 && provenance?.status === "complete" && (provenance.reason == null || provenance.reason === ""),
     JSON.stringify({ status: run.status, provenance, modelCount: run.json?.models?.length }),
   );
+
+  const sources = (await api(base, "GET", "/api/projects/demo-project/source-models")).json;
+  const mechanicalReloaded = Array.isArray(sources) ? sources.find((item) => item.id === mechanical.id) : null;
+  const revSummary = mechanicalReloaded?.revisions?.find((item) => item.id === rev1Id);
+  const revisionVersions = revSummary?.processingVersions;
+  check(
+    "a completed ingest records processingVersions.worker on the revision",
+    typeof revisionVersions?.worker === "string" && revisionVersions.worker.length > 0,
+    JSON.stringify(revisionVersions),
+  );
+  check(
+    "the revision processing envelope includes ifcOpenShell, ifcTester, extraction, and scopeSemantics",
+    typeof revisionVersions?.ifcOpenShell === "string" && revisionVersions.ifcOpenShell.length > 0
+      && typeof revisionVersions?.ifcTester === "string" && revisionVersions.ifcTester.length > 0
+      && typeof revisionVersions?.extraction === "string" && revisionVersions.extraction.length > 0
+      && typeof revisionVersions?.scopeSemantics === "string" && revisionVersions.scopeSemantics.length > 0,
+    JSON.stringify(revisionVersions),
+  );
+  const deliveryVersions = afterBoth.models.find((item) => item.id === rev1Id)?.processingVersions;
+  check(
+    "delivery ModelInfo exposes the same processingVersions.worker",
+    deliveryVersions?.worker === revisionVersions?.worker,
+    JSON.stringify({ deliveryVersions, revisionVersions }),
+  );
+  const runModelVersions = Array.isArray(run.json?.models)
+    ? run.json.models.find((item) => item.id === rev1Id)?.processingVersions
+    : null;
+  check(
+    "run ModelInfo processingVersions matches the revision envelope",
+    runModelVersions?.worker === revisionVersions?.worker
+      && runModelVersions?.ifcOpenShell === revisionVersions?.ifcOpenShell
+      && runModelVersions?.ifcTester === revisionVersions?.ifcTester
+      && runModelVersions?.extraction === revisionVersions?.extraction
+      && runModelVersions?.scopeSemantics === revisionVersions?.scopeSemantics,
+    JSON.stringify({ runModelVersions, revisionVersions }),
+  );
+  check(
+    "a settled run records ifctester/ plus the revision ifcTester",
+    typeof run.json?.run?.engineVersion === "string"
+      && run.json.run.engineVersion.startsWith("ifctester/")
+      && run.json.run.engineVersion === `ifctester/${revisionVersions?.ifcTester}`
+      && typeof run.json?.run?.parserVersion === "string"
+      && run.json.run.parserVersion.startsWith("ifcopenshell/")
+      && run.json.run.parserVersion === `ifcopenshell/${revisionVersions?.ifcOpenShell}`,
+    JSON.stringify({
+      engineVersion: run.json?.run?.engineVersion,
+      parserVersion: run.json?.run?.parserVersion,
+      revisionVersions,
+    }),
+  );
 }
 
 async function runRevisionsScenarioTop(runDir, check, log) {
