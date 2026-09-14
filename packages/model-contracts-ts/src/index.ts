@@ -4,13 +4,4 @@ export type { SemanticModel, SemanticObject, Property } from "./generated/semant
 export type { RenderManifest } from "./generated/render-manifest.js";
 export type { GeometryChunk } from "./generated/geometry-chunk.js";
 
-export type { ValidationResult } from "./validate.js";
-export {
-  parseObjectRef,
-  parseModelDescriptor,
-  parseSemanticModel,
-  parseRenderManifest,
-  parseGeometryChunk,
-} from "./validate.js";
-
 export { expressIdToObjectId } from "./express-id-mapping.js";

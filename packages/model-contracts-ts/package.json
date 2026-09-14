@@ -6,6 +6,18 @@
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./validate": {
+      "types": "./src/validate.ts",
+      "import": "./src/validate.ts",
+      "default": "./dist/validate.js"
+    }
+  },
   "scripts": {
     "generate": "node scripts/generate.ts",
     "build": "tsc -p tsconfig.json",
