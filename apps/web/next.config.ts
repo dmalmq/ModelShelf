@@ -6,7 +6,7 @@ const checkerOrigin = process.env.CHECKER_ORIGIN ?? "http://127.0.0.1:8787";
 /**
  * Production keeps Next's default page extensions. `next dev` additionally
  * treats `page.dev.tsx` as a page, so a gallery is a route on a developer's
- * machine and a colocated file in `next build`. `scripts/check-routes.mts`
+ * machine and a colocated file in `next build`. `scripts/check-routes.mjs`
  * asserts the resulting route table after every build.
  */
 const PRODUCTION_PAGE_EXTENSIONS = ["tsx", "ts", "jsx", "js"];

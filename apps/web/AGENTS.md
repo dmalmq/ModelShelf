@@ -89,7 +89,7 @@ it looks right.
 
 A page for people building the UI (galleries, storyboards, design alternatives) is
 `page.dev.tsx`. It is a route under `npm run dev` and a plain file under `npm run build`.
-A `page.tsx` is a product URL and must be listed in `scripts/check-routes.mts`.
+A `page.tsx` is a product URL and must be listed in `scripts/check-routes.mjs`.
 
 ## Verifying
 

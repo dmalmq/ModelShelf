@@ -126,7 +126,7 @@ async function main() {
   record("production Next build succeeds", build.status === 0, `exit ${build.status}`);
   if (build.status !== 0) throw new Error("Next build failed; see next-build.log");
 
-  const routesCheck = spawnSync(process.execPath, ["scripts/check-routes.mts"], {
+  const routesCheck = spawnSync(process.execPath, ["scripts/check-routes.mjs"], {
     cwd: WEB_ROOT,
     encoding: "utf8",
   });

@@ -52,7 +52,7 @@ const unexpected = [...emitted].filter((route) => !PRODUCT_ROUTES.has(route)).so
 const missing = [...PRODUCT_ROUTES].filter((route) => !emitted.has(route)).sort();
 
 if (unexpected.length > 0 || missing.length > 0) {
-  fail("production route table differs from PRODUCT_ROUTES in apps/web/scripts/check-routes.mts");
+  fail("production route table differs from PRODUCT_ROUTES in apps/web/scripts/check-routes.mjs");
   if (unexpected.length > 0) console.error(`  unexpected: ${unexpected.join(", ")}`);
   if (missing.length > 0) console.error(`  missing: ${missing.join(", ")}`);
 } else {
