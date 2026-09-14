@@ -9,9 +9,7 @@ use tokio::sync::Semaphore;
 
 use crate::db::now_iso;
 use crate::state::DataDirLock;
-use crate::worker_envelope::{
-    parse_ndjson_stream, ArtifactRef, Manifest, WorkerEvent, WorkerRequest,
-};
+use crate::worker_envelope::{parse_ndjson_stream, Manifest, WorkerEvent, WorkerRequest};
 
 pub(crate) use crate::worker_envelope::WorkerVersions;
 
@@ -372,43 +370,67 @@ async fn invoke_worker(
         return Err("worker exited 0 without ever emitting a terminal result event".to_owned());
     };
 
-    let manifest_path = PathBuf::from(&pointer.path);
-    if !is_within(&base_components, &manifest_path) {
-        return Err(format!(
-            "manifest path {} escapes the job's own output directory",
-            manifest_path.display()
-        ));
-    }
-    let manifest_bytes = tokio::fs::read(&manifest_path)
-        .await
-        .map_err(|err| format!("cannot read manifest at {}: {err}", manifest_path.display()))?;
-    if crate::upload::sha256_hex(&manifest_bytes) != pointer.sha256 {
-        return Err("manifest content hash does not match the terminal result event".to_owned());
-    }
-    if manifest_bytes.len() as u64 != pointer.size {
-        return Err("manifest size does not match the terminal result event".to_owned());
-    }
+    let manifest_bytes = verify_contained_file(
+        &base_components,
+        &pointer.path,
+        &pointer.sha256,
+        pointer.size,
+        "manifest",
+    )
+    .await?;
 
     let manifest = Manifest::from_verified_bytes(&manifest_bytes)?;
     manifest.check_identity(&spec)?;
 
-    let descriptor_bytes = verify_artifact(
+    let descriptor_bytes = verify_contained_file(
         &base_components,
-        &manifest.artifacts.descriptor,
+        &manifest.artifacts.descriptor.path,
+        &manifest.artifacts.descriptor.sha256,
+        manifest.artifacts.descriptor.size,
         "descriptor",
     )
     .await?;
-    let semantic_bytes =
-        verify_artifact(&base_components, &manifest.artifacts.semantic, "semantic").await?;
-    let outcomes =
-        verify_artifact(&base_components, &manifest.artifacts.outcomes, "outcomes").await?;
+    let semantic_bytes = verify_contained_file(
+        &base_components,
+        &manifest.artifacts.semantic.path,
+        &manifest.artifacts.semantic.sha256,
+        manifest.artifacts.semantic.size,
+        "semantic",
+    )
+    .await?;
+    let outcomes = verify_contained_file(
+        &base_components,
+        &manifest.artifacts.outcomes.path,
+        &manifest.artifacts.outcomes.sha256,
+        manifest.artifacts.outcomes.size,
+        "outcomes",
+    )
+    .await?;
     let render_bytes = if let Some(artifact) = &manifest.artifacts.render_manifest {
-        Some(verify_artifact(&base_components, artifact, "renderManifest").await?)
+        Some(
+            verify_contained_file(
+                &base_components,
+                &artifact.path,
+                &artifact.sha256,
+                artifact.size,
+                "renderManifest",
+            )
+            .await?,
+        )
     } else {
         None
     };
     let geometry_bytes = if let Some(artifact) = &manifest.artifacts.geometry {
-        Some(verify_artifact(&base_components, artifact, "geometry").await?)
+        Some(
+            verify_contained_file(
+                &base_components,
+                &artifact.path,
+                &artifact.sha256,
+                artifact.size,
+                "geometry",
+            )
+            .await?,
+        )
     } else {
         None
     };
@@ -624,41 +646,155 @@ fn validate_render_artifacts(
     }
 }
 
-async fn verify_artifact(
+async fn verify_contained_file(
     base_components: &[std::path::Component<'_>],
-    artifact: &ArtifactRef,
+    declared: &str,
+    sha256: &str,
+    size: u64,
     which: &str,
 ) -> Result<Vec<u8>, String> {
-    let path = PathBuf::from(&artifact.path);
+    let path = PathBuf::from(declared);
+    let is_manifest = which == "manifest";
     if !is_within(base_components, &path) {
-        return Err(format!(
-            "{which} artifact path escapes the job's own output directory"
-        ));
+        return Err(if is_manifest {
+            format!("manifest path {declared} escapes the job's own output directory")
+        } else {
+            format!("{which} artifact path escapes the job's own output directory")
+        });
     }
     let resolved = tokio::fs::canonicalize(&path).await.map_err(|err| {
-        format!(
-            "cannot resolve {which} artifact at {}: {err}",
-            path.display()
-        )
+        if is_manifest {
+            format!("cannot resolve manifest at {}: {err}", path.display())
+        } else {
+            format!(
+                "cannot resolve {which} artifact at {}: {err}",
+                path.display()
+            )
+        }
     })?;
     if !is_within(base_components, &resolved) {
-        return Err(format!(
-            "{which} artifact path escapes the job's own output directory via a filesystem link"
-        ));
+        return Err(if is_manifest {
+            format!(
+                "manifest path {declared} escapes the job's own output directory via a filesystem link"
+            )
+        } else {
+            format!(
+                "{which} artifact path escapes the job's own output directory via a filesystem link"
+            )
+        });
     }
     let bytes = tokio::fs::read(&resolved).await.map_err(|err| {
-        format!(
-            "cannot read {which} artifact at {}: {err}",
-            resolved.display()
-        )
+        if is_manifest {
+            format!("cannot read manifest at {}: {err}", resolved.display())
+        } else {
+            format!(
+                "cannot read {which} artifact at {}: {err}",
+                resolved.display()
+            )
+        }
     })?;
-    if bytes.len() as u64 != artifact.size {
-        return Err(format!("{which} artifact size does not match the manifest"));
+    if bytes.len() as u64 != size {
+        return Err(if is_manifest {
+            "manifest size does not match the terminal result event".to_owned()
+        } else {
+            format!("{which} artifact size does not match the manifest")
+        });
     }
-    if crate::upload::sha256_hex(&bytes) != artifact.sha256 {
-        return Err(format!(
-            "{which} artifact content hash does not match the manifest"
-        ));
+    if crate::upload::sha256_hex(&bytes) != sha256 {
+        return Err(if is_manifest {
+            "manifest content hash does not match the terminal result event".to_owned()
+        } else {
+            format!("{which} artifact content hash does not match the manifest")
+        });
     }
     Ok(bytes)
+}
+
+#[cfg(test)]
+mod contained_file_tests {
+    use super::*;
+
+    fn sha(bytes: &[u8]) -> String {
+        crate::upload::sha256_hex(bytes)
+    }
+
+    #[tokio::test]
+    async fn reads_a_file_inside_the_job_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let canonical = dir.path().canonicalize().unwrap();
+        let base: Vec<_> = canonical.components().collect();
+        let file = canonical.join("inside.txt");
+        tokio::fs::write(&file, b"hello").await.unwrap();
+        let bytes =
+            verify_contained_file(&base, file.to_str().unwrap(), &sha(b"hello"), 5, "semantic")
+                .await
+                .unwrap();
+        assert_eq!(bytes, b"hello");
+    }
+
+    #[tokio::test]
+    async fn rejects_a_lexical_escape() {
+        let dir = tempfile::tempdir().unwrap();
+        let canonical = dir.path().canonicalize().unwrap();
+        let base: Vec<_> = canonical.components().collect();
+        let err = verify_contained_file(&base, "/etc/passwd", &sha(b"x"), 1, "semantic")
+            .await
+            .unwrap_err();
+        assert!(
+            err.contains("escapes the job's own output directory"),
+            "{err}"
+        );
+        assert!(!err.contains("filesystem link"), "{err}");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn rejects_a_manifest_symlink_that_leaves_the_job_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let canonical = dir.path().canonicalize().unwrap();
+        let base: Vec<_> = canonical.components().collect();
+        let outside = PathBuf::from(format!(
+            "/tmp/modelshelf-manifest-symlink-{}.json",
+            std::process::id()
+        ));
+        let payload = b"{\"stolen\":true}";
+        tokio::fs::write(&outside, payload).await.unwrap();
+        let link = canonical.join("manifest.json");
+        std::os::unix::fs::symlink(&outside, &link).unwrap();
+        let result = verify_contained_file(
+            &base,
+            link.to_str().unwrap(),
+            &sha(payload),
+            payload.len() as u64,
+            "manifest",
+        )
+        .await;
+        let _ = tokio::fs::remove_file(&outside).await;
+        match result {
+            Ok(bytes) => panic!("returned outside bytes through a symlink: {bytes:?}"),
+            Err(err) => assert!(err.contains("filesystem link"), "{err}"),
+        }
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn allows_an_in_dir_symlink_to_an_in_dir_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let canonical = dir.path().canonicalize().unwrap();
+        let base: Vec<_> = canonical.components().collect();
+        let target = canonical.join("real.json");
+        tokio::fs::write(&target, b"inside").await.unwrap();
+        let link = canonical.join("alias.json");
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+        let bytes = verify_contained_file(
+            &base,
+            link.to_str().unwrap(),
+            &sha(b"inside"),
+            6,
+            "semantic",
+        )
+        .await
+        .unwrap();
+        assert_eq!(bytes, b"inside");
+    }
 }
