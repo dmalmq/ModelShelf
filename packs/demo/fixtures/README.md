@@ -26,7 +26,7 @@ uv run --project services/ifc-worker python scripts/check-demo-oracle.py --prove
 | Property changed | 3 walls, same GlobalId, `FireRating` REI30→REI60 | `properties_changed` |
 | Shape changed | 3 walls, same GlobalId/placement, block thickness 0.2m→0.4m | `shape_changed` |
 | Moved | 3 walls, same GlobalId/shape, translated +0.5 m in Y | `moved` |
-| Rotated | 3 walls, same GlobalId/shape, rotated 30° about its own origin, zero translation | Intended diff is `moved`. Current modeldiff reports `unchanged` because it measures origin-to-origin distance only. Recorded as `engineLimitation`, not as the intended result. |
+| Rotated | 3 walls, same GlobalId/shape, rotated 30° about its own origin, zero translation | `moved`. Distance 0 m. A note names the max absolute direction-cosine delta. Same kind as a translation. There is no `Rotated` kind. |
 | Ambiguous: duplicate GlobalId | 2 walls sharing one GlobalId, in both revisions | Intended correspondence is `uncertain`. |
 | Ambiguous: empty GlobalId | 1 wall with `GlobalId = ""`, in both revisions | Intended correspondence is `uncertain`. |
 
@@ -46,23 +46,25 @@ produces. Building this fixture and running it through the real
 `ifc_model → fingerprint → modeldiff` pipeline surfaced it immediately: a real
 500 mm translation (the "Moved" category) was reported `unchanged`
 ("sub-threshold displacement 0.000000 m"), and a pure rotation with zero
-translation (the "Rotated" category) was reported `moved`. Both are inverted
-from what the code's own doc comments say it should do. Fixed by correcting
-`origin()`'s indices and updating `placement_at()`'s test helper to the
-correct layout; all 14 pre-existing `modeldiff` tests still pass unchanged in
-behavior, now against a correctly-encoded fixture
+translation (the "Rotated" category) was reported `moved` because the
+mis-indexed origin jumped when the axes rotated. Those two results inverted
+the origin-only classifier of that era. Fixed by correcting `origin()`'s
+indices and updating `placement_at()`'s test helper to the correct layout.
+All 14 pre-existing `modeldiff` tests still pass unchanged in behavior, now
+against a correctly-encoded fixture
 (`.omo/evidence/modelshelf-prototype/task-5/modeldiff-tests-after-fix.txt`).
+The live rotation contract is in the next section, not in that bug report.
 
-**A real, still-true design limitation, left alone.** After that fix, a *pure*
-rotation about an object's own origin (no translation) is still reported
-`unchanged`, not `moved` — `classify_pair` (`crates/modeldiff/src/lib.rs`)
-only measures displacement as origin-to-origin distance
-(`heuristic::origin_distance`), which is genuinely zero for a rotation with no
-translation, even though the placement fingerprint (which hashes the full
-axis set) did change. This is not the bug above — it's a real, documented
-consequence of the current design's choice of what counts as "moved," left as
-a discovered characteristic for a future ticket to decide whether orientation
-change alone should also count.
+**The rotation decision.** After that origin-index fix, a pure rotation about
+an object's own origin used to classify as `unchanged` because `classify_pair`
+only measured origin-to-origin distance. The placement digest already hashed
+the full axis set, so the rotation was visible as a fingerprint change and
+then forgiven as a zero-metre displacement. Ticket 34 stores the worker-v2
+row-major 3x4 on `IdentitySide` and classifies a differing basis as `moved`
+with a note `placement basis changed (max |Δcosine| …)`. Sub-threshold
+forgiveness still requires an identical basis and origin displacement at or
+below `move_threshold_m`. `ChangeKind` stays at seven values. There is no
+`Rotated` kind.
 
 **A real modeling lesson.** The "Added"/"Removed" categories initially used
 the same generic block size as everything else. Since `crates/modeldiff`'s

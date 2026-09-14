@@ -80,9 +80,9 @@ def check_oracle(fixture_dir: Path) -> None:
 
     rotated = objects["rotated"]
     if rotated["intendedDiff"] != "moved":
-        fail("rotated.intendedDiff must be moved (the physical change), not the engine's unchanged report")
-    if rotated.get("engineLimitation", {}).get("modeldiff") != "unchanged":
-        fail("rotated.engineLimitation.modeldiff must record the current origin-distance limitation")
+        fail("rotated.intendedDiff must be moved (the physical change)")
+    if "engineLimitation" in rotated:
+        fail("rotated must not carry engineLimitation; in-place rotation is moved")
     if objects["ambiguous_ids"].get("intendedCorrespondence") != "uncertain":
         fail("duplicate/empty GlobalIds must be intendedCorrespondence=uncertain")
 

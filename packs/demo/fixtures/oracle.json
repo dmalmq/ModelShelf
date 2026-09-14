@@ -542,10 +542,6 @@
             "Rotated-2"
           ]
         }
-      },
-      "engineLimitation": {
-        "modeldiff": "unchanged",
-        "reason": "classify_pair measures origin-to-origin distance only; a pure rotation has zero displacement."
       }
     },
     "ambiguous_ids": {

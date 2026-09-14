@@ -598,9 +598,8 @@ pub async fn load_models(pool: &SqlitePool, delivery_id: &str) -> Result<Vec<Mod
 ///
 /// A row with NULL `profile_id` predates normalized fingerprints and has no
 /// trustworthy snapshot: this returns `fingerprint_profile_mismatch` rather than
-/// fabricating one. `origin_m` reads the translation column (indices 3, 7, 11)
-/// of the stored row-major 3x4 placement in metres
-/// (`docs/contracts/worker-v2.md`); an unparseable placement yields `None`.
+/// fabricating one. `placement_json` is stored whole as `placement_3x4` when it
+/// is twelve floats (`docs/contracts/worker-v2.md`); otherwise `None`.
 async fn load_diff_objects(
     pool: &SqlitePool,
     model_id: &str,
@@ -653,12 +652,11 @@ async fn load_diff_objects(
                 "legacy (no profile — ingested before normalized fingerprints)",
             ));
         };
-        let origin_m = row
+        let placement_3x4 = row
             .placement_json
             .as_deref()
             .and_then(|json| serde_json::from_str::<Vec<f64>>(json).ok())
-            .and_then(|values| <[f64; 12]>::try_from(values).ok())
-            .map(|matrix| [matrix[3], matrix[7], matrix[11]]);
+            .and_then(|values| <[f64; 12]>::try_from(values).ok());
         out.push(modeldiff::DiffObject {
             snapshot: DerivedSnapshot {
                 object_id: ref_object_id.clone(),
@@ -682,7 +680,7 @@ async fn load_diff_objects(
                 ifc_type: row.ifc_type.clone(),
                 name: row.name.clone(),
                 storey: row.storey.clone(),
-                origin_m,
+                placement_3x4,
                 props: by_object.remove(&row.id).unwrap_or_default(),
             },
         });

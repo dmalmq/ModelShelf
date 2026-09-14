@@ -579,17 +579,18 @@ async function runComparisonsScenario(runDir, check, log) {
     const ofKind = (kind) => mechPair.changes.filter((c) => c.kind === kind);
     const sortedNames = (list) => list.map(nameOf).sort();
     check(
-      "oracle group counts: added/removed/properties/shape/moved 3 each, no mixed",
+      "oracle group counts: added/removed/properties/shape 3 each, moved 6, no mixed",
       mechPair.summary.added === 3 && mechPair.summary.removed === 3
         && mechPair.summary.propertiesChanged === 3 && mechPair.summary.shapeChanged === 3
-        && mechPair.summary.moved === 3 && mechPair.summary.mixed === 0,
+        && mechPair.summary.moved === 6 && mechPair.summary.mixed === 0,
       JSON.stringify(mechPair.summary),
     );
     check("added names match the oracle", JSON.stringify(sortedNames(ofKind("added"))) === JSON.stringify(["Added-0", "Added-1", "Added-2"]), JSON.stringify(sortedNames(ofKind("added"))));
     check("removed names match the oracle", JSON.stringify(sortedNames(ofKind("removed"))) === JSON.stringify(["Removed-0", "Removed-1", "Removed-2"]), JSON.stringify(sortedNames(ofKind("removed"))));
     check("properties_changed names match the oracle", JSON.stringify(sortedNames(ofKind("properties_changed"))) === JSON.stringify(["PropChange-0", "PropChange-1", "PropChange-2"]), JSON.stringify(sortedNames(ofKind("properties_changed"))));
     check("shape_changed names match the oracle", JSON.stringify(sortedNames(ofKind("shape_changed"))) === JSON.stringify(["ShapeChange-0", "ShapeChange-1", "ShapeChange-2"]), JSON.stringify(sortedNames(ofKind("shape_changed"))));
-    check("moved names match the oracle", JSON.stringify(sortedNames(ofKind("moved"))) === JSON.stringify(["Moved-0", "Moved-1", "Moved-2"]), JSON.stringify(sortedNames(ofKind("moved"))));
+    const translatedMoves = ofKind("moved").filter((c) => (nameOf(c) ?? "").startsWith("Moved-"));
+    check("moved names match the oracle", JSON.stringify(sortedNames(translatedMoves)) === JSON.stringify(["Moved-0", "Moved-1", "Moved-2"]), JSON.stringify(sortedNames(translatedMoves)));
     check(
       "property edits report REI30 -> REI60 before/after",
       ofKind("properties_changed").every((c) => {
@@ -600,15 +601,16 @@ async function runComparisonsScenario(runDir, check, log) {
     );
     check(
       "moves report ~0.5 m displacement",
-      ofKind("moved").every((c) => Math.abs(c.movedDistanceM - 0.5) < 1e-9),
-      JSON.stringify(ofKind("moved").map((c) => c.movedDistanceM)),
+      translatedMoves.every((c) => Math.abs(c.movedDistanceM - 0.5) < 1e-9),
+      JSON.stringify(translatedMoves.map((c) => c.movedDistanceM)),
     );
     const rotated = mechPair.changes.filter((c) => (nameOf(c) ?? "").startsWith("Rotated-"));
     log("rotated-behavior.json", rotated);
     check(
-      "rotated walls assert actual behavior: origin-only measurement sees zero displacement (unchanged + sub-threshold note, recorded limitation)",
-      rotated.length === 3 && rotated.every((c) => c.kind === "unchanged" && c.confidence.kind === "exact"
-        && (c.movedDistanceM ?? -1) === 0 && c.notes.some((n) => n.includes("sub-threshold"))),
+      "rotated walls assert actual behavior: kind moved, distance 0, basis note, exact confidence",
+      rotated.length === 3 && rotated.every((c) => c.kind === "moved" && c.confidence.kind === "exact"
+        && (c.movedDistanceM ?? -1) === 0 && c.notes.some((n) => n.includes("placement basis changed"))
+        && c.notes.every((n) => !n.includes("sub-threshold"))),
       JSON.stringify(rotated.map((c) => ({ name: nameOf(c), kind: c.kind, confidence: c.confidence, movedDistanceM: c.movedDistanceM, notes: c.notes }))),
     );
     const ambiguous = mechPair.changes.filter((c) => ["Duplicate-A", "Duplicate-B", "EmptyGlobalId"].includes(nameOf(c)));
@@ -669,7 +671,7 @@ async function runComparisonsScenario(runDir, check, log) {
     const movedPage = (await api(base, "GET", diffUrl("&kind=moved&limit=5000"))).json.pairs.find((p) => p.sourceModelId === mech.id);
     check(
       "kind filter pages moved only with pre-page total",
-      movedPage.total === 3 && movedPage.changes.length === 3 && movedPage.changes.every((c) => c.kind === "moved"),
+      movedPage.total === 6 && movedPage.changes.length === 6 && movedPage.changes.every((c) => c.kind === "moved"),
       JSON.stringify({ total: movedPage.total, kinds: movedPage.changes.map((c) => c.kind) }),
     );
     const pastEnd = (await api(base, "GET", diffUrl("&limit=5&offset=10000"))).json.pairs.find((p) => p.sourceModelId === mech.id);
