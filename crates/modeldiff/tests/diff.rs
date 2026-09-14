@@ -8,6 +8,7 @@ use modeldiff::{
     ChangeKind, DiffObject, FindingDelta, HeuristicPolicy, IdentitySide, MatchConfidence,
     MatchPolicy, PropRow, compare, diff_findings,
 };
+use modeldiff::normalized::{placement_from_origin, placement_with_origin};
 
 const PROFILE_ID: &str = "test-profile-id";
 const PROFILE_VERSION: &str = "fp-v1";
@@ -46,7 +47,7 @@ fn obj(express_id: u32, gid: Option<&str>, ifc_type: &str) -> DiffObject {
             ifc_type: ifc_type.to_string(),
             name: Some(format!("obj-{express_id}")),
             storey: None,
-            origin_m: Some([0.0, 0.0, 0.0]),
+            placement_3x4: Some(placement_from_origin([0.0, 0.0, 0.0])),
             props: Vec::new(),
         },
     }
@@ -59,12 +60,20 @@ fn obj_with_profile(express_id: u32, gid: Option<&str>, profile_id: &str) -> Dif
 }
 
 fn with_origin(mut o: DiffObject, x: f64, y: f64, z: f64) -> DiffObject {
-    o.id.origin_m = Some([x, y, z]);
+    let m = o.id.placement_3x4.unwrap_or_else(|| placement_from_origin([0.0, 0.0, 0.0]));
+    o.id.placement_3x4 = Some(placement_with_origin(m, [x, y, z]));
     o
 }
 
-fn without_origin(mut o: DiffObject) -> DiffObject {
-    o.id.origin_m = None;
+fn without_placement(mut o: DiffObject) -> DiffObject {
+    o.id.placement_3x4 = None;
+    o
+}
+
+fn with_z_rotation(mut o: DiffObject, radians: f64) -> DiffObject {
+    let m = o.id.placement_3x4.unwrap_or_else(|| placement_from_origin([0.0, 0.0, 0.0]));
+    let (c, s) = (radians.cos(), radians.sin());
+    o.id.placement_3x4 = Some([c, -s, 0.0, m[3], s, c, 0.0, m[7], 0.0, 0.0, 1.0, m[11]]);
     o
 }
 
@@ -322,11 +331,30 @@ fn core_never_requantizes_floats() {
 
 #[test]
 fn pure_rotation_without_translation_is_not_a_move() {
-    // A rotation-only edit changes the placement digest while the origin is
-    // untouched. Origin-to-origin distance is zero, so this classifies
-    // Unchanged with a sub-threshold note — the documented origin-only
-    // limitation, pinned here so a future rotation-aware classifier must
-    // update this test deliberately.
+    let b = obj(10, Some("g1"), "IFCWALL");
+    let h = with_z_rotation(
+        with_fps(obj(10, Some("g1"), "IFCWALL"), "p", "l-rotated", "s"),
+        std::f64::consts::FRAC_PI_6,
+    );
+    let d = compare(&[b], &[h], &policy()).unwrap();
+    let c = &d.changes[0];
+    assert_eq!(c.kind, ChangeKind::Moved);
+    assert_eq!(c.moved_distance_m, Some(0.0));
+    assert_eq!(d.summary.moved, 1);
+    assert!(
+        c.notes.iter().any(|n| n.contains("placement basis changed")),
+        "expected a basis note, got {:?}",
+        c.notes
+    );
+    assert!(
+        c.notes.iter().all(|n| !n.contains("sub-threshold")),
+        "rotation must not carry a sub-threshold note, got {:?}",
+        c.notes
+    );
+}
+
+#[test]
+fn placement_digest_change_with_identical_identity_matrix_is_unchanged() {
     let b = obj(10, Some("g1"), "IFCWALL");
     let h = with_fps(obj(10, Some("g1"), "IFCWALL"), "p", "l-rotated", "s");
     let d = compare(&[b], &[h], &policy()).unwrap();
@@ -341,9 +369,32 @@ fn pure_rotation_without_translation_is_not_a_move() {
 }
 
 #[test]
+fn sub_threshold_translation_with_rotated_basis_is_moved() {
+    let b = obj(10, Some("g1"), "IFCWALL");
+    let h = with_z_rotation(
+        with_origin(with_fps(obj(10, Some("g1"), "IFCWALL"), "p", "l2", "s"), 0.0005, 0.0, 0.0),
+        std::f64::consts::FRAC_PI_6,
+    );
+    let d = compare(&[b], &[h], &policy()).unwrap();
+    let c = &d.changes[0];
+    assert_eq!(c.kind, ChangeKind::Moved);
+    assert!((c.moved_distance_m.unwrap() - 0.0005).abs() < 1e-12);
+    assert!(
+        c.notes.iter().any(|n| n.contains("placement basis changed")),
+        "expected a basis note, got {:?}",
+        c.notes
+    );
+    assert!(
+        c.notes.iter().all(|n| !n.contains("sub-threshold")),
+        "rotated basis must not be forgiven as sub-threshold, got {:?}",
+        c.notes
+    );
+}
+
+#[test]
 fn missing_origin_with_changed_placement_is_a_move_with_note() {
     let b = obj(10, Some("g1"), "IFCWALL");
-    let h = without_origin(with_fps(obj(10, Some("g1"), "IFCWALL"), "p", "l2", "s"));
+    let h = without_placement(with_fps(obj(10, Some("g1"), "IFCWALL"), "p", "l2", "s"));
     let d = compare(&[b], &[h], &policy()).unwrap();
     let c = &d.changes[0];
     assert_eq!(c.kind, ChangeKind::Moved);

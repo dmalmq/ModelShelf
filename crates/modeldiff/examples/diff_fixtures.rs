@@ -6,6 +6,7 @@
 
 use fingerprint::normalized::{DerivedSnapshot, Fingerprints};
 use modeldiff::{ChangeKind, DiffObject, IdentitySide, MatchPolicy, PropRow, compare};
+use modeldiff::normalized::placement_from_origin;
 
 const PROFILE_ID: &str = "example-profile";
 const PROFILE_VERSION: &str = "fp-v1";
@@ -49,7 +50,7 @@ fn obj(
             ifc_type: ifc_type.to_string(),
             name: Some(name.to_string()),
             storey: None,
-            origin_m: Some(origin),
+            placement_3x4: Some(placement_from_origin(origin)),
             props: props
                 .iter()
                 .map(|(pset, n, v)| PropRow {

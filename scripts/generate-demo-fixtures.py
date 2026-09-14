@@ -440,10 +440,6 @@ def build(output_dir: Path, seed: str) -> dict[str, object]:
                 "intendedDiff": "moved",
                 "detail": "rotated 30 degrees about own origin, zero translation",
                 "ids": {"base": ids_fail(rotated_keys), "head": ids_fail(rotated_keys)},
-                "engineLimitation": {
-                    "modeldiff": "unchanged",
-                    "reason": "classify_pair measures origin-to-origin distance only; a pure rotation has zero displacement.",
-                },
             },
             "ambiguous_ids": {
                 "keys": dup_keys + [empty_key],

@@ -37,5 +37,5 @@ ambiguous (duplicate/empty) GlobalIds — plus a machine-readable
 per object. See [`fixtures/README.md`](fixtures/README.md) for the category
 table, verified real results, and two things this fixture found while it was
 being built: a real, now-fixed bug in `modeldiff`'s placement-array indexing,
-and a real, still-true design limitation (a pure rotation with no translation
-does not currently register as "moved").
+and the later decision that a pure rotation with no translation reports as
+`moved` with a basis-change note.

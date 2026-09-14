@@ -6,7 +6,7 @@
 //! The comparison crate performs no database or HTTP work: the service loads and
 //! persists [`DerivedSnapshot`] rows, and this module compares them. It never
 //! re-quantizes anything — classification reads only digest equality, the
-//! caller-supplied [`IdentitySide::origin_m`], and the [`IdentitySide::props`]
+//! caller-supplied [`IdentitySide::placement_3x4`], and the [`IdentitySide::props`]
 //! row join. Quantization lives in `fingerprint::normalized` under an explicit
 //! [`FingerprintProfile`](fingerprint::normalized::FingerprintProfile); this
 //! module only gates on the resulting `profile_id`.
@@ -66,10 +66,11 @@ pub struct IdentitySide {
     pub ifc_type: String,
     pub name: Option<String>,
     pub storey: Option<String>,
-    /// Project-frame origin in metres, read from the stored row-major 3x4
-    /// placement (translation column: indices 3, 7, 11). `None` when the
-    /// revision has no interpretable placement for this object.
-    pub origin_m: Option<[f64; 3]>,
+    /// Stored worker-v2 row-major 3x4 in metres. `None` when JSON is missing
+    /// or not exactly 12 floats. Origin is indices 3, 7, 11. Cosines are the
+    /// other nine. Not `ifc_model::Transform::to_array12`, whose origin lives
+    /// at `[9, 10, 11]`.
+    pub placement_3x4: Option<[f64; 12]>,
     /// Property rows for the before/after join. Order is insignificant.
     pub props: Vec<PropRow>,
 }
@@ -99,7 +100,8 @@ pub enum HeuristicPolicy {
 #[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct MatchPolicy {
     pub heuristic: HeuristicPolicy,
-    /// Displacement in metres above which a placement change is `Moved`.
+    /// Origin displacement in metres above which an identical-basis placement
+    /// change is `Moved`. A differing basis is `Moved` even at distance 0.
     pub move_threshold_m: f64,
 }
 
@@ -136,6 +138,38 @@ pub const W_NAME: f64 = 0.10;
 /// Displacement at which the placement component grades to zero.
 pub const PLACEMENT_GRADE_RANGE_M: f64 = 1.0;
 
+pub fn origin_of(m: &[f64; 12]) -> [f64; 3] {
+    [m[3], m[7], m[11]]
+}
+
+pub fn direction_cosines_of(m: &[f64; 12]) -> [f64; 9] {
+    [m[0], m[1], m[2], m[4], m[5], m[6], m[8], m[9], m[10]]
+}
+
+/// Identity rotation, translation at indices 3, 7, 11.
+pub fn placement_from_origin(origin: [f64; 3]) -> [f64; 12] {
+    [
+        1.0, 0.0, 0.0, origin[0],
+        0.0, 1.0, 0.0, origin[1],
+        0.0, 0.0, 1.0, origin[2],
+    ]
+}
+
+pub fn placement_with_origin(mut m: [f64; 12], origin: [f64; 3]) -> [f64; 12] {
+    m[3] = origin[0];
+    m[7] = origin[1];
+    m[11] = origin[2];
+    m
+}
+
+pub fn basis_max_abs_delta(a: &[f64; 12], b: &[f64; 12]) -> f64 {
+    direction_cosines_of(a)
+        .iter()
+        .zip(direction_cosines_of(b).iter())
+        .map(|(x, y)| (x - y).abs())
+        .fold(0.0_f64, f64::max)
+}
+
 /// Straight-line distance between two origins in metres.
 pub fn origin_distance(a: &[f64; 3], b: &[f64; 3]) -> f64 {
     ((a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2) + (a[2] - b[2]).powi(2)).sqrt()
@@ -161,8 +195,8 @@ pub fn score_pair(base: &DiffObject, head: &DiffObject) -> Option<(f64, String)>
     if base.snapshot.fingerprints.placement == head.snapshot.fingerprints.placement {
         score += W_PLACEMENT;
         evidence.push("placement");
-    } else if let (Some(bp), Some(hp)) = (&base.id.origin_m, &head.id.origin_m) {
-        let dist = origin_distance(bp, hp);
+    } else if let (Some(bm), Some(hm)) = (base.id.placement_3x4, head.id.placement_3x4) {
+        let dist = origin_distance(&origin_of(&bm), &origin_of(&hm));
         if dist < PLACEMENT_GRADE_RANGE_M {
             let partial = W_PLACEMENT * (1.0 - dist / PLACEMENT_GRADE_RANGE_M);
             if partial > 0.0 {
@@ -472,14 +506,39 @@ fn property_changes(base: &IdentitySide, head: &IdentitySide) -> Vec<PropertyCha
         .collect()
 }
 
-/// Classify one matched pair from its three digests.
-///
-/// A placement change only counts as a move above the policy threshold; below
-/// it the pair is unchanged-with-a-note. When the digests differ but a side
-/// has no origin we cannot prove the displacement is tiny, so it counts as a
-/// move. Note this measures origin-to-origin distance only: a pure rotation
-/// about an object's own origin has zero displacement and does not report as
-/// moved on its own.
+enum PlacementClass {
+    DigestsMatch { distance_m: Option<f64> },
+    Forgiven { distance_m: f64 },
+    Translated { distance_m: f64 },
+    BasisChanged { distance_m: f64, max_abs_cosine_delta: f64 },
+    DistanceUnknown,
+}
+
+fn classify_placement(base: &DiffObject, head: &DiffObject, threshold_m: f64) -> PlacementClass {
+    let distance_m = match (base.id.placement_3x4, head.id.placement_3x4) {
+        (Some(bm), Some(hm)) => Some(origin_distance(&origin_of(&bm), &origin_of(&hm))),
+        _ => None,
+    };
+    let placement_fp_diff =
+        base.snapshot.fingerprints.placement != head.snapshot.fingerprints.placement;
+    if !placement_fp_diff {
+        return PlacementClass::DigestsMatch { distance_m };
+    }
+    match (base.id.placement_3x4, head.id.placement_3x4, distance_m) {
+        (Some(bm), Some(hm), Some(d)) => {
+            let delta = basis_max_abs_delta(&bm, &hm);
+            if delta != 0.0 {
+                PlacementClass::BasisChanged { distance_m: d, max_abs_cosine_delta: delta }
+            } else if d <= threshold_m {
+                PlacementClass::Forgiven { distance_m: d }
+            } else {
+                PlacementClass::Translated { distance_m: d }
+            }
+        }
+        _ => PlacementClass::DistanceUnknown,
+    }
+}
+
 fn classify_pair(
     base: &DiffObject,
     head: &DiffObject,
@@ -490,33 +549,33 @@ fn classify_pair(
     let shape_diff = base.snapshot.fingerprints.shape != head.snapshot.fingerprints.shape;
     let props_diff =
         base.snapshot.fingerprints.properties != head.snapshot.fingerprints.properties;
-    let placement_fp_diff =
-        base.snapshot.fingerprints.placement != head.snapshot.fingerprints.placement;
 
-    let moved_distance_m = match (&base.id.origin_m, &head.id.origin_m) {
-        (Some(bp), Some(hp)) => Some(origin_distance(bp, hp)),
-        _ => None,
-    };
-
-    let mut moved = false;
-    if placement_fp_diff {
-        match moved_distance_m {
-            Some(d) if d <= policy.move_threshold_m => {
-                notes.push(format!(
-                    "sub-threshold displacement {:.6} m (threshold {:.6} m)",
-                    d, policy.move_threshold_m
-                ));
-            }
-            Some(_) => moved = true,
-            None => {
-                moved = true;
-                notes.push(
-                    "placement changed; distance unknown (missing placement on one side)"
-                        .to_string(),
-                );
-            }
+    let placement = classify_placement(base, head, policy.move_threshold_m);
+    let (moved, moved_distance_m) = match placement {
+        PlacementClass::DigestsMatch { distance_m } => (false, distance_m),
+        PlacementClass::Forgiven { distance_m } => {
+            notes.push(format!(
+                "sub-threshold displacement {:.6} m (threshold {:.6} m)",
+                distance_m, policy.move_threshold_m
+            ));
+            (false, Some(distance_m))
         }
-    }
+        PlacementClass::Translated { distance_m } => (true, Some(distance_m)),
+        PlacementClass::BasisChanged { distance_m, max_abs_cosine_delta } => {
+            notes.push(format!(
+                "placement basis changed (max |Δcosine| {:.6})",
+                max_abs_cosine_delta
+            ));
+            (true, Some(distance_m))
+        }
+        PlacementClass::DistanceUnknown => {
+            notes.push(
+                "placement changed; distance unknown (missing placement on one side)"
+                    .to_string(),
+            );
+            (true, None)
+        }
+    };
 
     let property_changes = property_changes(&base.id, &head.id);
 
