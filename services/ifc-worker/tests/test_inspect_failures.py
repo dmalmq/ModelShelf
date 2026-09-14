@@ -105,3 +105,41 @@ def test_unreadable_request_file_is_rejected(tmp_path: Path) -> None:
     run = run_worker(request_path)
     assert run.returncode != 0
     assert _no_result(run)
+
+
+def test_relative_model_path_exits_nonzero_without_result(tmp_path: Path) -> None:
+    request_path = write_request(
+        tmp_path,
+        model={"path": "relative.ifc", "sha256": "0" * 64, "revisionId": "r"},
+        outputDir=str(tmp_path / "out"),
+    )
+    run = run_worker(request_path)
+    assert run.returncode != 0
+    assert _no_result(run)
+    assert "invalid request" in run.stderr
+
+
+def test_relative_output_dir_exits_nonzero_without_result(tmp_path: Path) -> None:
+    request_path = write_request(
+        tmp_path,
+        model={"path": str(tmp_path / "missing.ifc"), "sha256": "0" * 64, "revisionId": "r"},
+        outputDir="relative-out",
+    )
+    run = run_worker(request_path)
+    assert run.returncode != 0
+    assert _no_result(run)
+    assert "invalid request" in run.stderr
+
+
+def test_relative_ids_path_exits_nonzero_without_result(tmp_path: Path) -> None:
+    request_path = write_request(
+        tmp_path,
+        operation="validate",
+        model={"path": str(tmp_path / "missing.ifc"), "sha256": "0" * 64, "revisionId": "r"},
+        ids={"path": "relative.ids", "sha256": "1" * 64, "specificationIds": None},
+        outputDir=str(tmp_path / "out"),
+    )
+    run = run_worker(request_path)
+    assert run.returncode != 0
+    assert _no_result(run)
+    assert "invalid request" in run.stderr

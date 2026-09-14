@@ -68,3 +68,28 @@ def test_settings_geometry_is_required() -> None:
     payload = {**VALID_INSPECT_REQUEST, "settings": {}}
     with pytest.raises(ValidationError):
         Request.model_validate(payload)
+
+
+def test_relative_model_path_is_rejected() -> None:
+    payload = {
+        **VALID_INSPECT_REQUEST,
+        "model": {**VALID_INSPECT_REQUEST["model"], "path": "relative.ifc"},
+    }
+    with pytest.raises(ValidationError, match="absolute"):
+        Request.model_validate(payload)
+
+
+def test_relative_ids_path_is_rejected() -> None:
+    payload = {
+        **VALID_INSPECT_REQUEST,
+        "operation": "validate",
+        "ids": {"path": "relative.ids", "sha256": "1" * 64, "specificationIds": None},
+    }
+    with pytest.raises(ValidationError, match="absolute"):
+        Request.model_validate(payload)
+
+
+def test_relative_output_dir_is_rejected() -> None:
+    payload = {**VALID_INSPECT_REQUEST, "outputDir": "relative-out"}
+    with pytest.raises(ValidationError, match="absolute"):
+        Request.model_validate(payload)

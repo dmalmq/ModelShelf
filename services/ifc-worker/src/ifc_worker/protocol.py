@@ -10,12 +10,23 @@ plumbing and model data are different concerns with different lifetimes.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 
 SHA256_PATTERN = r"^[0-9a-f]{64}$"
 PROTOCOL_VERSION: Literal[2] = 2
+
+
+def _require_absolute(value: str) -> str:
+    if not Path(value).is_absolute():
+        msg = "path must be absolute"
+        raise ValueError(msg)
+    return value
+
+
+AbsolutePath = Annotated[str, AfterValidator(_require_absolute)]
 
 
 class StrictModel(BaseModel):
@@ -23,13 +34,13 @@ class StrictModel(BaseModel):
 
 
 class ModelRef(StrictModel):
-    path: str
+    path: AbsolutePath
     sha256: str = Field(pattern=SHA256_PATTERN)
     revisionId: str
 
 
 class IdsRef(StrictModel):
-    path: str
+    path: AbsolutePath
     sha256: str = Field(pattern=SHA256_PATTERN)
     specificationIds: list[str] | None
 
@@ -44,7 +55,7 @@ class Request(StrictModel):
     operation: Literal["inspect", "validate"]
     model: ModelRef
     ids: IdsRef | None
-    outputDir: str
+    outputDir: AbsolutePath
     settings: Settings
 
     @model_validator(mode="after")
