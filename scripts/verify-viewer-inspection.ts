@@ -472,6 +472,7 @@ export async function runInspectionScenario() {
     const navStart = Date.now();
     await page.goto(`${appOrigin}/deliveries/${delivery.id}?run=${runA.run.id}`, { waitUntil: "domcontentloaded" });
     await waitForModelsReady(page, 360_000);
+    perf.coldMs = Date.now() - navStart;
     const host = await readProofHost({ browserVersion: browser.version(), page });
     perf.machine = {
       platform: host.platform,
@@ -482,7 +483,6 @@ export async function runInspectionScenario() {
     };
     perf.gpu = { renderer: host.webglRenderer };
     perf.browser = { version: host.browserVersion, viewport: { width: 1440, height: 900 } };
-    perf.coldMs = Date.now() - navStart;
     await mark(page, perf.marks, "ready");
 
     const review = page.locator("[data-review-screen]");
