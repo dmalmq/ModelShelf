@@ -112,23 +112,6 @@ pub(crate) async fn migrate_with_fault(pool: &SqlitePool, fault: MigrationFault)
     Ok(())
 }
 
-/// Any job still 'running' when the process last exited means the worker was
-/// interrupted mid-flight (crash or kill) and can never resume — it must surface
-/// as a visible, explicit failure rather than stay running forever or vanish.
-/// Called once on every startup, after migration.
-pub async fn recover_interrupted_jobs(pool: &SqlitePool) -> anyhow::Result<()> {
-    sqlx::query(
-        "UPDATE ingestion_jobs SET status = 'failed',
-             error = 'interrupted: the service restarted while this job was running',
-             finished_at = ?1
-         WHERE status = 'running'",
-    )
-    .bind(now_iso())
-    .execute(pool)
-    .await?;
-    Ok(())
-}
-
 async fn ensure_schema_migrations_table(pool: &SqlitePool) -> anyhow::Result<()> {
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -723,7 +706,8 @@ mod tests {
         .await
         .expect("inserting a finding link for a newly created revision must succeed");
 
-        let detail = crate::run::run_detail(&pool, "run-1").await.expect("run history readable");
+        let detail: crate::dto::RunDetail =
+            crate::run::run_detail(&pool, "run-1").await.expect("run history readable").into();
         assert_eq!(detail.input_provenance.status, "incomplete");
         assert!(
             detail
