@@ -21,7 +21,8 @@ pub const MIGRATION_0006: &str = include_str!("../migrations/0006_object_prop_re
 pub const MIGRATION_0007: &str = include_str!("../migrations/0007_run_models.sql");
 pub const MIGRATION_0008: &str = include_str!("../migrations/0008_diff_snapshots.sql");
 pub const MIGRATION_0009: &str = include_str!("../migrations/0009_review_decisions.sql");
-pub const SCHEMA_VERSION: i64 = 9;
+pub const MIGRATION_0010: &str = include_str!("../migrations/0010_measured_inputs.sql");
+pub const SCHEMA_VERSION: i64 = 10;
 
 pub async fn open(data_dir: &std::path::Path) -> anyhow::Result<SqlitePool> {
     let pool = connect(data_dir).await?;
@@ -108,6 +109,9 @@ pub(crate) async fn migrate_with_fault(pool: &SqlitePool, fault: MigrationFault)
     }
     if current_version(pool).await? < 9 {
         apply_sql_version(pool, 9, MIGRATION_0009).await?;
+    }
+    if current_version(pool).await? < 10 {
+        apply_sql_version(pool, 10, MIGRATION_0010).await?;
     }
     Ok(())
 }
@@ -1033,6 +1037,23 @@ mod tests {
                 "status {status:?}"
             );
         }
+        assert_eq!(
+            InputProvenance::from_row("incomplete", None),
+            InputProvenance::Incomplete { reason: UNPINNED_REASON.to_owned() }
+        );
+        assert_eq!(
+            InputProvenance::from_row("incomplete", Some(crate::dto::LEGACY_UNPINNED_DENIAL)),
+            InputProvenance::Incomplete { reason: UNPINNED_REASON.to_owned() }
+        );
+        let v4_reason = "pre-migration run inputs were not pinned; displayed models are reconstructed from current delivery membership";
+        assert_eq!(
+            InputProvenance::from_row("incomplete", Some(v4_reason)),
+            InputProvenance::Incomplete { reason: v4_reason.to_owned() }
+        );
+        assert!(
+            !UNPINNED_REASON.contains("not implemented"),
+            "{UNPINNED_REASON}"
+        );
     }
 
     #[tokio::test]
@@ -1073,5 +1094,114 @@ mod tests {
         .execute(&pool)
         .await
         .expect("repaired FKs must accept a new link");
+    }
+
+    async fn migrate_through_version_9(pool: &SqlitePool) {
+        ensure_schema_migrations_table(pool).await.unwrap();
+        apply_sql_version(pool, 1, MIGRATION_0001).await.unwrap();
+        apply_version_2(pool, MigrationFault::None).await.unwrap();
+        apply_sql_version(pool, 3, MIGRATION_0003).await.unwrap();
+        apply_version_4(pool, MigrationFault::None).await.unwrap();
+        apply_version_5(pool, MigrationFault::None).await.unwrap();
+        apply_sql_version(pool, 6, MIGRATION_0006).await.unwrap();
+        apply_sql_version(pool, 7, MIGRATION_0007).await.unwrap();
+        apply_sql_version(pool, 8, MIGRATION_0008).await.unwrap();
+        apply_sql_version(pool, 9, MIGRATION_0009).await.unwrap();
+        assert_eq!(current_version(pool).await.unwrap(), 9);
+    }
+
+    #[tokio::test]
+    async fn version_10_adds_processing_versions_without_rewriting_provenance() {
+        let (_dir, pool) = temp_pool().await;
+        migrate_through_version_9(&pool).await;
+        seed_run_parents(&pool).await;
+        sqlx::query(
+            "INSERT INTO source_models (id, project_id, name, discipline, created_at)
+             VALUES ('s1','p1','Source','ARCH',datetime())",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO model_revisions (id, source_model_id, filename, content_sha256, byte_size,
+                 schema_label, entity_count, product_count, storage_path, uploaded_at)
+             VALUES ('m1','s1','a.ifc','0',1,'IFC4',1,1,'blobs/0',datetime())",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO source_models (id, project_id, name, discipline, created_at)
+             VALUES ('s2','p1','Other','MEP',datetime())",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO model_revisions (id, source_model_id, filename, content_sha256, byte_size,
+                 schema_label, entity_count, product_count, storage_path, uploaded_at)
+             VALUES ('m2','s2','b.ifc','1',1,'IFC4',1,1,'blobs/1',datetime())",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO delivery_members (id, delivery_id, source_model_id, model_revision_id, added_at)
+             VALUES ('dm1','d1','s1','m1',datetime()), ('dm2','d1','s2','m2',datetime())",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+        sqlx::query(
+            "INSERT INTO runs (id, project_id, delivery_id, pack_version_id, engine_version,
+                 parser_version, status, started_at, input_provenance)
+             VALUES ('run-bare','p1','d1','pv1','eng','par','completed',datetime(),'complete')",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        migrate(&pool).await.expect("migrate to version 10");
+        assert_eq!(current_version(&pool).await.unwrap(), SCHEMA_VERSION);
+
+        let stored_json: String = sqlx::query_scalar(
+            "SELECT processing_versions_json FROM model_revisions WHERE id = 'm1'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(stored_json, "{}");
+        let stored_provenance: String =
+            sqlx::query_scalar("SELECT input_provenance FROM runs WHERE id = 'run-bare'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(
+            stored_provenance, "complete",
+            "migration must not rewrite historical provenance claims"
+        );
+
+        let live = crate::diff::load_models(&pool, "d1").await.unwrap();
+        assert_eq!(live.len(), 2, "delivery still has members after migrate");
+        let live_info: Vec<_> = live.iter().map(crate::dto::model_json).collect();
+        assert!(
+            live_info.iter().all(|model| model.processing_versions.is_none()),
+            "v9 rows default to unknown processing versions"
+        );
+
+        let detail: crate::dto::RunDetail = crate::run::run_detail(&pool, "run-bare")
+            .await
+            .expect("run readable")
+            .into();
+        assert_eq!(detail.input_provenance.status, "incomplete");
+        assert_eq!(
+            detail.input_provenance.reason.as_deref(),
+            Some(crate::dto::COMPLETE_WITHOUT_SNAPSHOT_REASON)
+        );
+        assert!(
+            detail.models.is_empty(),
+            "GET must not serve live membership for a complete claim with no run_models"
+        );
+        assert_ne!(detail.models.len(), live.len());
     }
 }

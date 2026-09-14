@@ -3,6 +3,7 @@ import type {
   DeliveryDetail,
   Discipline,
   ModelInfo,
+  ProcessingVersions,
   RunStatus,
   RunSummary,
 } from "@/lib/types";
@@ -75,6 +76,19 @@ function parseModel(value: unknown): ModelInfo {
     parseMs: nullableNumber(record.parseMs, "model.parseMs"),
     uploadedAt: stringValue(record.uploadedAt, "model.uploadedAt"),
     originatingSystem: nullableString(record.originatingSystem, "model.originatingSystem"),
+    processingVersions: parseProcessingVersions(record.processingVersions, "model.processingVersions"),
+  };
+}
+
+export function parseProcessingVersions(value: unknown, field: string): ProcessingVersions | null {
+  if (value == null) return null;
+  const record = requireRecord(value, field);
+  return {
+    worker: nonEmptyString(record.worker, `${field}.worker`),
+    ifcOpenShell: nonEmptyString(record.ifcOpenShell, `${field}.ifcOpenShell`),
+    ifcTester: nonEmptyString(record.ifcTester, `${field}.ifcTester`),
+    extraction: nonEmptyString(record.extraction, `${field}.extraction`),
+    scopeSemantics: nonEmptyString(record.scopeSemantics, `${field}.scopeSemantics`),
   };
 }
 
@@ -88,8 +102,8 @@ function parseRun(value: unknown): RunSummary {
     packVersionId: stringValue(record.packVersionId, "run.packVersionId"),
     packName: stringValue(record.packName, "run.packName"),
     packVersion: integerValue(record.packVersion, "run.packVersion"),
-    engineVersion: stringValue(record.engineVersion, "run.engineVersion"),
-    parserVersion: stringValue(record.parserVersion, "run.parserVersion"),
+    engineVersion: stringOrEmpty(record.engineVersion, "run.engineVersion"),
+    parserVersion: stringOrEmpty(record.parserVersion, "run.parserVersion"),
     status: runStatusValue(record.status),
     error: nullableString(record.error, "run.error"),
     startedAt: stringValue(record.startedAt, "run.startedAt"),
@@ -125,6 +139,13 @@ function requireRecord(value: unknown, field: string): Record<string, unknown> {
 function stringValue(value: unknown, field: string): string {
   if (typeof value !== "string" || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
+  }
+  return value;
+}
+
+function stringOrEmpty(value: unknown, field: string): string {
+  if (typeof value !== "string") {
+    throw new Error(`${field} must be a string`);
   }
   return value;
 }
