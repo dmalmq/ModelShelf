@@ -36,13 +36,29 @@ export type ProofHost = {
   readonly webglRenderer: string;
 };
 
+export type ProofBrowserLaunchOptions = {
+  headless?: boolean;
+  ignoreDefaultArgs?: readonly string[];
+  args?: readonly string[];
+};
+
 export type ChromiumLauncher = {
-  launch(options?: { headless?: boolean }): Promise<{
+  launch(options?: ProofBrowserLaunchOptions): Promise<{
     newPage(options?: { viewport?: { width: number; height: number } }): Promise<EvaluateHandle>;
     version(): string;
     close(): Promise<void>;
   }>;
 };
+
+export function proofBrowserLaunchOptions(): ProofBrowserLaunchOptions {
+  // Playwright injects --disable-gpu in headless, which forces SwiftShader
+  // even when the host has hardware GL.
+  return {
+    headless: true,
+    ignoreDefaultArgs: ["--disable-gpu"],
+    args: ["--enable-gpu", "--ignore-gpu-blocklist"],
+  };
+}
 
 type GlContext = {
   getExtension(name: string): { UNMASKED_RENDERER_WEBGL: number } | null;

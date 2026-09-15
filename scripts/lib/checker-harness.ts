@@ -11,7 +11,8 @@ import { fileURLToPath } from "node:url";
 import net from "node:net";
 
 export const REPO_ROOT = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
-export const BIN_PATH = join(REPO_ROOT, "target", "debug", "modelshelf-checker");
+const CHECKER_BIN = process.platform === "win32" ? "modelshelf-checker.exe" : "modelshelf-checker";
+export const BIN_PATH = join(REPO_ROOT, "target", "debug", CHECKER_BIN);
 
 export type CheckFn = (label: string, condition: unknown, detail?: string) => void;
 

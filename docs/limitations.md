@@ -93,15 +93,12 @@ the contract documents (`docs/contracts/`), and the sample documentation
 - Japanese (CJK) glyph rendering depends on host fonts. This host has no CJK
   font, so screenshots show tofu; the Japanese copy is asserted in the DOM
   instead (tickets 07, 11, and 15).
-- The latest functional inspection run recorded on a GPU-less host: cold load
-  3403 ms, median orbit 1.4 FPS against a 30 FPS target, p95 selection
-  1.8 ms against a 200 ms target, filtering 44 ms against a 500 ms target,
-  and maximum non-render UI task 1159 ms against a 200 ms target. Filter now
-  passes the 500 ms gate on this host. Orbit and longtask remain misses. These
-  are honest gate measurements, not lowered thresholds; ticket 29 owns the
-  hardware-GL re-measurement.
-- The parsing long-task verdict is not drawn from the recorded run; the
-  telemetry was inconsistent under headless SwiftShader (ticket 09, limits).
+- Wave 1 inspection on a GPU-less SwiftShader host missed median orbit (2.5
+  FPS against 30) and could not trust longtask telemetry. The 2026-09-15
+  hardware-GL rerun on NVIDIA RTX 4500 Ada (D3D11) passed every gate: cold
+  3661 ms, median orbit 60.1 FPS, p95 selection 2.3 ms, filter 11 ms, UI
+  longtask 0.0 ms max. Thresholds were not lowered. The SwiftShader misses
+  stay documented as host-side. See `docs/reviews/wave-1-report.md`.
 
 ## Worker protocol
 

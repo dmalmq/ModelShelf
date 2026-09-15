@@ -22,6 +22,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import {
   evidenceDir,
   importChromium,
+  proofBrowserLaunchOptions,
   readProofHost,
   type EvaluateHandle,
 } from "./lib/browser-proof.ts";
@@ -434,7 +435,7 @@ export async function runInspectionScenario() {
     const appOrigin = `http://127.0.0.1:${appPort}`;
     await waitForHttp(`${appOrigin}/deliveries/${delivery.id}?run=${runA.run.id}`, nextProcess, 180_000);
     const { chromium } = await importChromium();
-    browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch(proofBrowserLaunchOptions());
     const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     await page.addInitScript(() => {
       window.__modelshelfViewerVerify = true;
