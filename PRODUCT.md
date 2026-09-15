@@ -93,11 +93,11 @@ model revision, delivery, check pack, pack version, run, finding, object occurre
 object match, fingerprint, incomplete review.* `CONTEXT.md` also records terms to avoid:
 "discipline slot", "live model", "one error per object".
 
-**Current constraints.** Local, single-user prototype. Run input provenance currently
-defaults to *incomplete* — the models shown for a historical run are reconstructed from
-present delivery membership and are not proven inputs. The UI must say so rather than
-imply proof. The worker does not yet distinguish occurrence-level from type-level
-properties, and does not extract predefined types.
+**Current constraints.** Local, single-user prototype. Every run the service creates
+now is *complete* (`docs/contracts/http-api.md` rule 10). Incomplete provenance is
+historical or unproven. The UI must say so rather than imply proof. The worker
+distinguishes occurrence-level from type-level property origin. It still does not
+extract predefined types.
 
 **Explicitly out of scope.** Revit write-back; clash detection or fire-code geometry
 checking; regulatory approval; arbitrary spreadsheet conversion; production
@@ -120,7 +120,8 @@ register the product should sit in. Recorded as volunteered, not expanded.
   (`.omo/evidence/modelshelf-prototype/task-5/`), including one genuine confirmed gap:
   no door or window in the architecture export carries a fire rating.
 - A self-authored synthetic A/B fixture pair with a machine-readable oracle covering
-  additions, removals, property/shape/move changes and ambiguous GlobalIds.
+  additions, removals, property, shape, and move changes, rotation recorded as moved, and
+  ambiguous GlobalIds.
 
 No customers, testimonials, benchmarks, pricing or deployment claims exist. Future work
 must not invent them.
@@ -146,5 +147,5 @@ must not invent them.
 - Japanese labels must render and remain readable throughout, at both chrome and data
   level.
 - Severity is the product's highest-stakes encoding and must survive colour-vision
-  deficiency; the committed severity ramp currently fails this and is corrected in the
-  design work.
+  deficiency. The committed ramp in `apps/web/src/lib/palette.ts` records that
+  hard gates pass (ΔE 8.4 deutan and 15.3 normal).
