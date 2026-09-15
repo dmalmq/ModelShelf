@@ -55,8 +55,13 @@ slightly different counts.
 Stage the existing files into the working tree with:
 
 ```
+node scripts/stage-snowdon-models.ts
 node scripts/stage-snowdon-models.ts --from "<directory holding the four .ifc files>"
 ```
+
+`--from` may be omitted when the original filenames already sit in this
+folder. The script still copies them to gitignored `samples/ifc/` and never
+commits the bytes.
 
 The script verifies each file against the SHA-256 pinned in
 [`manifest.json`](manifest.json) and copies it to

@@ -45,6 +45,11 @@
 // and modelCount, identical revision-file bytes, same run id/status/scorecard
 // finding count, same object detail — and re-running seed changes nothing.
 //
+// `--scenario snowdon` proves ticket 31. The four Snowdon Towers IFC4
+// discipline exports ingest as four SourceModels (two of them MEP), finalize
+// as one delivery, and score against the Snowdon pack. Not in SCENARIOS/`all`
+// because a full ingest is about ten minutes.
+//
 // `--scenario all` runs all seven scenarios sequentially (revisions,
 // worker-failure, checks, first-loop, comparisons, finding-comparisons,
 // restart), each keeping its own evidence/run-dir logic as a standalone run;
@@ -53,6 +58,7 @@
 // exits nonzero if any scenario failed.
 //        node scripts/verify-api.ts --scenario worker-failure
 //        node scripts/verify-api.ts --scenario checks
+//        node scripts/verify-api.ts --scenario snowdon
 //        node scripts/verify-api.ts --scenario first-loop
 //        node scripts/verify-api.ts --scenario comparisons
 //        node scripts/verify-api.ts --scenario restart
@@ -92,14 +98,16 @@ function scenarioEvidenceDir(scenario) {
             ? "ticket-14"
             : scenario === "restart"
               ? "ticket-16"
-              : "task-2";
+              : scenario === "snowdon"
+                ? "ticket-31"
+                : "task-2";
 }
 
 function requireScenario() {
   const flagIndex = process.argv.indexOf("--scenario");
   const scenario = flagIndex >= 0 ? process.argv[flagIndex + 1] : undefined;
-  if (scenario !== "all" && !SCENARIOS.includes(scenario) && scenario !== "decisions") {
-    console.error(`usage: node scripts/verify-api.ts --scenario revisions|worker-failure|checks|decisions|first-loop|comparisons|finding-comparisons|restart|all (got ${scenario ?? "<none>"})`);
+  if (scenario !== "all" && !SCENARIOS.includes(scenario) && scenario !== "decisions" && scenario !== "snowdon") {
+    console.error(`usage: node scripts/verify-api.ts --scenario revisions|worker-failure|checks|decisions|snowdon|first-loop|comparisons|finding-comparisons|restart|all (got ${scenario ?? "<none>"})`);
     process.exit(2);
   }
   return scenario;
@@ -1907,6 +1915,262 @@ async function runChecksScenario(runDir, check, log) {
 }
 
 // ---------------------------------------------------------------------------
+// scenario: snowdon (ticket 31)
+// ---------------------------------------------------------------------------
+
+const SNOWDON_MANIFEST = join(REPO_ROOT, "samples", "snowdon-towers", "manifest.json");
+const SNOWDON_TIMEOUT_MS = 900_000;
+const SNOWDON_SOURCES = [
+  { key: "architecture", discipline: "ARCH", name: "Snowdon Towers Architectural" },
+  { key: "structure", discipline: "STRUCT", name: "Snowdon Towers Structural" },
+  { key: "electrical", discipline: "MEP", name: "Snowdon Towers Electrical" },
+  { key: "plumbing", discipline: "MEP", name: "Snowdon Towers Plumbing" },
+];
+
+function snowdonIfcPath(key) {
+  return join(REPO_ROOT, "samples", "ifc", `snowdon-towers-${key}.ifc`);
+}
+
+function requireSnowdonFiles() {
+  for (const source of SNOWDON_SOURCES) {
+    const path = snowdonIfcPath(source.key);
+    if (!existsSync(path)) {
+      throw new Error(`Missing ${path}. Run node scripts/stage-snowdon-models.ts`);
+    }
+  }
+}
+
+function readJobManifest(dataDir, job) {
+  const exact = join(dataDir, "jobs", job.id, `attempt-${job.attemptCount}`, "manifest.json");
+  if (existsSync(exact)) return JSON.parse(readFileSync(exact, "utf8"));
+  const jobDir = join(dataDir, "jobs", job.id);
+  if (!existsSync(jobDir)) return null;
+  for (const name of readdirSync(jobDir)) {
+    const path = join(jobDir, name, "manifest.json");
+    if (name.startsWith("attempt-") && existsSync(path)) return JSON.parse(readFileSync(path, "utf8"));
+  }
+  return null;
+}
+
+function propertyValues(detail, pset, name) {
+  return (detail?.properties ?? []).filter((prop) => prop.pset === pset && prop.name === name);
+}
+
+async function pageModelObjects(base, modelId) {
+  const objects = [];
+  let offset = 0;
+  const limit = 500;
+  let total = Infinity;
+  while (offset < total) {
+    const page = (await api(base, "GET", `/api/models/${modelId}/objects?limit=${limit}&offset=${offset}`)).json;
+    total = page.total;
+    objects.push(...page.objects);
+    offset += limit;
+  }
+  return objects;
+}
+
+async function runSnowdonScenario(runDir, check, log) {
+  requireSnowdonFiles();
+  const pin = JSON.parse(readFileSync(SNOWDON_MANIFEST, "utf8"));
+  const pinByKey = Object.fromEntries(pin.models.map((model) => [model.discipline, model]));
+  const dataDir = mkdtempSync(join(tmpdir(), "modelshelf-verify-api-snowdon-"));
+  let server;
+  const timings = [];
+  try {
+    const seed = runCli(["seed", "--data-dir", dataDir, "--packs-dir", DEMO_PACKS_DIR, "--samples-dir", DEMO_SAMPLES_DIR]);
+    check("seed succeeds", seed.status === 0, seed.stderr);
+    check("seed loads four demo pack versions including Snowdon", /\(\+4 pack version/.test(seed.stdout), seed.stdout);
+
+    server = await startServer(dataDir, undefined, { MODELSHELF_WORKER_TIMEOUT_SECS: "1200" });
+    const { base } = server;
+
+    const packs = (await api(base, "GET", "/api/packs")).json;
+    const demoPack = packs.find((pack) => pack.id === "demo-pack");
+    const snowdonVersion = demoPack?.versions?.find((version) => version.notes === "snowdon-towers.ids");
+    check(
+      "seeded Snowdon pack version has 10 specifications",
+      snowdonVersion?.specCount === 10,
+      JSON.stringify(demoPack?.versions?.map((version) => ({ notes: version.notes, specCount: version.specCount }))),
+    );
+    const packVersionId = snowdonVersion.id;
+
+    const ingested = {};
+    for (const source of SNOWDON_SOURCES) {
+      const created = (await api(base, "POST", "/api/projects/demo-project/source-models", {
+        name: source.name,
+        discipline: source.discipline,
+      })).json;
+      const started = Date.now();
+      const uploaded = await uploadFileAndAwait(
+        base,
+        created.id,
+        pinByKey[source.key].originalFilename,
+        snowdonIfcPath(source.key),
+        SNOWDON_TIMEOUT_MS,
+      );
+      timings.push({ discipline: source.key, ingestMs: Date.now() - started, status: uploaded.job?.status });
+      check(
+        `${source.key} ingest completes`,
+        uploaded.job?.status === "completed" && Boolean(uploaded.job?.modelRevisionId),
+        JSON.stringify(uploaded.job),
+      );
+      ingested[source.key] = { source: created, job: uploaded.job };
+    }
+    log("ingest-timings.json", timings);
+
+    const architectureManifest = readJobManifest(dataDir, ingested.architecture.job);
+    const diagnosticCount = architectureManifest?.diagnostics?.length ?? 0;
+    check(
+      "architecture ingest reports 1197 unsupported-property diagnostics",
+      diagnosticCount === 1197
+        && (architectureManifest?.diagnostics ?? []).every((line) => String(line).includes("skipped unsupported property definitions")),
+      JSON.stringify({ diagnosticCount, sample: architectureManifest?.diagnostics?.slice(0, 3) }),
+    );
+    check(
+      "unsupported-property diagnostics are not silent drops",
+      diagnosticCount === pinByKey.architecture.workerDiagnosticCount,
+      JSON.stringify({ diagnosticCount, pinned: pinByKey.architecture.workerDiagnosticCount }),
+    );
+
+    const delivery = (await api(base, "POST", "/api/projects/demo-project/deliveries", { label: "Snowdon Towers" })).json;
+    for (const source of SNOWDON_SOURCES) {
+      const member = await api(base, "POST", `/api/deliveries/${delivery.id}/members`, {
+        sourceModelId: ingested[source.key].source.id,
+        modelRevisionId: ingested[source.key].job.modelRevisionId,
+      });
+      check(`${source.key} joins the delivery`, member.status === 200, JSON.stringify(member.json?.error ?? member.status));
+    }
+    const finalized = (await api(base, "POST", `/api/deliveries/${delivery.id}/finalize`, {})).json;
+    check(
+      "four-source delivery finalizes",
+      finalized?.models?.length === 4 && Boolean(finalized?.delivery?.finalizedAt),
+      JSON.stringify({ modelCount: finalized?.models?.length, finalizedAt: finalized?.delivery?.finalizedAt }),
+    );
+    const mepNames = new Set(
+      finalized.models.filter((model) => model.discipline === "MEP").map((model) => model.sourceModelName),
+    );
+    check(
+      "electrical and plumbing are two MEP SourceModels",
+      mepNames.size === 2 && mepNames.has("Snowdon Towers Electrical") && mepNames.has("Snowdon Towers Plumbing"),
+      JSON.stringify([...mepNames]),
+    );
+
+    const scoredAt = Date.now();
+    const run = await api(base, "POST", "/api/runs", { deliveryId: delivery.id, packVersionId });
+    timings.push({ scoreMs: Date.now() - scoredAt, status: run.json?.run?.status });
+    log("snowdon-run.json", run.json);
+    log("ingest-timings.json", timings);
+    check(
+      "run completes with pinned complete provenance and four models",
+      run.status === 200
+        && run.json?.run?.status === "completed"
+        && run.json?.inputProvenance?.status === "complete"
+        && run.json?.models?.length === 4,
+      JSON.stringify({ status: run.status, provenance: run.json?.inputProvenance, models: run.json?.models?.map((m) => m.id) }),
+    );
+    const modelsByName = Object.fromEntries((run.json.models ?? []).map((model) => [model.sourceModelName, model]));
+    for (const source of SNOWDON_SOURCES) {
+      const model = modelsByName[source.name];
+      const pinned = pinByKey[source.key];
+      check(
+        `${source.key} pinned hash and lengthToMetre match the Snowdon manifest`,
+        model?.contentSha256 === pinned.ifcSha256 && nearlyEqual(model?.lengthToMetre, 0.3048),
+        JSON.stringify({ hash: model?.contentSha256, expected: pinned.ifcSha256, lengthToMetre: model?.lengthToMetre }),
+      );
+    }
+
+    const findings = run.json.scorecard?.flatMap((band) => band.categories.flatMap((c) => c.findings)) ?? [];
+    const fireRating = findings.find((finding) => finding.specName === "Wall declares a fire rating");
+    check("the fire-rating rule produces a grouped finding", Boolean(fireRating) && fireRating.objectCount > 0, JSON.stringify(findings.map((f) => ({ title: f.specName, objectCount: f.objectCount }))));
+    const firePaged = await pageAllFindingObjects(base, fireRating.id);
+    const fireModelIds = new Set(firePaged.objects.map((object) => object.modelId));
+    const archId = ingested.architecture.job.modelRevisionId;
+    const electricalId = ingested.electrical.job.modelRevisionId;
+    const plumbingId = ingested.plumbing.job.modelRevisionId;
+    check(
+      "architectural fire-rating findings do not include electrical or plumbing",
+      fireModelIds.size === 1 && fireModelIds.has(archId) && !fireModelIds.has(electricalId) && !fireModelIds.has(plumbingId),
+      JSON.stringify([...fireModelIds]),
+    );
+
+    const proxyFinding = findings.find((finding) => finding.specName === "Building element proxy is marked as external");
+    check("the proxy-external rule produces a grouped finding", Boolean(proxyFinding) && proxyFinding.objectCount > 0, JSON.stringify(proxyFinding));
+    const proxyPaged = await pageAllFindingObjects(base, proxyFinding.id);
+    const proxyModelIds = new Set(proxyPaged.objects.map((object) => object.modelId));
+    check(
+      "proxy finding members span electrical and plumbing",
+      proxyModelIds.has(electricalId) && proxyModelIds.has(plumbingId),
+      JSON.stringify([...proxyModelIds]),
+    );
+    check(
+      "every proxy finding member has a revision-qualified ref",
+      proxyPaged.objects.every((object) => object.ref?.revisionId === object.modelId && String(object.ref?.objectId ?? "").startsWith("occ_")),
+      JSON.stringify(proxyPaged.objects[0]),
+    );
+    const electricalMember = proxyPaged.objects.find((object) => object.modelId === electricalId);
+    const plumbingMember = proxyPaged.objects.find((object) => object.modelId === plumbingId);
+    check(
+      "electrical and plumbing finding members keep distinct ObjectRefs",
+      electricalMember.ref.revisionId !== plumbingMember.ref.revisionId
+        && electricalMember.ref.objectId !== plumbingMember.ref.objectId,
+      JSON.stringify({ electrical: electricalMember.ref, plumbing: plumbingMember.ref }),
+    );
+
+    const archObjects = await pageModelObjects(base, archId);
+    const wallRows = archObjects.filter((row) => row.ifcType === "IfcWall");
+    let siProof = null;
+    for (const row of wallRows.slice(0, 80)) {
+      const detail = (await api(base, "GET", `/api/objects/${row.id}`)).json;
+      const length = propertyValues(detail, "Qto_WallBaseQuantities", "Length")[0]?.values?.[0];
+      const area = propertyValues(detail, "Qto_WallBaseQuantities", "GrossSideArea")[0]?.values?.[0];
+      const volume = propertyValues(detail, "Qto_WallBaseQuantities", "GrossVolume")[0]?.values?.[0];
+      if (length && area && volume) {
+        siProof = { id: row.id, length, area, volume };
+        break;
+      }
+    }
+    log("si-quantities.json", siProof);
+    check(
+      "a FOOT-based wall length, area, and volume read back in SI",
+      siProof
+        && String(siProof.length.originalUnit).toUpperCase().includes("FOOT")
+        && String(siProof.area.originalUnit).toUpperCase().includes("FOOT")
+        && String(siProof.volume.originalUnit).toUpperCase().includes("FOOT")
+        && siProof.length.dimension === "length"
+        && siProof.area.dimension === "area"
+        && siProof.volume.dimension === "volume"
+        && nearlyEqual(siProof.length.siValue, siProof.length.value * 0.3048, 1e-6)
+        && nearlyEqual(siProof.area.siValue, siProof.area.value * 0.09290304, 1e-6)
+        && nearlyEqual(siProof.volume.siValue, siProof.volume.value * 0.028316846592, 1e-6),
+      JSON.stringify(siProof),
+    );
+
+    const electricalObjects = await pageModelObjects(base, electricalId);
+    const plumbingObjects = await pageModelObjects(base, plumbingId);
+    const plumbingByGid = new Map(plumbingObjects.filter((row) => row.globalId).map((row) => [row.globalId, row]));
+    const shared = electricalObjects.filter((row) => row.globalId && plumbingByGid.has(row.globalId));
+    check("electrical and plumbing share GlobalIds across the delivery", shared.length >= 1, JSON.stringify(shared.map((row) => ({ type: row.ifcType, globalId: row.globalId }))));
+    const collision = shared[0];
+    const other = plumbingByGid.get(collision.globalId);
+    check(
+      "shared GlobalId rows keep distinct revision-qualified ObjectRefs",
+      collision.ref.revisionId === electricalId
+        && other.ref.revisionId === plumbingId
+        && collision.ref.objectId !== other.ref.objectId
+        && collision.globalId === other.globalId,
+      JSON.stringify({ electrical: collision, plumbing: other }),
+    );
+  } finally {
+    if (server) {
+      log("snowdon-serve.log", server.getLog());
+      await stopProcess(server.child);
+    }
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // scenario: first-loop (ticket 09)
 // ---------------------------------------------------------------------------
 
@@ -2215,6 +2479,7 @@ async function runScenarioByName(scenario, runDir, check, log) {
   if (scenario === "revisions") return runRevisionsScenarioTop(runDir, check, log);
   if (scenario === "worker-failure") return runWorkerFailureScenario(check, log);
   if (scenario === "checks" || scenario === "decisions") return runChecksScenario(runDir, check, log);
+  if (scenario === "snowdon") return runSnowdonScenario(runDir, check, log);
   if (scenario === "first-loop") return runFirstLoopScenario(runDir, check, log);
   if (scenario === "comparisons") return runComparisonsScenario(runDir, check, log);
   if (scenario === "finding-comparisons") return runFindingComparisonsScenario(runDir, check, log);

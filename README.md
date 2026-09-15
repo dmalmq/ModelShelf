@@ -98,9 +98,11 @@ Node 24 runs these `.ts` scripts directly from the repository root. Playwright i
 | `node scripts/verify-api.ts --scenario restart` | Restart durability |
 | `node scripts/verify-api.ts --scenario all` | The seven SCENARIOS in order. Not decisions. |
 | `node scripts/verify-api.ts --scenario decisions` | Extra name accepted by requireScenario. Not in SCENARIOS. |
+| `node scripts/verify-api.ts --scenario snowdon` | Snowdon four-discipline delivery scored against its own pack |
 | `node scripts/verify-viewer.ts` | Combined delivery viewer |
 | `node scripts/verify-viewer.ts --scenario inspection` | Finding inspection plus Wave-1 gates |
 | `node scripts/verify-viewer.ts --scenario standalone` | Extracted viewer package example |
+| `node scripts/verify-viewer.ts --scenario snowdon` | Snowdon four-model viewer with one shared origin offset |
 | `node scripts/verify-ui.ts --scenario deliveries` | Delivery shelf |
 | `node scripts/verify-ui.ts --scenario findings` | Prioritized findings |
 | `node scripts/verify-ui.ts --scenario comparisons` | Delivery comparison screen |

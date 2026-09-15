@@ -64,6 +64,7 @@ export const EVIDENCE_KEYS: readonly string[] = [
   "ticket-14",
   "ticket-15",
   "ticket-16",
+  "ticket-31",
 ];
 
 export const VERIFIER_ROWS: readonly VerifierRow[] = [
@@ -134,6 +135,13 @@ export const VERIFIER_ROWS: readonly VerifierRow[] = [
     inAll: false,
   },
   {
+    command: "node scripts/verify-api.ts --scenario snowdon",
+    purpose: "Snowdon four-discipline delivery scored against its own pack",
+    dispatcher: "api",
+    scenario: "snowdon",
+    inAll: false,
+  },
+  {
     command: "node scripts/verify-viewer.ts",
     purpose: "Combined delivery viewer",
     dispatcher: "viewer",
@@ -150,6 +158,12 @@ export const VERIFIER_ROWS: readonly VerifierRow[] = [
     purpose: "Extracted viewer package example",
     dispatcher: "viewer",
     scenario: "standalone",
+  },
+  {
+    command: "node scripts/verify-viewer.ts --scenario snowdon",
+    purpose: "Snowdon four-model viewer with one shared origin offset",
+    dispatcher: "viewer",
+    scenario: "snowdon",
   },
   {
     command: "node scripts/verify-ui.ts --scenario deliveries",

@@ -96,6 +96,7 @@ node scripts/fetch-demo-models.ts
 ### Snowdon Towers (operator-owned copy)
 
 ```sh
+node scripts/stage-snowdon-models.ts
 node scripts/stage-snowdon-models.ts --from "<directory holding the four .ifc files>"
 node scripts/stage-snowdon-models.ts --from "$SNOWDON_SRC" --verify-only
 ```
@@ -129,10 +130,9 @@ target/debug/modelshelf-checker seed --data-dir ./data --packs-dir packs/demo
   IGNORE` (ticket 01).
 - Every `.ids`/`.xml` file directly under `--packs-dir` is loaded as a pack
   version; a file whose `ids_sha256` a prior seed already stored is skipped.
-  `packs/demo` holds exactly three such files (`blcj-s1000-v1.ids`,
-  `blcj-s1000-v2.ids`, `fixtures.ids`), so seeding it creates three versions of
-  `demo-pack` on a fresh data directory. A real seed against `packs/demo`
-  recorded `+3 pack version(s)` (`.omo/evidence/modelshelf-prototype/task-10/`).
+  `packs/demo` holds exactly four such files (`blcj-s1000-v1.ids`,
+  `blcj-s1000-v2.ids`, `fixtures.ids`, `snowdon-towers.ids`), so seeding it
+  creates four versions of `demo-pack` on a fresh data directory.
   The root `packs/` directory itself has no direct `.ids`/`.xml` children, so
   `--packs-dir packs` seeds no versions (the README shows that form as a
   valid invocation, not a version-loading one).
@@ -152,7 +152,7 @@ Health (camelCase wire fields per `docs/contracts/http-api.md`):
 Seed output on a fresh data directory:
 
 ```text
-seeded tenant=demo-tenant project=demo-project pack=demo-pack (+3 pack version(s))
+seeded tenant=demo-tenant project=demo-project pack=demo-pack (+4 pack version(s))
 ```
 
 Verification commands and what each proves:
@@ -166,6 +166,8 @@ Verification commands and what each proves:
 | `node scripts/verify-viewer.ts --scenario inspection` | Finding inspector: a 100+ object finding highlights every member, filters, section cut, isolation/reset, property inspection, and incomplete-evidence handling (ticket 08). |
 | `node scripts/verify-viewer.ts --scenario standalone` | Standalone example: proves `packages/model-viewer` runs in a plain browser with the checker, worker, and Next.js stopped, exercising pick, highlight, isolate, section, and unload through public exports only, with the import-boundary check (`scripts/check-viewer-imports.ts`) green (ticket 19, landing as this ticket's prerequisite). |
 | `node scripts/verify-api.ts --scenario all` | Runs the seven API scenarios sequentially and fails (nonzero) if any fails: `revisions` (immutable delivery data model, ticket 02), `worker-failure` (job queue failure modes, ticket 04), `checks` (scoped IDS runs with pinned inputs, ticket 06), `first-loop` (upload to grouped finding to member resolution, ticket 09), `comparisons` (revision diff with match confidence, ticket 13), `finding-comparisons` (settings-gated run diff, ticket 14), and `restart` (a fresh serve process against the same data directory retains deliveries, runs, and artifacts). |
+| `node scripts/verify-api.ts --scenario snowdon` | Four-discipline Snowdon Towers delivery. Ingests architecture, structure, electrical, and plumbing, scores the Snowdon pack, asserts ARCH scope, imperial SI quantities, ingest diagnostics, and revision-qualified GlobalId identity (ticket 31). Not part of `--scenario all` because ingest is about ten minutes. |
+| `node scripts/verify-viewer.ts --scenario snowdon` | Combined viewer loads all four Snowdon models with one shared origin offset at the 425 km survey position (ticket 31). |
 | `node scripts/verify-ui.ts --scenario all` | Runs the three UI scenarios sequentially: `deliveries` (shelf create/upload/reuse/finalize/reload, ticket 10), `findings` (grouped findings review, ticket 11), and `comparisons` (delivery comparison screen, ticket 15) against the real checker, worker, production web build, and Chromium. |
 
 ## Shared contracts and package exports
@@ -226,6 +228,7 @@ Browser verifiers write under one root, `.omo/evidence/modelshelf-prototype/`
 - `11-priority-review` from `node scripts/verify-ui.ts --scenario findings`
 - `task-10` from `node scripts/verify-ui.ts --scenario deliveries`
 - `ticket-15` from `node scripts/verify-ui.ts --scenario comparisons`
+- `ticket-31` from `node scripts/verify-api.ts --scenario snowdon` and `node scripts/verify-viewer.ts --scenario snowdon`
 
 API and qa harnesses already write under this same root. These verifiers no
 longer write `.scratch/modelshelf-prototype/evidence/`. Third-party inputs and

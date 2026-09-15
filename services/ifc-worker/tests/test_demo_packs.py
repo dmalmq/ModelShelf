@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 
 import ifcopenshell
+import pytest
 
 from ifc_worker.hashing import sha256_file
 from ifc_worker.records import OutcomeRecord
@@ -316,6 +317,78 @@ def test_v2_ids_rationale_matches_checks_md() -> None:
     assert CORRECTION in checks
     assert CORRECTION in ids
     assert STALE not in ids
+
+
+SNOWDON_IDS = DEMO / "snowdon-towers.ids"
+SNOWDON_META = DEMO / "snowdon-towers.metadata.json"
+SNOWDON_CHECKS = DEMO / "snowdon-checks.md"
+SNOWDON_IFC = {
+    "architecture": REPO_ROOT / "samples" / "ifc" / "snowdon-towers-architecture.ifc",
+    "structure": REPO_ROOT / "samples" / "ifc" / "snowdon-towers-structure.ifc",
+    "electrical": REPO_ROOT / "samples" / "ifc" / "snowdon-towers-electrical.ifc",
+    "plumbing": REPO_ROOT / "samples" / "ifc" / "snowdon-towers-plumbing.ifc",
+}
+SNOWDON_SPEC_NAMES = [
+    "Wall declares a fire rating",
+    "Wall declares whether it is external",
+    "Wall declares load-bearing",
+    "Wall records thermal transmittance",
+    "Wall records a length quantity",
+    "Beam records its span",
+    "Beam declares load-bearing",
+    "Member declares whether it is external",
+    "Pipe segment records invert elevation",
+    "Building element proxy is marked as external",
+]
+
+
+def _snowdon_structure() -> Path:
+    path = SNOWDON_IFC["structure"]
+    if not path.is_file():
+        pytest.skip(f"Snowdon IFC not staged: {path}. Run node scripts/stage-snowdon-models.ts")
+    return path
+
+
+def test_snowdon_pack_has_ten_cited_ifc4_specs() -> None:
+    ids = SNOWDON_IDS.read_text(encoding="utf-8")
+    checks = SNOWDON_CHECKS.read_text(encoding="utf-8")
+    meta = json.loads(SNOWDON_META.read_text(encoding="utf-8"))
+    assert ids.count("<specification ") == 10
+    assert 'ifcVersion="IFC4"' in ids
+    assert "Rebro_PartsData" not in ids
+    for name in SNOWDON_SPEC_NAMES:
+        assert f'name="{name}"' in ids
+        assert name in checks
+        assert name in meta["specs"]
+        assert "https://standards.buildingsmart.org/" in ids.split(name, 1)[1][:800]
+    assert meta["specs"]["Wall declares a fire rating"]["disciplines"] == ["ARCH"]
+    assert meta["specs"]["Pipe segment records invert elevation"]["disciplines"] == ["MEP"]
+    assert meta["specs"]["Building element proxy is marked as external"]["disciplines"] == ["MEP"]
+    assert "ARCH" in meta["specs"]["Member declares whether it is external"]["disciplines"]
+    assert "STRUCT" in meta["specs"]["Member declares whether it is external"]["disciplines"]
+
+
+def test_snowdon_structure_beam_specs_pass(tmp_path: Path) -> None:
+    model = _snowdon_structure()
+    code, stderr, outcomes, manifest = _run_validate(
+        tmp_path,
+        model_path=model,
+        ids_path=SNOWDON_IDS,
+        job_id="snowdon-struct",
+        revision_id="rev-snowdon-struct",
+        specification_ids=["Beam records its span", "Beam declares load-bearing"],
+    )
+    assert code == 0, stderr
+    assert manifest is not None
+    by_name = {row["specificationName"]: row for row in outcomes}
+    span = by_name["Beam records its span"]
+    bearing = by_name["Beam declares load-bearing"]
+    assert span["status"] == "passed"
+    assert span["applicableCount"] == 917
+    assert span["failedCount"] == 0
+    assert bearing["status"] == "passed"
+    assert bearing["applicableCount"] == 917
+    assert bearing["failedCount"] == 0
 
 
 def test_ids_hash_mismatch_fails_the_job(tmp_path: Path) -> None:
