@@ -83,6 +83,7 @@ Tickets 01–18 are GitHub issues 3–20 (`id + 2`). Tickets 19–34 are issues 
 | 30 | [#51](https://github.com/dmalmq/ModelShelf/issues/51) | [69](https://github.com/dmalmq/ModelShelf/pull/69) |
 | 33 | [#54](https://github.com/dmalmq/ModelShelf/issues/54) | [70](https://github.com/dmalmq/ModelShelf/pull/70) |
 | 34 | [#55](https://github.com/dmalmq/ModelShelf/issues/55) | [71](https://github.com/dmalmq/ModelShelf/pull/71) |
+| 31 | [#52](https://github.com/dmalmq/ModelShelf/issues/52) | [75](https://github.com/dmalmq/ModelShelf/pull/75) |
 
 ## Still open
 
@@ -90,8 +91,7 @@ Tickets 01–18 are GitHub issues 3–20 (`id + 2`). Tickets 19–34 are issues 
 | --- | --- | --- |
 | 17 | [#19](https://github.com/dmalmq/ModelShelf/issues/19) | Independent completion audit (plan F1–F4) |
 | 29 | [#50](https://github.com/dmalmq/ModelShelf/issues/50) | Hardware-GL pass recorded in [PR 74](https://github.com/dmalmq/ModelShelf/pull/74). Close when that lands |
-| 31 | [#52](https://github.com/dmalmq/ModelShelf/issues/52) | Snowdon four-discipline demo delivery |
-| 32 | [#53](https://github.com/dmalmq/ModelShelf/issues/53) | Graded Snowdon variants. Blocked by 31 |
+| 32 | [#53](https://github.com/dmalmq/ModelShelf/issues/53) | Graded Snowdon variants |
 | map | [#21](https://github.com/dmalmq/ModelShelf/issues/21) | Parent prototype map |
 
 ## Wayfinding operations

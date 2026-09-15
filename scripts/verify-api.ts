@@ -50,6 +50,12 @@
 // as one delivery, and score against the Snowdon pack. Not in SCENARIOS/`all`
 // because a full ingest is about ten minutes.
 //
+// `--scenario snowdon-variants` proves ticket 32. Three deliveries of the
+// same four SourceModels — none, partial (the real export), and all — score
+// against one Snowdon pack version. Architecture and structure vary by
+// surgical STEP rewrite; electrical and plumbing revisions are reused.
+// Not in `all` for the same ingest-cost reason.
+//
 // `--scenario all` runs all seven scenarios sequentially (revisions,
 // worker-failure, checks, first-loop, comparisons, finding-comparisons,
 // restart), each keeping its own evidence/run-dir logic as a standalone run;
@@ -59,6 +65,7 @@
 //        node scripts/verify-api.ts --scenario worker-failure
 //        node scripts/verify-api.ts --scenario checks
 //        node scripts/verify-api.ts --scenario snowdon
+//        node scripts/verify-api.ts --scenario snowdon-variants
 //        node scripts/verify-api.ts --scenario first-loop
 //        node scripts/verify-api.ts --scenario comparisons
 //        node scripts/verify-api.ts --scenario restart
@@ -100,14 +107,16 @@ function scenarioEvidenceDir(scenario) {
               ? "ticket-16"
               : scenario === "snowdon"
                 ? "ticket-31"
-                : "task-2";
+                : scenario === "snowdon-variants"
+                  ? "ticket-32"
+                  : "task-2";
 }
 
 function requireScenario() {
   const flagIndex = process.argv.indexOf("--scenario");
   const scenario = flagIndex >= 0 ? process.argv[flagIndex + 1] : undefined;
-  if (scenario !== "all" && !SCENARIOS.includes(scenario) && scenario !== "decisions" && scenario !== "snowdon") {
-    console.error(`usage: node scripts/verify-api.ts --scenario revisions|worker-failure|checks|decisions|snowdon|first-loop|comparisons|finding-comparisons|restart|all (got ${scenario ?? "<none>"})`);
+  if (scenario !== "all" && !SCENARIOS.includes(scenario) && scenario !== "decisions" && scenario !== "snowdon" && scenario !== "snowdon-variants") {
+    console.error(`usage: node scripts/verify-api.ts --scenario revisions|worker-failure|checks|decisions|snowdon|snowdon-variants|first-loop|comparisons|finding-comparisons|restart|all (got ${scenario ?? "<none>"})`);
     process.exit(2);
   }
   return scenario;
@@ -2171,6 +2180,230 @@ async function runSnowdonScenario(runDir, check, log) {
 }
 
 // ---------------------------------------------------------------------------
+// scenario: snowdon-variants (ticket 32)
+// ---------------------------------------------------------------------------
+
+const SNOWDON_VARIANTS_ORACLE = join(REPO_ROOT, "packs", "demo", "snowdon-variants.oracle.json");
+
+function snowdonVariantPath(grade, key) {
+  return join(REPO_ROOT, "samples", "ifc", `snowdon-towers-${grade}-${key}.ifc`);
+}
+
+function fileSha256(path) {
+  return createHash("sha256").update(readFileSync(path)).digest("hex");
+}
+
+function requireSnowdonVariants() {
+  requireSnowdonFiles();
+  if (!existsSync(SNOWDON_VARIANTS_ORACLE)) {
+    throw new Error("Missing packs/demo/snowdon-variants.oracle.json. Run scripts/generate-snowdon-variants.py");
+  }
+  const oracle = JSON.parse(readFileSync(SNOWDON_VARIANTS_ORACLE, "utf8"));
+  for (const grade of ["none", "all"]) {
+    for (const key of ["architecture", "structure"]) {
+      const path = snowdonVariantPath(grade, key);
+      if (!existsSync(path)) {
+        throw new Error(`Missing ${path}. Run scripts/generate-snowdon-variants.py`);
+      }
+      const digest = fileSha256(path);
+      const expected = oracle.grades[grade][key].sha256;
+      if (digest !== expected) {
+        throw new Error(`${path} hash ${digest} != oracle ${expected}`);
+      }
+    }
+  }
+  return oracle;
+}
+
+function specTotals(specs) {
+  const by = {};
+  for (const spec of specs ?? []) {
+    const name = spec.specName;
+    const row = by[name] ?? { applicable: 0, passed: 0, failed: 0 };
+    row.applicable += spec.applicableCount ?? 0;
+    row.passed += spec.passCount ?? 0;
+    row.failed += spec.failCount ?? 0;
+    by[name] = row;
+  }
+  return by;
+}
+
+async function runSnowdonVariantsScenario(runDir, check, log) {
+  const oracle = requireSnowdonVariants();
+  const pin = JSON.parse(readFileSync(SNOWDON_MANIFEST, "utf8"));
+  const pinByKey = Object.fromEntries(pin.models.map((model) => [model.discipline, model]));
+  const dataDir = mkdtempSync(join(tmpdir(), "modelshelf-verify-api-snowdon-variants-"));
+  let server;
+  const timings = [];
+  try {
+    const seed = runCli(["seed", "--data-dir", dataDir, "--packs-dir", DEMO_PACKS_DIR, "--samples-dir", DEMO_SAMPLES_DIR]);
+    check("seed succeeds", seed.status === 0, seed.stderr);
+    server = await startServer(dataDir, undefined, { MODELSHELF_WORKER_TIMEOUT_SECS: "1200" });
+    const { base } = server;
+    const packs = (await api(base, "GET", "/api/packs")).json;
+    const demoPack = packs.find((pack) => pack.id === "demo-pack");
+    const snowdonVersion = demoPack?.versions?.find((version) => version.notes === "snowdon-towers.ids");
+    check("Snowdon pack version is seeded", Boolean(snowdonVersion?.id), JSON.stringify(demoPack?.versions));
+    const packVersionId = snowdonVersion.id;
+
+    const sources = {};
+    for (const source of SNOWDON_SOURCES) {
+      sources[source.key] = (await api(base, "POST", "/api/projects/demo-project/source-models", {
+        name: source.name,
+        discipline: source.discipline,
+      })).json;
+    }
+
+    async function ingest(sourceKey, filePath, filename) {
+      const started = Date.now();
+      const uploaded = await uploadFileAndAwait(base, sources[sourceKey].id, filename, filePath, SNOWDON_TIMEOUT_MS);
+      timings.push({ sourceKey, filePath, ingestMs: Date.now() - started, status: uploaded.job?.status });
+      check(
+        `${sourceKey} ${filename} ingest completes`,
+        uploaded.job?.status === "completed" && Boolean(uploaded.job?.modelRevisionId),
+        JSON.stringify(uploaded.job),
+      );
+      return uploaded.job.modelRevisionId;
+    }
+
+    const electricalRev = await ingest("electrical", snowdonIfcPath("electrical"), pinByKey.electrical.originalFilename);
+    const plumbingRev = await ingest("plumbing", snowdonIfcPath("plumbing"), pinByKey.plumbing.originalFilename);
+    const revisions = {
+      none: {
+        architecture: await ingest("architecture", snowdonVariantPath("none", "architecture"), "snowdon-none-architecture.ifc"),
+        structure: await ingest("structure", snowdonVariantPath("none", "structure"), "snowdon-none-structure.ifc"),
+        electrical: electricalRev,
+        plumbing: plumbingRev,
+      },
+      partial: {
+        architecture: await ingest("architecture", snowdonIfcPath("architecture"), pinByKey.architecture.originalFilename),
+        structure: await ingest("structure", snowdonIfcPath("structure"), pinByKey.structure.originalFilename),
+        electrical: electricalRev,
+        plumbing: plumbingRev,
+      },
+    };
+    const allStructHash = oracle.grades.all.structure.sha256;
+    const partialStructHash = pinByKey.structure.ifcSha256;
+    revisions.all = {
+      architecture: await ingest("architecture", snowdonVariantPath("all", "architecture"), "snowdon-all-architecture.ifc"),
+      structure: allStructHash === partialStructHash
+        ? revisions.partial.structure
+        : await ingest("structure", snowdonVariantPath("all", "structure"), "snowdon-all-structure.ifc"),
+      electrical: electricalRev,
+      plumbing: plumbingRev,
+    };
+    log("ingest-timings.json", timings);
+
+    const deliveries = {};
+    const runs = {};
+    for (const grade of ["none", "partial", "all"]) {
+      const delivery = (await api(base, "POST", "/api/projects/demo-project/deliveries", { label: `Snowdon ${grade}` })).json;
+      for (const source of SNOWDON_SOURCES) {
+        const member = await api(base, "POST", `/api/deliveries/${delivery.id}/members`, {
+          sourceModelId: sources[source.key].id,
+          modelRevisionId: revisions[grade][source.key],
+        });
+        check(`${grade} ${source.key} joins`, member.status === 200, JSON.stringify(member.json?.error ?? member.status));
+      }
+      const finalized = (await api(base, "POST", `/api/deliveries/${delivery.id}/finalize`, {})).json;
+      check(
+        `${grade} delivery finalizes with four models`,
+        finalized?.models?.length === 4 && Boolean(finalized?.delivery?.finalizedAt),
+        JSON.stringify({ grade, modelCount: finalized?.models?.length }),
+      );
+      deliveries[grade] = finalized.delivery;
+      const scoredAt = Date.now();
+      const run = await api(base, "POST", "/api/runs", { deliveryId: finalized.delivery.id, packVersionId });
+      timings.push({ grade, scoreMs: Date.now() - scoredAt, status: run.json?.run?.status });
+      log(`snowdon-${grade}-run.json`, run.json);
+      check(
+        `${grade} run completes`,
+        run.status === 200 && run.json?.run?.status === "completed",
+        JSON.stringify({ grade, status: run.status, run: run.json?.run }),
+      );
+      runs[grade] = run.json;
+      const totals = specTotals(run.json?.specs);
+      for (const [specName, expected] of Object.entries(oracle.specs)) {
+        const want = expected[grade];
+        const got = totals[specName];
+        check(
+          `${grade} ${specName} applicable/pass/fail match the oracle`,
+          got
+            && got.applicable === want.applicable
+            && got.passed === want.passed
+            && got.failed === want.failed,
+          JSON.stringify({ specName, grade, got, want }),
+        );
+      }
+    }
+    check(
+      "none and all keep the same applicable counts as partial",
+      Object.entries(oracle.specs).every(([name, row]) => {
+        const none = specTotals(runs.none.specs)[name];
+        const all = specTotals(runs.all.specs)[name];
+        return none?.applicable === row.partial.applicable && all?.applicable === row.partial.applicable;
+      }),
+      JSON.stringify({ none: specTotals(runs.none.specs), all: specTotals(runs.all.specs) }),
+    );
+    check(
+      "electrical revision is reused on all three deliveries",
+      revisions.none.electrical === revisions.partial.electrical
+        && revisions.partial.electrical === revisions.all.electrical,
+      JSON.stringify({ none: revisions.none.electrical, partial: revisions.partial.electrical, all: revisions.all.electrical }),
+    );
+    check(
+      "plumbing revision is reused on all three deliveries",
+      revisions.none.plumbing === revisions.partial.plumbing
+        && revisions.partial.plumbing === revisions.all.plumbing,
+      JSON.stringify({ none: revisions.none.plumbing, partial: revisions.partial.plumbing, all: revisions.all.plumbing }),
+    );
+
+    const diff = (await api(
+      base,
+      "GET",
+      `/api/diff/models?baseDeliveryId=${deliveries.partial.id}&headDeliveryId=${deliveries.all.id}&limit=5000`,
+    )).json;
+    log("partial-vs-all-diff.json", diff);
+    check("diff returns four source pairs", diff.pairs?.length === 4, JSON.stringify(diff.pairs?.map((pair) => pair.sourceModelName)));
+    const bySource = new Map((diff.pairs ?? []).map((pair) => [pair.sourceModelId, pair]));
+    const electricalPair = bySource.get(sources.electrical.id);
+    const plumbingPair = bySource.get(sources.plumbing.id);
+    const architecturePair = bySource.get(sources.architecture.id);
+    check(
+      "electrical pair reuses the revision",
+      electricalPair?.reusedRevision === true && electricalPair.total === 0 && electricalPair.changes?.length === 0,
+      JSON.stringify(electricalPair),
+    );
+    check(
+      "plumbing pair reuses the revision",
+      plumbingPair?.reusedRevision === true && plumbingPair.total === 0 && plumbingPair.changes?.length === 0,
+      JSON.stringify(plumbingPair),
+    );
+    const summary = architecturePair?.summary ?? {};
+    check(
+      "architecture partial-vs-all has no additions or removals",
+      architecturePair
+        && architecturePair.reusedRevision === false
+        && summary.added === 0
+        && summary.removed === 0,
+      JSON.stringify({ reusedRevision: architecturePair?.reusedRevision, summary }),
+    );
+    check(
+      "architecture partial-vs-all reports property changes and unchanged placement/shape",
+      summary.propertiesChanged > 0 && summary.moved === 0 && summary.shapeChanged === 0,
+      JSON.stringify(summary),
+    );
+    log("ingest-timings.json", timings);
+  } finally {
+    if (server) {
+      log("snowdon-variants-serve.log", server.getLog());
+      await stopProcess(server.child);
+    }
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // scenario: first-loop (ticket 09)
 // ---------------------------------------------------------------------------
 
@@ -2480,6 +2713,7 @@ async function runScenarioByName(scenario, runDir, check, log) {
   if (scenario === "worker-failure") return runWorkerFailureScenario(check, log);
   if (scenario === "checks" || scenario === "decisions") return runChecksScenario(runDir, check, log);
   if (scenario === "snowdon") return runSnowdonScenario(runDir, check, log);
+  if (scenario === "snowdon-variants") return runSnowdonVariantsScenario(runDir, check, log);
   if (scenario === "first-loop") return runFirstLoopScenario(runDir, check, log);
   if (scenario === "comparisons") return runComparisonsScenario(runDir, check, log);
   if (scenario === "finding-comparisons") return runFindingComparisonsScenario(runDir, check, log);

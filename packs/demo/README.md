@@ -37,6 +37,12 @@ MEP SourceModels; architectural rules do not score them.
 Stage the gitignored IFC files first (`node scripts/stage-snowdon-models.ts`).
 Seeding `packs/demo` loads this file as a fourth version of `demo-pack`.
 
+None/all grades of the same building are derived from the staged architecture
+and structure files by `scripts/generate-snowdon-variants.py`. Partial is the
+real export. Electrical and plumbing stay byte-identical and are reused by
+revision. The oracle is [`snowdon-variants.oracle.json`](snowdon-variants.oracle.json).
+Variant `.ifc` bytes stay gitignored.
+
 ## The synthetic diff/checking fixtures (`fixtures.ids` + `fixtures/`)
 
 A small, self-authored (via `scripts/generate-demo-fixtures.py`) A/B IFC pair

@@ -102,3 +102,11 @@ terms here before changing the `.gitignore`.
 See [`alignment.md`](alignment.md) for the measured coordinate frame, the
 425 km survey offset, the imperial unit handling, and the cross-model GlobalId
 collisions.
+
+## Graded variants
+
+`scripts/generate-snowdon-variants.py` derives none and all grades from the
+staged architecture and structure files by rewriting STEP property and quantity
+lines. Partial is these pinned exports. Electrical and plumbing are not
+rewritten. Variant `.ifc` bytes stay gitignored under `samples/ifc/`. Hashes
+are pinned in [`variants.manifest.json`](variants.manifest.json).

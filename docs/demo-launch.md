@@ -167,6 +167,7 @@ Verification commands and what each proves:
 | `node scripts/verify-viewer.ts --scenario standalone` | Standalone example: proves `packages/model-viewer` runs in a plain browser with the checker, worker, and Next.js stopped, exercising pick, highlight, isolate, section, and unload through public exports only, with the import-boundary check (`scripts/check-viewer-imports.ts`) green (ticket 19, landing as this ticket's prerequisite). |
 | `node scripts/verify-api.ts --scenario all` | Runs the seven API scenarios sequentially and fails (nonzero) if any fails: `revisions` (immutable delivery data model, ticket 02), `worker-failure` (job queue failure modes, ticket 04), `checks` (scoped IDS runs with pinned inputs, ticket 06), `first-loop` (upload to grouped finding to member resolution, ticket 09), `comparisons` (revision diff with match confidence, ticket 13), `finding-comparisons` (settings-gated run diff, ticket 14), and `restart` (a fresh serve process against the same data directory retains deliveries, runs, and artifacts). |
 | `node scripts/verify-api.ts --scenario snowdon` | Four-discipline Snowdon Towers delivery. Ingests architecture, structure, electrical, and plumbing, scores the Snowdon pack, asserts ARCH scope, imperial SI quantities, ingest diagnostics, and revision-qualified GlobalId identity (ticket 31). Not part of `--scenario all` because ingest is about ten minutes. |
+| `node scripts/verify-api.ts --scenario snowdon-variants` | Three Snowdon deliveries (none, partial, all) scored against one pack. Architecture and structure are surgical STEP variants; electrical and plumbing revisions are reused. Oracle is `packs/demo/snowdon-variants.oracle.json` (ticket 32). Not in `--scenario all`. |
 | `node scripts/verify-viewer.ts --scenario snowdon` | Combined viewer loads all four Snowdon models with one shared origin offset at the 425 km survey position (ticket 31). |
 | `node scripts/verify-ui.ts --scenario all` | Runs the three UI scenarios sequentially: `deliveries` (shelf create/upload/reuse/finalize/reload, ticket 10), `findings` (grouped findings review, ticket 11), and `comparisons` (delivery comparison screen, ticket 15) against the real checker, worker, production web build, and Chromium. |
 
@@ -229,6 +230,7 @@ Browser verifiers write under one root, `.omo/evidence/modelshelf-prototype/`
 - `task-10` from `node scripts/verify-ui.ts --scenario deliveries`
 - `ticket-15` from `node scripts/verify-ui.ts --scenario comparisons`
 - `ticket-31` from `node scripts/verify-api.ts --scenario snowdon` and `node scripts/verify-viewer.ts --scenario snowdon`
+- `ticket-32` from `node scripts/verify-api.ts --scenario snowdon-variants`
 
 API and qa harnesses already write under this same root. These verifiers no
 longer write `.scratch/modelshelf-prototype/evidence/`. Third-party inputs and
