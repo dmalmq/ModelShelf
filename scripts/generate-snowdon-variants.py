@@ -8,7 +8,7 @@ through ifcopenshell.file.write.
 Usage (from the repo root):
 
     uv run --locked --project services/ifc-worker python scripts/generate-snowdon-variants.py
-    uv run --locked --project services/ifc-worker python scripts/generate-snowdon-variants.py --files structure
+    uv run --locked --project services/ifc-worker python scripts/generate-snowdon-variants.py --files structure --no-oracle
 """
 
 from __future__ import annotations
@@ -654,6 +654,15 @@ def variant_name(grade: str, file_key: str) -> str:
 
 
 def generate(ifc_dir: Path, out_dir: Path, files: list[str], write_oracle: bool) -> dict[str, Any]:
+    seen: set[str] = set()
+    for name in files:
+        if name in seen:
+            raise SystemExit(f"duplicate --files entry: {name}")
+        seen.add(name)
+    if write_oracle and seen != {"architecture", "structure"}:
+        raise SystemExit(
+            "writing the oracle requires --files architecture,structure. Pass --no-oracle for a subset."
+        )
     out_dir.mkdir(parents=True, exist_ok=True)
     base_pin = json.loads(BASE_MANIFEST.read_text(encoding="utf-8"))
     pin_by = {model["discipline"]: model for model in base_pin["models"]}

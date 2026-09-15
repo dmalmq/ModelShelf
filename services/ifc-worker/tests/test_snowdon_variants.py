@@ -49,6 +49,31 @@ def test_step_quantity_null_and_pset_tuple_append() -> None:
     assert gen.tuple_remove("(#13191,#13274,#13595)", 13274) == "(#13191,#13595)"
 
 
+def test_subset_generate_refuses_to_write_oracle(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    gen = _load_generator()
+    oracle = tmp_path / "oracle.json"
+    monkeypatch.setattr(gen, "ORACLE_PATH", oracle)
+    monkeypatch.setattr(gen, "MANIFEST_PATH", tmp_path / "manifest.json")
+    with pytest.raises(SystemExit, match="--no-oracle"):
+        gen.generate(tmp_path, tmp_path, ["structure"], write_oracle=True)
+    assert not oracle.exists()
+
+
+def test_duplicate_files_are_rejected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    gen = _load_generator()
+    oracle = tmp_path / "oracle.json"
+    monkeypatch.setattr(gen, "ORACLE_PATH", oracle)
+    monkeypatch.setattr(gen, "MANIFEST_PATH", tmp_path / "manifest.json")
+    with pytest.raises(SystemExit, match="duplicate"):
+        gen.generate(
+            tmp_path,
+            tmp_path,
+            ["architecture", "structure", "structure"],
+            write_oracle=True,
+        )
+    assert not oracle.exists()
+
+
 def _structure() -> Path:
     path = SNOWDON_IFC["structure"]
     if not path.is_file():
