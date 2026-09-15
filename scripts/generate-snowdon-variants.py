@@ -654,7 +654,12 @@ def variant_name(grade: str, file_key: str) -> str:
 
 
 def generate(ifc_dir: Path, out_dir: Path, files: list[str], write_oracle: bool) -> dict[str, Any]:
-    if write_oracle and set(files) != {"architecture", "structure"}:
+    seen: set[str] = set()
+    for name in files:
+        if name in seen:
+            raise SystemExit(f"duplicate --files entry: {name}")
+        seen.add(name)
+    if write_oracle and seen != {"architecture", "structure"}:
         raise SystemExit(
             "writing the oracle requires --files architecture,structure. Pass --no-oracle for a subset."
         )
