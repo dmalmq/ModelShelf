@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ids xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://standards.buildingsmart.org/IDS http://standards.buildingsmart.org/IDS/1.0/ids.xsd" xmlns="http://standards.buildingsmart.org/IDS">
+  <info>
+    <title>Snowdon Towers demo pack</title>
+    <description>Information checks authored from the four Autodesk Snowdon Towers IFC4 discipline exports. Every property was confirmed present in the real files. Citations are buildingSMART IFC4 ADD2 TC1 property-set definitions. See packs/demo/snowdon-checks.md.</description>
+  </info>
+  <specifications>
+    <specification name="Wall declares a fire rating" ifcVersion="IFC4" description="buildingSMART IFC4 Pset_WallCommon.FireRating (IfcLabel). https://standards.buildingsmart.org/IFC/RELEASE/IFC4/ADD2_TC1/HTML/schema/ifcsharedbldgelements/pset/pset_wallcommon.htm">
+      <applicability minOccurs="0" maxOccurs="unbounded">
+        <entity>
+          <name><simpleValue>IFCWALL</simpleValue></name>
+        </entity>
+      </applicability>
+      <requirements>
+        <property dataType="IFCLABEL">
+          <propertySet><simpleValue>Pset_WallCommon</simpleValue></propertySet>
+          <baseName><simpleValue>FireRating</simpleValue></baseName>
+        </property>
+      </requirements>
+    </specification>
+
+    <specification name="Wall declares whether it is external" ifcVersion="IFC4" description="buildingSMART IFC4 Pset_WallCommon.IsExternal (IfcBoolean). https://standards.buildingsmart.org/IFC/RELEASE/IFC4/ADD2_TC1/HTML/schema/ifcsharedbldgelements/pset/pset_wallcommon.htm">
+      <applicability minOccurs="0" maxOccurs="unbounded">
+        <entity>
+          <name><simpleValue>IFCWALL</simpleValue></name>
+        </entity>
+      </applicability>
+      <requirements>
+        <property dataType="IFCBOOLEAN">
+          <propertySet><simpleValue>Pset_WallCommon</simpleValue></propertySet>
+          <baseName><simpleValue>IsExternal</simpleValue></baseName>
+        </property>
+      </requirements>
+    </specification>
+
+    <specification name="Wall declares load-bearing" ifcVersion="IFC4" description="buildingSMART IFC4 Pset_WallCommon.LoadBearing (IfcBoolean). https://standards.buildingsmart.org/IFC/RELEASE/IFC4/ADD2_TC1/HTML/schema/ifcsharedbldgelements/pset/pset_wallcommon.htm">
+      <applicability minOccurs="0" maxOccurs="unbounded">
+        <entity>
+          <name><simpleValue>IFCWALL</simpleValue></name>
+        </entity>
+      </applicability>
+      <requirements>
+        <property dataType="IFCBOOLEAN">
+          <propertySet><simpleValue>Pset_WallCommon</simpleValue></propertySet>
+          <baseName><simpleValue>LoadBearing</simpleValue></baseName>
+        </property>
+      </requirements>
+    </specification>
+
+    <specification name="Wall records thermal transmittance" ifcVersion="IFC4" description="buildingSMART IFC4 Pset_WallCommon.ThermalTransmittance (IfcThermalTransmittanceMeasure). https://standards.buildingsmart.org/IFC/RELEASE/IFC4/ADD2_TC1/HTML/schema/ifcsharedbldgelements/pset/pset_wallcommon.htm">
+      <applicability minOccurs="0" maxOccurs="unbounded">
+        <entity>
+          <name><simpleValue>IFCWALL</simpleValue></name>
+        </entity>
+      </applicability>
+      <requirements>
+        <property dataType="IFCTHERMALTRANSMITTANCEMEASURE">
+          <propertySet><simpleValue>Pset_WallCommon</simpleValue></propertySet>
+          <baseName><simpleValue>ThermalTransmittance</simpleValue></baseName>
+        </property>
+      </requirements>
+    </specification>
+
+    <specification name="Wall records a length quantity" ifcVersion="IFC4" description="buildingSMART IFC4 Qto_WallBaseQuantities.Length (IfcLengthMeasure). https://standards.buildingsmart.org/IFC/RELEASE/IFC4/ADD2_TC1/HTML/schema/ifcsharedbldgelements/qto/qto_wallbasequantities.htm">
+      <applicability minOccurs="0" maxOccurs="unbounded">
+        <entity>
+          <name><simpleValue>IFCWALL</simpleValue></name>
+        </entity>
+      </applicability>
+      <requirements>
+        <property dataType="IFCLENGTHMEASURE">
+          <propertySet><simpleValue>Qto_WallBaseQuantities</simpleValue></propertySet>
+          <baseName><simpleValue>Length</simpleValue></baseName>
+        </property>
+      </requirements>
+    </specification>
+
+    <specification name="Beam records its span" ifcVersion="IFC4" description="buildingSMART IFC4 Pset_BeamCommon.Span (IfcPositiveLengthMeasure). https://standards.buildingsmart.org/IFC/RELEASE/IFC4/ADD2_TC1/HTML/schema/ifcsharedbldgelements/pset/pset_beamcommon.htm">
+      <applicability minOccurs="0" maxOccurs="unbounded">
+        <entity>
+          <name><simpleValue>IFCBEAM</simpleValue></name>
+        </entity>
+      </applicability>
+      <requirements>
+        <property dataType="IFCPOSITIVELENGTHMEASURE">
+          <propertySet><simpleValue>Pset_BeamCommon</simpleValue></propertySet>
+          <baseName><simpleValue>Span</simpleValue></baseName>
+        </property>
+      </requirements>
+    </specification>
+
+    <specification name="Beam declares load-bearing" ifcVersion="IFC4" description="buildingSMART IFC4 Pset_BeamCommon.LoadBearing (IfcBoolean). https://standards.buildingsmart.org/IFC/RELEASE/IFC4/ADD2_TC1/HTML/schema/ifcsharedbldgelements/pset/pset_beamcommon.htm">
+      <applicability minOccurs="0" maxOccurs="unbounded">
+        <entity>
+          <name><simpleValue>IFCBEAM</simpleValue></name>
+        </entity>
+      </applicability>
+      <requirements>
+        <property dataType="IFCBOOLEAN">
+          <propertySet><simpleValue>Pset_BeamCommon</simpleValue></propertySet>
+          <baseName><simpleValue>LoadBearing</simpleValue></baseName>
+          <value><simpleValue>true</simpleValue></value>
+        </property>
+      </requirements>
+    </specification>
+
+    <specification name="Member declares whether it is external" ifcVersion="IFC4" description="buildingSMART IFC4 Pset_MemberCommon.IsExternal (IfcBoolean). https://standards.buildingsmart.org/IFC/RELEASE/IFC4/ADD2_TC1/HTML/schema/ifcsharedbldgelements/pset/pset_membercommon.htm">
+      <applicability minOccurs="0" maxOccurs="unbounded">
+        <entity>
+          <name><simpleValue>IFCMEMBER</simpleValue></name>
+        </entity>
+      </applicability>
+      <requirements>
+        <property dataType="IFCBOOLEAN">
+          <propertySet><simpleValue>Pset_MemberCommon</simpleValue></propertySet>
+          <baseName><simpleValue>IsExternal</simpleValue></baseName>
+        </property>
+      </requirements>
+    </specification>
+
+    <specification name="Pipe segment records invert elevation" ifcVersion="IFC4" description="buildingSMART IFC4 Pset_PipeSegmentOccurrence.InvertElevation (IfcLengthMeasure). https://standards.buildingsmart.org/IFC/RELEASE/IFC4/ADD2_TC1/HTML/schema/ifcsharedbldgserviceelements/pset/pset_pipesegmentoccurrence.htm">
+      <applicability minOccurs="0" maxOccurs="unbounded">
+        <entity>
+          <name><simpleValue>IFCPIPESEGMENT</simpleValue></name>
+        </entity>
+      </applicability>
+      <requirements>
+        <property dataType="IFCLENGTHMEASURE">
+          <propertySet><simpleValue>Pset_PipeSegmentOccurrence</simpleValue></propertySet>
+          <baseName><simpleValue>InvertElevation</simpleValue></baseName>
+        </property>
+      </requirements>
+    </specification>
+
+    <specification name="Building element proxy is marked as external" ifcVersion="IFC4" description="buildingSMART IFC4 Pset_BuildingElementProxyCommon.IsExternal (IfcBoolean) required true. https://standards.buildingsmart.org/IFC/RELEASE/IFC4/ADD2_TC1/HTML/schema/ifcproductextension/pset/pset_buildingelementproxycommon.htm">
+      <applicability minOccurs="0" maxOccurs="unbounded">
+        <entity>
+          <name><simpleValue>IFCBUILDINGELEMENTPROXY</simpleValue></name>
+        </entity>
+      </applicability>
+      <requirements>
+        <property dataType="IFCBOOLEAN">
+          <propertySet><simpleValue>Pset_BuildingElementProxyCommon</simpleValue></propertySet>
+          <baseName><simpleValue>IsExternal</simpleValue></baseName>
+          <value><simpleValue>true</simpleValue></value>
+        </property>
+      </requirements>
+    </specification>
+  </specifications>
+</ids>

@@ -1,0 +1,22 @@
+{
+  "categories": [
+    { "id": "identification", "label": "Identification" },
+    { "id": "regulatory", "label": "Regulatory" },
+    { "id": "structural", "label": "Structural" },
+    { "id": "classification", "label": "Classification" },
+    { "id": "data-completeness", "label": "Data completeness" }
+  ],
+  "defaults": { "severity": "medium", "categoryId": "other" },
+  "specs": {
+    "Wall declares a fire rating": { "severity": "high", "categoryId": "regulatory", "disciplines": ["ARCH"] },
+    "Wall declares whether it is external": { "severity": "medium", "categoryId": "classification", "disciplines": ["ARCH"] },
+    "Wall declares load-bearing": { "severity": "high", "categoryId": "structural", "disciplines": ["ARCH"] },
+    "Wall records thermal transmittance": { "severity": "advisory", "categoryId": "data-completeness", "disciplines": ["ARCH"] },
+    "Wall records a length quantity": { "severity": "medium", "categoryId": "data-completeness", "disciplines": ["ARCH"] },
+    "Beam records its span": { "severity": "medium", "categoryId": "structural", "disciplines": ["STRUCT"] },
+    "Beam declares load-bearing": { "severity": "high", "categoryId": "structural", "disciplines": ["STRUCT"] },
+    "Member declares whether it is external": { "severity": "medium", "categoryId": "classification", "disciplines": ["ARCH", "STRUCT"] },
+    "Pipe segment records invert elevation": { "severity": "medium", "categoryId": "data-completeness", "disciplines": ["MEP"] },
+    "Building element proxy is marked as external": { "severity": "advisory", "categoryId": "classification", "disciplines": ["MEP"] }
+  }
+}
