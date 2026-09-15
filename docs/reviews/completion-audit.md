@@ -43,8 +43,9 @@ report `complete` provenance. The demo pack is 11 checks in `packs/demo`.
 Generated contracts match the schemas. The second consumer is in-repo
 `packages/model-viewer/example/`. It loads the public core with checker,
 worker, and Next.js not started. `ObjectRef` stays two opaque strings.
-Cross-revision match is a unique GlobalId on both sides of the same
-`source_model_id`. Fingerprints describe state under `fp-v1`. The worker job
+An `exact` cross-revision match requires a unique GlobalId on both sides of
+the same `source_model_id`. Duplicate, missing, or regenerated GlobalIds
+match at best `heuristic`. Fingerprints describe state under `fp-v1`. The worker job
 envelope is protocol 2. IfcTester scores live IDS. `crates/ids` is parse-only
 on the service path. Native `.rvt` and `.pln` import is not claimed.
 
