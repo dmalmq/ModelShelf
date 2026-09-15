@@ -45,3 +45,7 @@ GitHub issues #12–#19: reviewer delivery shelf, findings and pack selection, v
 ## Addendum (2026-09-14)
 
 Tickets 10–16 and 18–28 have shipped since the 2026-09-07 remaining list. Tickets 17 (independent audit) and 29 (hardware GL re-measure) remain. This addendum does not replace the recorded setup, proven, or recorded-miss numbers above.
+
+## Addendum (2026-09-15)
+
+Tickets 33 and 34 shipped after the 2026-09-14 addendum (PRs 70 and 71). The independent completion audit is [`docs/reviews/completion-audit.md`](completion-audit.md). This addendum does not replace the recorded setup, proven, or recorded-miss numbers above.

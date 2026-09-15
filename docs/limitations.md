@@ -73,8 +73,11 @@ the contract documents (`docs/contracts/`), and the sample documentation
 - Every object is fingerprinted at ingestion under the `fp-v1` profile: full
   BLAKE3 digests for properties, placement, and shape separately
   (tickets 12 and 13; `docs/contracts/http-api.md` rule 11).
-- A rotation-only change currently reports as `unchanged`. Ticket 34 owns the
-  decision whether to surface rotation as a change kind; it stays open.
+- Comparison uses seven `ChangeKind` values and has no `Rotated` kind. An
+  in-place rotation reports as `moved` with distance 0 m and a placement-basis
+  note. A sub-threshold origin shift stays `unchanged` only when the basis is
+  identical. Ticket 34 / PR 71 shipped that contract.
+  `node scripts/verify-api.ts --scenario comparisons` asserts it.
 - Mixed units are normalized for length, area, and volume measures only
   (ticket 12; plan). Unsupported units keep the raw value with a null
   `siValue`/`dimension` (`docs/contracts/worker-v2.md`). The Snowdon set
@@ -91,10 +94,11 @@ the contract documents (`docs/contracts/`), and the sample documentation
   font, so screenshots show tofu; the Japanese copy is asserted in the DOM
   instead (tickets 07, 11, and 15).
 - The latest functional inspection run recorded on a GPU-less host: cold load
-  4,087 ms, median orbit 1.2 FPS against a 30 FPS target, p95 selection
-  1.9 ms against a 200 ms target, filtering 2,443 ms against a 500 ms target,
-  and maximum non-render UI task 1,881 ms against a 200 ms target. These are
-  honest gate measurements, not lowered thresholds; ticket 29 owns the
+  3403 ms, median orbit 1.4 FPS against a 30 FPS target, p95 selection
+  1.8 ms against a 200 ms target, filtering 44 ms against a 500 ms target,
+  and maximum non-render UI task 1159 ms against a 200 ms target. Filter now
+  passes the 500 ms gate on this host. Orbit and longtask remain misses. These
+  are honest gate measurements, not lowered thresholds; ticket 29 owns the
   hardware-GL re-measurement.
 - The parsing long-task verdict is not drawn from the recorded run; the
   telemetry was inconsistent under headless SwiftShader (ticket 09, limits).
