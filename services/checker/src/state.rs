@@ -1,7 +1,11 @@
 use std::fs::File;
-use std::os::unix::io::AsRawFd;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+
+#[cfg(unix)]
+use std::os::unix::io::AsRawFd;
+#[cfg(windows)]
+use std::os::windows::io::AsRawHandle;
 
 use sqlx::SqlitePool;
 use tokio::sync::Notify;
@@ -22,10 +26,7 @@ impl DataDirLock {
             .write(true)
             .truncate(false)
             .open(&path)?;
-        // SAFETY: `file` is an fd this process opened and still owns. LOCK_NB
-        // returns immediately, so we never hold the async runtime across flock.
-        let rc = unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) };
-        if rc != 0 {
+        if try_lock_exclusive(&file).is_err() {
             anyhow::bail!(
                 "another process already owns {}; a second server must not recover live jobs",
                 data_dir.display()
@@ -137,5 +138,66 @@ impl AppState {
             )));
         }
         Ok(bytes)
+    }
+}
+
+#[cfg(unix)]
+fn try_lock_exclusive(file: &File) -> std::io::Result<()> {
+    // SAFETY: `file` is an fd this process opened and still owns. LOCK_NB
+    // returns immediately, so we never hold the async runtime across flock.
+    let rc = unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) };
+    if rc == 0 {
+        Ok(())
+    } else {
+        Err(std::io::Error::last_os_error())
+    }
+}
+
+#[cfg(windows)]
+fn try_lock_exclusive(file: &File) -> std::io::Result<()> {
+    #[repr(C)]
+    struct Overlapped {
+        internal: usize,
+        internal_high: usize,
+        offset: u32,
+        offset_high: u32,
+        event: *mut core::ffi::c_void,
+    }
+    const LOCKFILE_FAIL_IMMEDIATELY: u32 = 0x0000_0001;
+    const LOCKFILE_EXCLUSIVE_LOCK: u32 = 0x0000_0002;
+    unsafe extern "system" {
+        fn LockFileEx(
+            h_file: *mut core::ffi::c_void,
+            flags: u32,
+            reserved: u32,
+            low: u32,
+            high: u32,
+            overlapped: *mut Overlapped,
+        ) -> i32;
+    }
+    let mut overlapped = Overlapped {
+        internal: 0,
+        internal_high: 0,
+        offset: 0,
+        offset_high: 0,
+        event: std::ptr::null_mut(),
+    };
+    // SAFETY: `file` is a handle this process opened and still owns.
+    // LOCKFILE_FAIL_IMMEDIATELY makes the call synchronous, so `overlapped`
+    // only needs to live for the duration of LockFileEx.
+    let ok = unsafe {
+        LockFileEx(
+            file.as_raw_handle() as *mut core::ffi::c_void,
+            LOCKFILE_FAIL_IMMEDIATELY | LOCKFILE_EXCLUSIVE_LOCK,
+            0,
+            1,
+            0,
+            &mut overlapped,
+        )
+    };
+    if ok == 0 {
+        Err(std::io::Error::last_os_error())
+    } else {
+        Ok(())
     }
 }

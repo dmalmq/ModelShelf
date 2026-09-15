@@ -93,25 +93,32 @@ fn slot_file_path(data_dir: &Path) -> PathBuf {
 /// A live pid equal to `pgid` with a different `starttime` is a reused leader
 /// of a new group and is left alone.
 fn kill_stale_process_group(live: &LiveInvocation) {
-    let pid = live.pid as libc::pid_t;
-    let pgid = live.pgid as libc::pid_t;
-    // SAFETY: pid/pgid come from the slot file of a data dir this process
-    // exclusively owns. Both calls tolerate ESRCH.
-    unsafe {
-        let leader_alive = libc::getpgid(pid) == pgid
-            && (live.starttime == 0 || proc_starttime(live.pid) == Some(live.starttime));
-        if leader_alive {
-            libc::kill(-pgid, libc::SIGKILL);
-            return;
-        }
-        if live.starttime != 0 {
-            if let Some(start) = proc_starttime(live.pgid) {
-                if start != live.starttime {
-                    return;
+    #[cfg(unix)]
+    {
+        let pid = live.pid as libc::pid_t;
+        let pgid = live.pgid as libc::pid_t;
+        // SAFETY: pid/pgid come from the slot file of a data dir this process
+        // exclusively owns. Both calls tolerate ESRCH.
+        unsafe {
+            let leader_alive = libc::getpgid(pid) == pgid
+                && (live.starttime == 0 || proc_starttime(live.pid) == Some(live.starttime));
+            if leader_alive {
+                libc::kill(-pgid, libc::SIGKILL);
+                return;
+            }
+            if live.starttime != 0 {
+                if let Some(start) = proc_starttime(live.pgid) {
+                    if start != live.starttime {
+                        return;
+                    }
                 }
             }
+            libc::kill(-pgid, libc::SIGKILL);
         }
-        libc::kill(-pgid, libc::SIGKILL);
+    }
+    #[cfg(windows)]
+    {
+        kill_windows_tree(live.pid);
     }
 }
 
@@ -120,6 +127,20 @@ fn proc_starttime(pid: u32) -> Option<u64> {
     let text = std::fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
     let rest = text.rsplit_once(')')?.1;
     rest.split_whitespace().nth(19)?.parse().ok()
+}
+
+#[cfg(windows)]
+fn proc_starttime(_pid: u32) -> Option<u64> {
+    None
+}
+
+#[cfg(windows)]
+fn kill_windows_tree(pid: u32) {
+    let _ = std::process::Command::new("taskkill")
+        .args(["/F", "/T", "/PID", &pid.to_string()])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
 }
 
 struct SlotFile {
@@ -287,6 +308,10 @@ async fn run_worker_process(
                 unsafe {
                     libc::kill(-(pid as i32), libc::SIGKILL);
                 }
+            }
+            #[cfg(windows)]
+            {
+                kill_windows_tree(pid);
             }
             let _ = wait.await;
             Err("worker exceeded the execution timeout".to_owned())
