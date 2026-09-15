@@ -52,9 +52,13 @@ around them:
 
 ## Operating Context
 
-Japanese BIM practice. The demo corpus is real BLCJ S1000 architecture, structure and
-MEP exports; the check pack traces to BLCJ mapping tables, MLIT attribute guidance and
-BE-Bridge/Rebro property naming. Authoring tools in evidence include GLOOBE and Rebro.
+Japanese BIM practice. The primary demo corpus is real BLCJ S1000 architecture,
+structure and MEP exports; that check pack traces to BLCJ mapping tables, MLIT
+attribute guidance and BE-Bridge/Rebro property naming. Authoring tools in
+evidence include GLOOBE and Rebro. A second four-discipline delivery uses the
+Autodesk Snowdon Towers IFC4 exports (imperial, far-from-origin, standard
+buildingSMART property sets) scored by `packs/demo/snowdon-towers.ids`. Neither
+dataset replaces the other.
 
 Deliveries arrive as IFC exports, typically three or more source models per delivery
 across disciplines, sharing one coordinate frame. Model content is Japanese — property

@@ -37,18 +37,24 @@ function stagedPath(model) {
   return join(IFC_DIR, `snowdon-towers-${model.discipline}.ifc`);
 }
 
+function defaultFromDir(manifest) {
+  const local = join(REPO_ROOT, "samples", "snowdon-towers");
+  const first = manifest.models[0]?.originalFilename;
+  return first && existsSync(join(local, first)) ? local : undefined;
+}
+
 function main() {
-  const from = arg("--from") ?? process.env.SNOWDON_SRC;
   const verifyOnly = process.argv.includes("--verify-only");
+  const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
+  const from = arg("--from") ?? process.env.SNOWDON_SRC ?? defaultFromDir(manifest);
   if (!from) {
     console.error(
       'usage: node scripts/stage-snowdon-models.ts --from "<directory holding the four .ifc files>"\n' +
-        "       (or set SNOWDON_SRC). See samples/snowdon-towers/README.md.",
+        "       (or set SNOWDON_SRC, or place the original filenames under samples/snowdon-towers/). See samples/snowdon-towers/README.md.",
     );
     process.exit(2);
   }
 
-  const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
   mkdirSync(IFC_DIR, { recursive: true });
 
   let staged = 0;

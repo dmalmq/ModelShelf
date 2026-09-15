@@ -12,11 +12,12 @@ import { expressIdToObjectId } from "../packages/model-contracts-ts/src/express-
 import { evidenceDir, importChromium, readProofHost } from "./lib/browser-proof.ts";
 import { runInspectionScenario } from "./verify-viewer-inspection.ts";
 import { runStandaloneScenario } from "./verify-viewer-standalone.ts";
+import { runSnowdonViewerScenario } from "./verify-viewer-snowdon.ts";
 
 const scenarioFlag = process.argv.indexOf("--scenario");
 const scenario = scenarioFlag >= 0 ? process.argv[scenarioFlag + 1] : "combined";
-if (scenario !== "combined" && scenario !== "inspection" && scenario !== "standalone") {
-  console.error(`usage: node scripts/verify-viewer.ts [--scenario combined|inspection|standalone] (got ${scenario ?? "<none>"})`);
+if (scenario !== "combined" && scenario !== "inspection" && scenario !== "standalone" && scenario !== "snowdon") {
+  console.error(`usage: node scripts/verify-viewer.ts [--scenario combined|inspection|standalone|snowdon] (got ${scenario ?? "<none>"})`);
   process.exit(2);
 }
 if (scenario === "inspection") {
@@ -25,6 +26,10 @@ if (scenario === "inspection") {
 }
 if (scenario === "standalone") {
   await runStandaloneScenario();
+  process.exit(0);
+}
+if (scenario === "snowdon") {
+  await runSnowdonViewerScenario();
   process.exit(0);
 }
 

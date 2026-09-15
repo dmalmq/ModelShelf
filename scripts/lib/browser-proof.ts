@@ -14,6 +14,7 @@ export const BROWSER_VERIFIERS = {
   findings: "11-priority-review",
   deliveries: "task-10",
   comparisons: "ticket-15",
+  snowdon: "ticket-31",
 } as const;
 
 export type BrowserVerifierId = keyof typeof BROWSER_VERIFIERS;
