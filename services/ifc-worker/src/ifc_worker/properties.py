@@ -200,6 +200,14 @@ def _quantity_record(
     ifc_file: ifcopenshell.file,
 ) -> Property:
     value = quantity[3]
+    if value is None:
+        return Property(
+            pset=set_name,
+            name=quantity.Name,
+            values=[],
+            ordered=True,
+            origin=origin,
+        )
     measure_type = _QUANTITY_MEASURE_TYPES.get(quantity.is_a())
     if measure_type is None:
         return Property(

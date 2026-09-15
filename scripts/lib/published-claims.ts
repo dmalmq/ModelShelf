@@ -65,6 +65,7 @@ export const EVIDENCE_KEYS: readonly string[] = [
   "ticket-15",
   "ticket-16",
   "ticket-31",
+  "ticket-32",
 ];
 
 export const VERIFIER_ROWS: readonly VerifierRow[] = [
@@ -139,6 +140,13 @@ export const VERIFIER_ROWS: readonly VerifierRow[] = [
     purpose: "Snowdon four-discipline delivery scored against its own pack",
     dispatcher: "api",
     scenario: "snowdon",
+    inAll: false,
+  },
+  {
+    command: "node scripts/verify-api.ts --scenario snowdon-variants",
+    purpose: "Three Snowdon grades (none, partial, all) against one pack, with MEP revision reuse",
+    dispatcher: "api",
+    scenario: "snowdon-variants",
     inAll: false,
   },
   {

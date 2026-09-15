@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "snowdon-variants-oracle-v1",
+  "seed": "modelshelf-snowdon-variants-v1",
+  "generatedFrom": {
+    "architecture": "5e36b49bd99a9eebdc5ef7d1373ff518dfe00f24ee5aec2cf418462d176278c8",
+    "structure": "b82f564fffa3fe5ff559cd4bff2e466fd7823f66b68041f73eddb92652335c11"
+  },
+  "grades": {
+    "none": {
+      "architecture": "4e6c0401f935bc7b25dd460b8f1e31f64acad75365e3efad3197ed5dcee1a28a",
+      "structure": "3df63e20f73b48a897252c11c7a602e280876b7e9e3cfed7cbac568fc4cd4a98"
+    },
+    "all": {
+      "architecture": "fd5e9a6e4d74b88941ab666142322fca0ef1fe008571d4ba53139b256c1b28c5",
+      "structure": "b82f564fffa3fe5ff559cd4bff2e466fd7823f66b68041f73eddb92652335c11"
+    }
+  }
+}

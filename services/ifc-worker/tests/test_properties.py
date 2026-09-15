@@ -54,6 +54,29 @@ def test_list_values_keep_authoring_order_and_type_properties_are_inherited(tmp_
     assert not diagnostics
 
 
+def test_null_quantity_length_extracts_empty_values(tmp_path: Path) -> None:
+    from tests.ifc_fixtures import write_metre_translation
+
+    path = write_metre_translation(tmp_path / "qty.ifc")
+    ifc_probe = ifcopenshell.open(str(path))
+    wall_id = ifc_probe.by_type("IfcWall")[0].id()
+    text = path.read_text(encoding="utf-8")
+    insert = (
+        f"#900=IFCQUANTITYLENGTH('Length',$,$,$,$);\n"
+        f"#901=IFCELEMENTQUANTITY('2xh2pnQLTRmxBmJEcDoABB',$,'Qto_WallBaseQuantities',$,$,(#900));\n"
+        f"#902=IFCRELDEFINESBYPROPERTIES('3vLzsfeBzQEP4SO4CnB2Zu',$,$,$,(#{wall_id}),#901);\n"
+    )
+    idx = text.rfind("ENDSEC;")
+    path.write_text(text[:idx] + insert + text[idx:], encoding="utf-8")
+    ifc_file = ifcopenshell.open(str(path))
+    wall = ifc_file.by_type("IfcWall")[0]
+    diagnostics: list[str] = []
+    records = extract_properties(wall, ifc_file, diagnostics)
+    length = next(record for record in records if record.name == "Length")
+    assert length.values == []
+    assert not diagnostics
+
+
 def test_japanese_pset_and_property_names_round_trip_utf8() -> None:
     import json
 
