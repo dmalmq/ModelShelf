@@ -91,7 +91,9 @@ fn slot_file_path(data_dir: &Path) -> PathBuf {
 /// gone (`PR_SET_PDEATHSIG` kills only that one process). Linux keeps the pgid
 /// reserved while any member remains, so `kill(-pgid)` still reaches them.
 /// A live pid equal to `pgid` with a different `starttime` is a reused leader
-/// of a new group and is left alone.
+/// of a new group and is left alone. Windows compares `GetProcessTimes`
+/// creation time against the recorded `starttime` and skips the kill when
+/// they differ or the slot has no starttime.
 fn kill_stale_process_group(live: &LiveInvocation) {
     #[cfg(unix)]
     {
@@ -118,7 +120,9 @@ fn kill_stale_process_group(live: &LiveInvocation) {
     }
     #[cfg(windows)]
     {
-        kill_windows_tree(live.pid);
+        if live.starttime != 0 && proc_starttime(live.pid) == Some(live.starttime) {
+            kill_windows_tree(live.pid);
+        }
     }
 }
 
@@ -130,8 +134,40 @@ fn proc_starttime(pid: u32) -> Option<u64> {
 }
 
 #[cfg(windows)]
-fn proc_starttime(_pid: u32) -> Option<u64> {
-    None
+fn proc_starttime(pid: u32) -> Option<u64> {
+    #[repr(C)]
+    struct FileTime {
+        low: u32,
+        high: u32,
+    }
+    const PROCESS_QUERY_LIMITED_INFORMATION: u32 = 0x1000;
+    unsafe extern "system" {
+        fn OpenProcess(access: u32, inherit: i32, pid: u32) -> *mut core::ffi::c_void;
+        fn GetProcessTimes(
+            process: *mut core::ffi::c_void,
+            creation: *mut FileTime,
+            exit: *mut FileTime,
+            kernel: *mut FileTime,
+            user: *mut FileTime,
+        ) -> i32;
+        fn CloseHandle(handle: *mut core::ffi::c_void) -> i32;
+    }
+    unsafe {
+        let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid);
+        if handle.is_null() {
+            return None;
+        }
+        let mut creation = FileTime { low: 0, high: 0 };
+        let mut exit = FileTime { low: 0, high: 0 };
+        let mut kernel = FileTime { low: 0, high: 0 };
+        let mut user = FileTime { low: 0, high: 0 };
+        let ok = GetProcessTimes(handle, &mut creation, &mut exit, &mut kernel, &mut user);
+        CloseHandle(handle);
+        if ok == 0 {
+            return None;
+        }
+        Some(((creation.high as u64) << 32) | u64::from(creation.low))
+    }
 }
 
 #[cfg(windows)]
@@ -821,5 +857,19 @@ mod contained_file_tests {
         .await
         .unwrap();
         assert_eq!(bytes, b"inside");
+    }
+}
+
+#[cfg(all(test, windows))]
+mod windows_starttime_tests {
+    use super::*;
+
+    #[test]
+    fn reads_this_process_creation_time() {
+        let pid = std::process::id();
+        let start = proc_starttime(pid).expect("current process has a creation time");
+        assert_ne!(start, 0);
+        assert_eq!(proc_starttime(pid), Some(start));
+        assert_eq!(proc_starttime(u32::MAX), None);
     }
 }
